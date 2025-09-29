@@ -4,8 +4,8 @@
   "name": "Leap Rebates",
   "colors": {
     "primary": "#004EFC",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "light": "#004EFC",
+    "dark": "#7E00FC"
   },
   "favicon": "/favicon.svg",
   "navigation": {

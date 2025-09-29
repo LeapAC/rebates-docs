@@ -73,8 +73,8 @@
     }
   },
   "logo": {
-    "light": "/logo/leap_white.svg",
-    "dark": "/logo/leap_black.svg"
+    "light": "/logo/leap_black.svg",
+    "dark": "/logo/leap_white.svg"
   },
   "navbar": {
     "links": [

@@ -1,80 +1,189 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: "Quick Start"
+description: "Surface Rebates & File via LeapConnect"
 ---
 
-## Get started in three steps
+<Note>
+  **Audience:** Partner implementers (product, engineering, ops)
 
-Get your documentation site running locally and make your first customization.
+  **Outcome:** Embed a customer‑specific "Claim your rebate" offer and complete filing via LeapConnect, with status updates and payouts tracked in your systems.
+</Note>
 
-### Step 1: Set up your local environment
+## Overview
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+Build an embedded rebate offer that's unique per customer, plus a LeapConnect flow to complete and submit rebate applications.
 
-### Step 2: Deploy your changes
+**What you'll need:**
+- Partner account
+- API credentials
+- A place in your UX to present the offer URL
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+**What you'll get:**
+- Created customer record
+- Applicable programs
+- Total incentive amount
+- Customer-specific offer URL
+- Filed application once customer & partner data are complete
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+## Prerequisites
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+Before you begin, ensure you have:
 
-### Step 3: Go live
+<Steps>
+<Step title="Partner account & API credentials">
+  Obtain sandbox and production API credentials from your partner dashboard.
+</Step>
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+<Step title="Legal review">
+  Complete data privacy & consent review with your legal/ops team.
+</Step>
 
-## Next steps
+<Step title="Data mapping (Optional)">
+  Map your data to Leap's normalized schema. Create a field mapping table indicating which fields you'll pre-supply vs. collect via LeapConnect.
+</Step>
 
-Now that you have your docs running, explore these key features:
+<Step title="Device catalog (Optional)">
+  Create your device catalog in Leap with UUIDs and required technical specs for eligibility checks (APL/ENERGY STAR).
+</Step>
+</Steps>
+
+## Step 1: Request Incentives for a Customer
+
+Retrieve available incentives and generate a customer-scoped offer URL.
+
+### Required Inputs
+
+- `customer_address` - Customer's service address
+- `building_type` - Type of building (e.g., `single_family`)
+- `device_id` - Your device catalog identifier
+
+### Optional Input
+
+- `partner_reference_id` - Your internal customer identifier
+
+### API Request
+
+```json
+POST /incentives/quote
+{
+  "customer_address": {
+    "street": "123 Main St",
+    "city": "Springfield",
+    "state": "IL",
+    "postal_code": "62704"
+  },
+  "building_type": "single_family",
+  "device_id": "dev_abc123",
+  "partner_reference_id": "cust_7890"
+}
+```
+
+### Response
+
+The response includes:
+- `total_incentive` - Total rebate amount available
+- `customer_id` - Leap's customer identifier
+- `programs[]` - Array of applicable rebate programs
+- `offer_url` - Customer-scoped LeapConnect link
+- `inputs` - Echo of your request
+
+## Step 2: Present the Offer (Embed)
+
+Surface the rebate offer in your customer experience.
+
+### Where to Display
 
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
+<Card title="Purchase Confirmation" icon="shopping-cart">
+  Add to your purchase confirmation page immediately after transaction.
 </Card>
 
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
+<Card title="Post-Purchase" icon="envelope">
+  Include in post-purchase email or SMS communications.
 </Card>
 
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
+<Card title="Account Portal" icon="user">
+  Display in customer account portal or device management section.
 </Card>
 
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
+<Card title="Device Setup" icon="gear">
+  Integrate into device setup or onboarding screens.
 </Card>
-
 </CardGroup>
 
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>
+### UX Guidelines
+
+<Tip>
+  - Use a clear CTA like **"Claim your rebate"**
+  - Set expectations that customers may need to complete after installation
+  - Keep offer URLs customer-specific - avoid sharing across users
+</Tip>
+
+## Step 3: Complete Filing in LeapConnect
+
+The customer completes their rebate application through LeapConnect.
+
+### Customer Actions
+
+1. **Open their unique `offer_url`**
+2. **Provide remaining fields & documents**
+3. **Give consent** for partner to share install details
+
+### What Happens Behind the Scenes
+
+- Partner-provided fields appear prefilled
+- Leap validates all inputs
+- Application is prepared for utility program submission
+
+## Step 4: Finalize Application Data
+
+Partners complete the application with installation details.
+
+### Partner Actions
+
+<AccordionGroup>
+<Accordion icon="calendar" title="Update Partner Fields">
+  Add or update partner-side fields such as:
+  - Install date
+  - Installer details
+  - Final invoice
+  - Permit information
+</Accordion>
+
+<Accordion icon="file" title="Upload Documents">
+  Upload any partner-only documents if applicable to the rebate program.
+</Accordion>
+
+<Accordion icon="check" title="Confirm Submission">
+  Confirm the application is ready for submission to the utility.
+</Accordion>
+</AccordionGroup>
+
+<Info>
+  **Pro tip:** Automate these updates via API using `customer_id` or your `partner_reference_id`.
+</Info>
+
+## What's Next?
+
+View and export applications via Dashboard or API.
+
+<Card title="Application Status Guide" icon="chart-line" href="/guides/application-status">
+  Learn how to check application status and configure webhooks
+</Card>
+
+## API Reference
+
+### Models
+- `device` - Device catalog entries
+- `program` - Rebate program details
+- `incentive_quote` - Incentive calculation results
+- `application` - Rebate application records
+
+### Key Endpoints
+
+| Endpoint | Description |
+|----------|-------------|
+| `POST /devices` | Create device catalog entries (optional) |
+| `POST /incentives/quote` | Get incentives and offer URL |
+| `GET /applications/{id}` | Retrieve application details |
+| `POST /applications/{id}/partner_fields` | Update partner data |

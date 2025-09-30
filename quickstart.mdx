@@ -46,16 +46,19 @@ POST /incentives
 <Accordion title="Eligible Customer">
 ```json
 {
-    "applications": [
-        {
-            "application_id": uuid,
-            "url": url
-        }
-    ],
+    "application_id": uuid,
+    "connect_url": url,
     "customer_id": uuid,
     "incentive_amount": int,
     "reference_id": string,
-    "programs": [{}]
+    "programs": [
+      {
+        "program_name": string,
+        "is_eligible": true,
+        "incentive_amount": int,
+        "type": enum
+      }
+    ]
 }
 ```
 </Accordion>
@@ -63,11 +66,19 @@ POST /incentives
 <Accordion title="Ineligible Customer">
 ```json
 {
-    "applications": [],
+    "application_id": uuid,
+    "connect_url": url,
     "customer_id": uuid,
     "incentive_amount": 0,
     "reference_id": string,
-    "programs": []
+    "programs": [
+      {
+        "program_name": string,
+        "is_eligible": true,
+        "incentive_amount": int,
+        "type": enum
+      }
+    ]
 }
 ```
 </Accordion>
@@ -75,20 +86,25 @@ POST /incentives
 <Accordion title="Multiple Programs">
 ```json
 {
-    "applications": [
-        {
-            "application_id": uuid,
-            "url": url
-        },
-        {
-            "application_id": uuid,
-            "url": url
-        }
-    ],
+    "application_id": uuid,
+    "connect_url": url,
     "customer_id": uuid,
     "incentive_amount": int,
     "reference_id": string,
-    "programs": [{}]
+    "programs": [
+      {
+        "program_name": string,
+        "is_eligible": true,
+        "incentive_amount": int,
+        "type": enum
+      },
+      {
+        "program_name": string,
+        "is_eligible": true,
+        "incentive_amount": int,
+        "type": enum
+      }
+    ]
 }
 ```
 </Accordion>

@@ -1,189 +1,190 @@
 ---
-title: "Quick Start"
-description: "Surface Rebates & File via LeapConnect"
+title: "Quickstart"
+description: "Embed an offer for customers to claim incentives after purchase and installation"
 ---
 
-<Note>
-  **Audience:** Partner implementers (product, engineering, ops)
-
-  **Outcome:** Embed a customer‑specific "Claim your rebate" offer and complete filing via LeapConnect, with status updates and payouts tracked in your systems.
-</Note>
-
-## Overview
-
-Build an embedded rebate offer that's unique per customer, plus a LeapConnect flow to complete and submit rebate applications.
-
-**What you'll need:**
-- Partner account
-- API credentials
-- A place in your UX to present the offer URL
-
-**What you'll get:**
-- Created customer record
-- Applicable programs
-- Total incentive amount
-- Customer-specific offer URL
-- Filed application once customer & partner data are complete
-
-## Prerequisites
-
-Before you begin, ensure you have:
+## Setup
 
 <Steps>
-<Step title="Partner account & API credentials">
-  Obtain sandbox and production API credentials from your partner dashboard.
+<Step title="Create your API Key">
+  Generate API credentials from your partner dashboard for both sandbox and production environments.
 </Step>
 
-<Step title="Legal review">
-  Complete data privacy & consent review with your legal/ops team.
+<Step title="Map devices to your system">
+  Create a mapping between your product catalog and Leap's device IDs for eligibility checks.
 </Step>
 
-<Step title="Data mapping (Optional)">
-  Map your data to Leap's normalized schema. Create a field mapping table indicating which fields you'll pre-supply vs. collect via LeapConnect.
-</Step>
-
-<Step title="Device catalog (Optional)">
-  Create your device catalog in Leap with UUIDs and required technical specs for eligibility checks (APL/ENERGY STAR).
+<Step title="Configure ownership of data requirements (Optional)">
+  Define which data fields your system will provide vs. what customers will enter directly.
 </Step>
 </Steps>
 
-## Step 1: Request Incentives for a Customer
+## Get URL
 
-Retrieve available incentives and generate a customer-scoped offer URL.
+Get a Connect URL to embed for eligible customers in your App.
 
-### Required Inputs
+<Info>
+  **Options:** API, CSV Upload
+</Info>
 
-- `customer_address` - Customer's service address
-- `building_type` - Type of building (e.g., `single_family`)
-- `device_id` - Your device catalog identifier
-
-### Optional Input
-
-- `partner_reference_id` - Your internal customer identifier
-
-### API Request
+### Request
 
 ```json
-POST /incentives/quote
+POST /incentives
 {
-  "customer_address": {
-    "street": "123 Main St",
-    "city": "Springfield",
-    "state": "IL",
-    "postal_code": "62704"
-  },
-  "building_type": "single_family",
-  "device_id": "dev_abc123",
-  "partner_reference_id": "cust_7890"
+    "address": string,
+    "building_type": enum,
+    "device_id": uuid,
+    "reference_id": string,
+    "apply": true
 }
 ```
 
-### Response
-
-The response includes:
-- `total_incentive` - Total rebate amount available
-- `customer_id` - Leap's customer identifier
-- `programs[]` - Array of applicable rebate programs
-- `offer_url` - Customer-scoped LeapConnect link
-- `inputs` - Echo of your request
-
-## Step 2: Present the Offer (Embed)
-
-Surface the rebate offer in your customer experience.
-
-### Where to Display
-
-<CardGroup cols={2}>
-<Card title="Purchase Confirmation" icon="shopping-cart">
-  Add to your purchase confirmation page immediately after transaction.
-</Card>
-
-<Card title="Post-Purchase" icon="envelope">
-  Include in post-purchase email or SMS communications.
-</Card>
-
-<Card title="Account Portal" icon="user">
-  Display in customer account portal or device management section.
-</Card>
-
-<Card title="Device Setup" icon="gear">
-  Integrate into device setup or onboarding screens.
-</Card>
-</CardGroup>
-
-### UX Guidelines
-
-<Tip>
-  - Use a clear CTA like **"Claim your rebate"**
-  - Set expectations that customers may need to complete after installation
-  - Keep offer URLs customer-specific - avoid sharing across users
-</Tip>
-
-## Step 3: Complete Filing in LeapConnect
-
-The customer completes their rebate application through LeapConnect.
-
-### Customer Actions
-
-1. **Open their unique `offer_url`**
-2. **Provide remaining fields & documents**
-3. **Give consent** for partner to share install details
-
-### What Happens Behind the Scenes
-
-- Partner-provided fields appear prefilled
-- Leap validates all inputs
-- Application is prepared for utility program submission
-
-## Step 4: Finalize Application Data
-
-Partners complete the application with installation details.
-
-### Partner Actions
+### Response Examples
 
 <AccordionGroup>
-<Accordion icon="calendar" title="Update Partner Fields">
-  Add or update partner-side fields such as:
-  - Install date
-  - Installer details
-  - Final invoice
-  - Permit information
+<Accordion title="Eligible Customer">
+```json
+{
+    "applications": [
+        {
+            "application_id": uuid,
+            "url": url
+        }
+    ],
+    "customer_id": uuid,
+    "incentive_amount": int,
+    "reference_id": string,
+    "programs": [{}]
+}
+```
 </Accordion>
 
-<Accordion icon="file" title="Upload Documents">
-  Upload any partner-only documents if applicable to the rebate program.
+<Accordion title="Ineligible Customer">
+```json
+{
+    "applications": [],
+    "customer_id": uuid,
+    "incentive_amount": 0,
+    "reference_id": string,
+    "programs": []
+}
+```
 </Accordion>
 
-<Accordion icon="check" title="Confirm Submission">
-  Confirm the application is ready for submission to the utility.
+<Accordion title="Multiple Programs">
+```json
+{
+    "applications": [
+        {
+            "application_id": uuid,
+            "url": url
+        },
+        {
+            "application_id": uuid,
+            "url": url
+        }
+    ],
+    "customer_id": uuid,
+    "incentive_amount": int,
+    "reference_id": string,
+    "programs": [{}]
+}
+```
 </Accordion>
 </AccordionGroup>
 
-<Info>
-  **Pro tip:** Automate these updates via API using `customer_id` or your `partner_reference_id`.
-</Info>
+## Place in Your App Flow
 
-## What's Next?
+Place the offer to Claim Incentives inside your customer journey.
 
-View and export applications via Dashboard or API.
-
-<Card title="Application Status Guide" icon="chart-line" href="/guides/application-status">
-  Learn how to check application status and configure webhooks
+<CardGroup cols={3}>
+<Card title="Post Purchase Email" icon="envelope">
+  Send the incentive link in your order confirmation or follow-up emails
 </Card>
 
-## API Reference
+<Card title="Order Confirmation" icon="check-circle">
+  Display immediately after purchase completion
+</Card>
 
-### Models
-- `device` - Device catalog entries
-- `program` - Rebate program details
-- `incentive_quote` - Incentive calculation results
-- `application` - Rebate application records
+<Card title="App Setup" icon="mobile">
+  Integrate into your product setup or onboarding flow
+</Card>
+</CardGroup>
 
-### Key Endpoints
+## Customer Fills the Application
 
-| Endpoint | Description |
-|----------|-------------|
-| `POST /devices` | Create device catalog entries (optional) |
-| `POST /incentives/quote` | Get incentives and offer URL |
-| `GET /applications/{id}` | Retrieve application details |
-| `POST /applications/{id}/partner_fields` | Update partner data |
+Customer completes the application in Leap Connect. After completion, application_status is updated to `awaiting_partner` or `completed`.
+
+<Note>
+  The customer will provide required documentation and consent for data sharing during this step.
+</Note>
+
+## Upload Remaining Data Requirements
+
+Provide information to complete the customer's application.
+
+### Step 1: Search for Applications
+
+Search for all applications in `awaiting_partner` status.
+
+<Info>
+  **Options:** CSV Upload, API
+</Info>
+
+### Request
+
+```http
+GET /applications
+```
+
+**Query Parameters:**
+- `application_status`: Filter by status (options: `not_started`, `in_progress`, `awaiting_partner`, `completed`, `submitted`, `approved`, `rejected`)
+
+### Response
+
+```json
+{
+  "next_page_token": "242c3e24-43e6-4ad7-88b3-666cda21582b",
+  "results": [
+      {
+          "application_id": uuid,
+          "url": url,
+          "application_status": string,
+          "customer_devices": [
+              {
+                  "customer_device_id": uuid
+                  // additional device fields
+              }
+          ],
+          "customer": {
+              "customer_id": uuid
+              // additional customer fields
+          },
+          "required_attachments": {
+              "invoice": true,
+              "install_photo": false
+          },
+          "utility": {
+              "auth_status": enum,
+              "account_number": string,
+              "meter_number": string,
+              "account_status": enum
+          },
+          "contractor": {
+              "contractor_name": string,
+              "contractor_phone": string
+              // additional contractor fields
+          }
+      }
+  ]
+}
+```
+
+### Step 2: Upload Partner Data
+
+Upload the data requirements you provide for your customers to complete their applications.
+
+<Tip>
+  Check the `required_attachments` field to see which documents are needed for each application.
+</Tip>

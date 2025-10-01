@@ -1,8 +1,8 @@
 {
   "openapi": "3.0.3",
   "info": {
-    "title": "Leap Energy Incentives Aggregator API",
-    "description": "The Incentives Aggregator API provides a unified interface to search for and calculate\nincentive amounts across multiple utility programs. Given a customer address and building type,\nthe API identifies applicable utility programs and calculates potential incentive amounts\nfor various device and tier combinations.\n",
+    "title": "Leap Energy API",
+    "description": "The Leap Energy API provides a unified interface for managing rebate incentives and applications.\n\n## Incentives API\nSearch for and calculate incentive amounts across multiple utility programs. Given a customer\naddress and building type, the API identifies applicable utility programs and calculates potential\nincentive amounts for various device and tier combinations.\n\n## Applications API\nManage rebate applications on behalf of customers. Applications represent a customer's request\nfor a rebate under a specific utility program, including customer information, device details,\nand application metadata.",
     "version": "2.0.0",
     "contact": {
       "name": "Leap Energy",
@@ -213,6 +213,125 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/applications/{application_id}": {
+      "get": {
+        "summary": "Get an application by ID",
+        "description": "Retrieves a complete application including customer information and all associated\ncustomer devices. The response includes nested customer and device data.\n",
+        "operationId": "getApplication",
+        "tags": [
+          "Applications"
+        ],
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "path",
+            "description": "Unique identifier for the application",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "example": 123
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved application",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Application"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Application not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      },
+      "patch": {
+        "summary": "Partially update an application",
+        "description": "Partially updates an existing application including customer information and customer devices.\nOnly the fields provided in the request body will be updated - omitted fields will remain unchanged.\n\nThis endpoint supports partial updates to:\n- Application fields (status, signatures, dates, etc.)\n- Nested customer information (address, contact info, demographics, etc.)\n- Customer devices (equipment details, contractor info, vehicle info, etc.)\n\n**Partial Update Behavior:**\n- Only include fields you want to change in the request body\n- Omitted fields will keep their current values\n- Set a field to `null` to clear its value (where nullable)\n- Nested objects (customer, customer_devices) also support partial updates\n\n**Customer Devices:**\n- Include `id` in a customer_device object to update an existing device\n- Omit `id` to create a new customer_device\n- To delete a device, use a separate DELETE endpoint (not implemented in this version)\n\nThe update is transactional - if any part of the update fails, the entire operation\nis rolled back.\n",
+        "operationId": "patchApplication",
+        "tags": [
+          "Applications"
+        ],
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "path",
+            "description": "Unique identifier for the application",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "example": 123
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "Partial application update. Only include fields you want to modify.\nAll fields are optional - omitted fields will remain unchanged.\n",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplicationPatchRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successfully updated application",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Application"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Application not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
           }
         }
       }
@@ -438,7 +557,1287 @@
             "example": "Missing required parameters: address, building_type, and customer_id"
           }
         }
+      },
+      "Error": {
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "Error message describing what went wrong",
+            "example": "Application not found"
+          }
+        }
+      },
+      "Application": {
+        "type": "object",
+        "description": "Complete application with nested customer and device information",
+        "required": [
+          "id",
+          "program_id",
+          "customer_id",
+          "status"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Unique identifier for the application",
+            "example": 123
+          },
+          "program_id": {
+            "type": "integer",
+            "description": "ID of the rebate program this application is for",
+            "example": 339
+          },
+          "customer_id": {
+            "type": "integer",
+            "description": "ID of the customer who owns this application",
+            "example": 609
+          },
+          "customer_device_id": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Array of customer device IDs associated with this application",
+            "example": [
+              45,
+              46
+            ]
+          },
+          "rebate_type": {
+            "type": "string",
+            "nullable": true,
+            "description": "Type of rebate being requested",
+            "example": "instant"
+          },
+          "payee_type": {
+            "type": "string",
+            "enum": [
+              "customer",
+              "contractor",
+              "instant"
+            ],
+            "nullable": true,
+            "description": "Who will receive the rebate payment",
+            "example": "customer"
+          },
+          "submission_date": {
+            "type": "string",
+            "format": "date",
+            "nullable": true,
+            "description": "Date the application was submitted",
+            "example": "2025-01-15"
+          },
+          "approval_date": {
+            "type": "string",
+            "format": "date",
+            "nullable": true,
+            "description": "Date the application was approved",
+            "example": "2025-01-20"
+          },
+          "total_requested_amount": {
+            "type": "number",
+            "format": "decimal",
+            "nullable": true,
+            "description": "Total rebate amount being requested",
+            "example": 150.0
+          },
+          "recaptcha_token": {
+            "type": "string",
+            "nullable": true,
+            "description": "reCAPTCHA token for bot prevention"
+          },
+          "agree_terms": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "Whether customer agreed to terms and conditions",
+            "example": true
+          },
+          "customer_signature": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "Whether customer has signed the application",
+            "example": true
+          },
+          "customer_sig_date": {
+            "type": "string",
+            "format": "date",
+            "nullable": true,
+            "description": "Date of customer signature",
+            "example": "2025-01-15"
+          },
+          "contractor_signature": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "Whether contractor has signed the application",
+            "example": false
+          },
+          "contractor_sig_date": {
+            "type": "string",
+            "format": "date",
+            "nullable": true,
+            "description": "Date of contractor signature"
+          },
+          "project_name": {
+            "type": "string",
+            "maxLength": 255,
+            "nullable": true,
+            "description": "Name/description of the project",
+            "example": "EV Charger Installation"
+          },
+          "eligibility_category": {
+            "type": "string",
+            "enum": [
+              "1A",
+              "1B",
+              "1C",
+              "2"
+            ],
+            "nullable": true,
+            "description": "Eligibility category for tiered programs"
+          },
+          "income_backup_onfile": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether income verification documentation is on file"
+          },
+          "neat_sir_verified": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "Whether NEAT/SIR verification is complete"
+          },
+          "proposed_measures": {
+            "type": "object",
+            "nullable": true,
+            "description": "JSONB object containing proposed energy efficiency measures"
+          },
+          "prepay_amount": {
+            "type": "number",
+            "format": "decimal",
+            "nullable": true,
+            "description": "Amount to be prepaid to contractor"
+          },
+          "authorize_contractor": {
+            "type": "boolean",
+            "default": false,
+            "description": "Authorization to pay contractor directly"
+          },
+          "authorize_payee": {
+            "type": "boolean",
+            "default": false,
+            "description": "Authorization to pay specified payee"
+          },
+          "utility_account_attestation": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "Attestation that applicant is utility account holder"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "new",
+              "started",
+              "customer_complete",
+              "submitted"
+            ],
+            "default": "new",
+            "description": "Current status of the application",
+            "example": "started"
+          },
+          "equipment_complete": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "Whether all equipment documentation is complete"
+          },
+          "permit_complete": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "Whether all permit documentation is complete"
+          },
+          "utility_complete": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "Whether all utility documentation is complete"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when application was created",
+            "example": "2025-01-10T15:30:00Z"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when application was last updated",
+            "example": "2025-01-15T10:45:00Z"
+          },
+          "customer": {
+            "$ref": "#/components/schemas/Customer"
+          }
+        }
+      },
+      "Customer": {
+        "type": "object",
+        "description": "Customer information associated with an application",
+        "required": [
+          "id",
+          "address_line1",
+          "city",
+          "state",
+          "zip_code"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Unique identifier for the customer",
+            "example": 609
+          },
+          "first_name": {
+            "type": "string",
+            "nullable": true,
+            "description": "Customer's first name",
+            "example": "John"
+          },
+          "last_name": {
+            "type": "string",
+            "nullable": true,
+            "description": "Customer's last name",
+            "example": "Doe"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "nullable": true,
+            "description": "Customer's email address",
+            "example": "john.doe@example.com"
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true,
+            "description": "Customer's phone number",
+            "example": "555-123-4567"
+          },
+          "address_line1": {
+            "type": "string",
+            "description": "Street address line 1",
+            "example": "123 Peachtree St"
+          },
+          "address_line2": {
+            "type": "string",
+            "nullable": true,
+            "description": "Street address line 2 (apt, suite, etc.)",
+            "example": "Apt 4B"
+          },
+          "city": {
+            "type": "string",
+            "description": "City",
+            "example": "Atlanta"
+          },
+          "state": {
+            "type": "string",
+            "description": "State code (2 letters)",
+            "example": "GA"
+          },
+          "zip_code": {
+            "type": "string",
+            "description": "ZIP code",
+            "example": "30303"
+          },
+          "eiaid": {
+            "type": "string",
+            "nullable": true,
+            "description": "Energy Information Administration utility ID",
+            "example": "14354"
+          },
+          "utility_account_number": {
+            "type": "string",
+            "nullable": true,
+            "description": "Customer's utility account number",
+            "example": "ACC-123456789"
+          },
+          "building_type_id": {
+            "type": "integer",
+            "nullable": true,
+            "description": "ID of the building type",
+            "example": 1
+          },
+          "is_homeowner": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether customer owns the property",
+            "example": true
+          },
+          "is_income_qualified": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether customer qualifies for income-based programs",
+            "example": false
+          },
+          "building_age_years": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Age of the building in years",
+            "example": 25
+          },
+          "within_city_limits": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "Whether property is within city limits",
+            "example": true
+          },
+          "referral_source": {
+            "type": "string",
+            "maxLength": 255,
+            "nullable": true,
+            "description": "How customer heard about the program",
+            "example": "utility website"
+          },
+          "fax": {
+            "type": "string",
+            "nullable": true,
+            "description": "Customer's fax number"
+          },
+          "conditioned_sqft": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Square footage of conditioned space",
+            "example": 2000
+          },
+          "gut_rehab": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether property is undergoing gut rehabilitation"
+          },
+          "gas_appliance_present": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether gas appliances are present"
+          },
+          "home_energy_assessment_completed": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether a home energy assessment has been completed"
+          },
+          "household_size": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Number of people in household",
+            "example": 4
+          },
+          "mailing_address_line1": {
+            "type": "string",
+            "nullable": true,
+            "description": "Mailing address if different from property address"
+          },
+          "mailing_city": {
+            "type": "string",
+            "nullable": true,
+            "description": "Mailing address city"
+          },
+          "mailing_state": {
+            "type": "string",
+            "nullable": true,
+            "description": "Mailing address state"
+          },
+          "mailing_zip": {
+            "type": "string",
+            "nullable": true,
+            "description": "Mailing address ZIP code"
+          },
+          "alt_phone": {
+            "type": "string",
+            "nullable": true,
+            "description": "Alternate phone number"
+          },
+          "biz_tax_status": {
+            "type": "string",
+            "nullable": true,
+            "description": "Business tax status"
+          },
+          "ca_entity_id": {
+            "type": "string",
+            "nullable": true,
+            "description": "California entity ID"
+          },
+          "county_parish": {
+            "type": "string",
+            "nullable": true,
+            "description": "County or parish name",
+            "example": "Fulton County"
+          },
+          "is_indigenous": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether customer identifies as indigenous"
+          },
+          "is_veteran": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether customer is a veteran"
+          },
+          "is_senior": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether customer is a senior"
+          },
+          "is_first_responder": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether customer is a first responder"
+          },
+          "property_details": {
+            "type": "object",
+            "default": {},
+            "description": "Additional property details as JSONB"
+          },
+          "utility_rate_plan": {
+            "type": "string",
+            "nullable": true,
+            "description": "Customer's utility rate plan",
+            "example": "R-1B"
+          },
+          "utility_account_status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "inactive",
+              "pending"
+            ],
+            "default": "active",
+            "description": "Status of utility account"
+          },
+          "dwelling_units": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Number of dwelling units in building",
+            "example": 1
+          },
+          "is_test": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether this is a test customer record"
+          },
+          "customer_devices": {
+            "type": "array",
+            "description": "Array of devices associated with this customer",
+            "items": {
+              "$ref": "#/components/schemas/CustomerDevice"
+            }
+          }
+        }
+      },
+      "CustomerDevice": {
+        "type": "object",
+        "description": "Device purchased and installed by customer",
+        "required": [
+          "id",
+          "customer_id"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Unique identifier for this customer device record",
+            "example": 45
+          },
+          "customer_id": {
+            "type": "integer",
+            "description": "ID of the customer who owns this device",
+            "example": 609
+          },
+          "device_id": {
+            "type": "integer",
+            "nullable": true,
+            "description": "ID of the device from the devices catalog",
+            "example": 240
+          },
+          "quantity": {
+            "type": "integer",
+            "default": 1,
+            "description": "Number of devices purchased",
+            "example": 1
+          },
+          "purchase_price": {
+            "type": "number",
+            "format": "decimal",
+            "nullable": true,
+            "description": "Price paid for the device",
+            "example": 599.99
+          },
+          "installation_cost": {
+            "type": "number",
+            "format": "decimal",
+            "nullable": true,
+            "description": "Cost of installation",
+            "example": 450.0
+          },
+          "total_project_cost": {
+            "type": "number",
+            "format": "decimal",
+            "nullable": true,
+            "description": "Total cost including equipment and installation",
+            "example": 1049.99
+          },
+          "purchase_date": {
+            "type": "string",
+            "format": "date",
+            "nullable": true,
+            "description": "Date device was purchased",
+            "example": "2025-01-05"
+          },
+          "installation_date": {
+            "type": "string",
+            "format": "date",
+            "nullable": true,
+            "description": "Date device was installed",
+            "example": "2025-01-10"
+          },
+          "existing_equipment_age_years": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Age of equipment being replaced",
+            "example": 15
+          },
+          "existing_equipment_operational": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "Whether existing equipment is still operational",
+            "example": false
+          },
+          "existing_equipment_manufacturer": {
+            "type": "string",
+            "maxLength": 100,
+            "nullable": true,
+            "description": "Manufacturer of existing equipment",
+            "example": "Old Brand"
+          },
+          "existing_equipment_model": {
+            "type": "string",
+            "maxLength": 100,
+            "nullable": true,
+            "description": "Model of existing equipment",
+            "example": "Model-X"
+          },
+          "installation_location": {
+            "type": "string",
+            "maxLength": 100,
+            "nullable": true,
+            "description": "Where device was installed",
+            "example": "Garage"
+          },
+          "contractor_name": {
+            "type": "string",
+            "maxLength": 200,
+            "nullable": true,
+            "description": "Name of contractor who performed installation",
+            "example": "ABC Electric"
+          },
+          "contractor_license": {
+            "type": "string",
+            "maxLength": 100,
+            "nullable": true,
+            "description": "Contractor's license number",
+            "example": "EC-12345"
+          },
+          "permits_obtained": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether required permits were obtained",
+            "example": true
+          },
+          "inspection_passed": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether inspection passed",
+            "example": true
+          },
+          "application_submitted_date": {
+            "type": "string",
+            "format": "date",
+            "nullable": true,
+            "description": "Date application was submitted",
+            "example": "2025-01-15"
+          },
+          "permit_number": {
+            "type": "string",
+            "nullable": true,
+            "description": "Permit number",
+            "example": "PMT-2025-001"
+          },
+          "vehicle_make": {
+            "type": "string",
+            "nullable": true,
+            "description": "Make of vehicle (for EV chargers)",
+            "example": "Tesla"
+          },
+          "vehicle_model": {
+            "type": "string",
+            "nullable": true,
+            "description": "Model of vehicle (for EV chargers)",
+            "example": "Model 3"
+          },
+          "vehicle_year": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Year of vehicle (for EV chargers)",
+            "example": 2023
+          },
+          "vehicle_vin": {
+            "type": "string",
+            "nullable": true,
+            "description": "Vehicle identification number",
+            "example": "5YJ3E1EA9KF123456"
+          },
+          "dealership": {
+            "type": "string",
+            "nullable": true,
+            "description": "Dealership where vehicle was purchased",
+            "example": "Tesla Atlanta"
+          },
+          "contractor_contact_email": {
+            "type": "string",
+            "format": "email",
+            "nullable": true,
+            "description": "Contractor's email",
+            "example": "contact@abcelectric.com"
+          },
+          "contractor_contact_phone": {
+            "type": "string",
+            "nullable": true,
+            "description": "Contractor's phone number",
+            "example": "555-987-6543"
+          },
+          "contractor_website": {
+            "type": "string",
+            "format": "uri",
+            "nullable": true,
+            "description": "Contractor's website",
+            "example": "https://www.abcelectric.com"
+          },
+          "trenching_required": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "Whether trenching was required for installation",
+            "example": false
+          },
+          "contractor_contact_name": {
+            "type": "string",
+            "maxLength": 255,
+            "nullable": true,
+            "description": "Name of contractor contact person",
+            "example": "Jane Smith"
+          },
+          "contractor_address_line1": {
+            "type": "string",
+            "maxLength": 255,
+            "nullable": true,
+            "description": "Contractor's street address",
+            "example": "789 Business Blvd"
+          },
+          "contractor_city": {
+            "type": "string",
+            "maxLength": 255,
+            "nullable": true,
+            "description": "Contractor's city",
+            "example": "Atlanta"
+          },
+          "contractor_state": {
+            "type": "string",
+            "maxLength": 255,
+            "nullable": true,
+            "description": "Contractor's state",
+            "example": "GA"
+          },
+          "contractor_zip": {
+            "type": "string",
+            "maxLength": 20,
+            "nullable": true,
+            "description": "Contractor's ZIP code",
+            "example": "30301"
+          },
+          "existing_equipment_photos_provided": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "Whether photos of existing equipment were provided"
+          },
+          "existing_equipment_serial": {
+            "type": "string",
+            "maxLength": 255,
+            "nullable": true,
+            "description": "Serial number of existing equipment"
+          },
+          "existing_heating_type": {
+            "type": "string",
+            "maxLength": 255,
+            "nullable": true,
+            "description": "Type of existing heating system",
+            "example": "Gas furnace"
+          },
+          "device_serial": {
+            "type": "string",
+            "maxLength": 255,
+            "nullable": true,
+            "description": "Serial number of new device",
+            "example": "SN-123456789"
+          },
+          "louvered_sides": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "Whether device has louvered sides"
+          },
+          "contractor_fax": {
+            "type": "string",
+            "nullable": true,
+            "description": "Contractor's fax number"
+          },
+          "coil_make_model": {
+            "type": "string",
+            "nullable": true,
+            "description": "Make and model of coil (for HVAC)"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when record was created",
+            "example": "2025-01-10T12:00:00Z"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when record was last updated",
+            "example": "2025-01-15T14:30:00Z"
+          }
+        }
+      },
+      "ApplicationPatchRequest": {
+        "type": "object",
+        "description": "Request body for partially updating an application.\nAll fields are optional - only include fields you want to modify.\nOmitted fields will keep their current values.\n",
+        "properties": {
+          "rebate_type": {
+            "type": "string",
+            "nullable": true,
+            "description": "Type of rebate being requested"
+          },
+          "payee_type": {
+            "type": "string",
+            "enum": [
+              "customer",
+              "contractor",
+              "instant"
+            ],
+            "nullable": true,
+            "description": "Who will receive the rebate payment"
+          },
+          "submission_date": {
+            "type": "string",
+            "format": "date",
+            "nullable": true,
+            "description": "Date the application was submitted"
+          },
+          "approval_date": {
+            "type": "string",
+            "format": "date",
+            "nullable": true,
+            "description": "Date the application was approved"
+          },
+          "total_requested_amount": {
+            "type": "number",
+            "format": "decimal",
+            "nullable": true,
+            "description": "Total rebate amount being requested"
+          },
+          "recaptcha_token": {
+            "type": "string",
+            "nullable": true,
+            "description": "reCAPTCHA token for bot prevention"
+          },
+          "agree_terms": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "Whether customer agreed to terms and conditions"
+          },
+          "customer_signature": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "Whether customer has signed the application"
+          },
+          "customer_sig_date": {
+            "type": "string",
+            "format": "date",
+            "nullable": true,
+            "description": "Date of customer signature"
+          },
+          "contractor_signature": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "Whether contractor has signed the application"
+          },
+          "contractor_sig_date": {
+            "type": "string",
+            "format": "date",
+            "nullable": true,
+            "description": "Date of contractor signature"
+          },
+          "project_name": {
+            "type": "string",
+            "maxLength": 255,
+            "nullable": true,
+            "description": "Name/description of the project"
+          },
+          "eligibility_category": {
+            "type": "string",
+            "enum": [
+              "1A",
+              "1B",
+              "1C",
+              "2"
+            ],
+            "nullable": true,
+            "description": "Eligibility category for tiered programs"
+          },
+          "income_backup_onfile": {
+            "type": "boolean",
+            "description": "Whether income verification documentation is on file"
+          },
+          "neat_sir_verified": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "Whether NEAT/SIR verification is complete"
+          },
+          "proposed_measures": {
+            "type": "object",
+            "nullable": true,
+            "description": "JSONB object containing proposed energy efficiency measures"
+          },
+          "prepay_amount": {
+            "type": "number",
+            "format": "decimal",
+            "nullable": true,
+            "description": "Amount to be prepaid to contractor"
+          },
+          "authorize_contractor": {
+            "type": "boolean",
+            "description": "Authorization to pay contractor directly"
+          },
+          "authorize_payee": {
+            "type": "boolean",
+            "description": "Authorization to pay specified payee"
+          },
+          "utility_account_attestation": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "Attestation that applicant is utility account holder"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "new",
+              "started",
+              "customer_complete",
+              "submitted"
+            ],
+            "description": "Current status of the application"
+          },
+          "equipment_complete": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "Whether all equipment documentation is complete"
+          },
+          "permit_complete": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "Whether all permit documentation is complete"
+          },
+          "utility_complete": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "Whether all utility documentation is complete"
+          },
+          "customer": {
+            "$ref": "#/components/schemas/CustomerPatchRequest"
+          }
+        }
+      },
+      "CustomerPatchRequest": {
+        "type": "object",
+        "description": "Customer information to partially update.\nAll fields are optional - only include fields you want to modify.\n",
+        "properties": {
+          "first_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "last_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "nullable": true
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true
+          },
+          "address_line1": {
+            "type": "string"
+          },
+          "address_line2": {
+            "type": "string",
+            "nullable": true
+          },
+          "city": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "zip_code": {
+            "type": "string"
+          },
+          "eiaid": {
+            "type": "string",
+            "nullable": true
+          },
+          "utility_account_number": {
+            "type": "string",
+            "nullable": true
+          },
+          "building_type_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "is_homeowner": {
+            "type": "boolean"
+          },
+          "is_income_qualified": {
+            "type": "boolean"
+          },
+          "building_age_years": {
+            "type": "integer",
+            "nullable": true
+          },
+          "within_city_limits": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "referral_source": {
+            "type": "string",
+            "maxLength": 255,
+            "nullable": true
+          },
+          "fax": {
+            "type": "string",
+            "nullable": true
+          },
+          "conditioned_sqft": {
+            "type": "integer",
+            "nullable": true
+          },
+          "gut_rehab": {
+            "type": "boolean"
+          },
+          "gas_appliance_present": {
+            "type": "boolean"
+          },
+          "home_energy_assessment_completed": {
+            "type": "boolean"
+          },
+          "household_size": {
+            "type": "integer",
+            "nullable": true
+          },
+          "mailing_address_line1": {
+            "type": "string",
+            "nullable": true
+          },
+          "mailing_city": {
+            "type": "string",
+            "nullable": true
+          },
+          "mailing_state": {
+            "type": "string",
+            "nullable": true
+          },
+          "mailing_zip": {
+            "type": "string",
+            "nullable": true
+          },
+          "alt_phone": {
+            "type": "string",
+            "nullable": true
+          },
+          "biz_tax_status": {
+            "type": "string",
+            "nullable": true
+          },
+          "ca_entity_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "county_parish": {
+            "type": "string",
+            "nullable": true
+          },
+          "is_indigenous": {
+            "type": "boolean"
+          },
+          "is_veteran": {
+            "type": "boolean"
+          },
+          "is_senior": {
+            "type": "boolean"
+          },
+          "is_first_responder": {
+            "type": "boolean"
+          },
+          "property_details": {
+            "type": "object"
+          },
+          "utility_rate_plan": {
+            "type": "string",
+            "nullable": true
+          },
+          "utility_account_status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "inactive",
+              "pending"
+            ]
+          },
+          "dwelling_units": {
+            "type": "integer",
+            "nullable": true
+          },
+          "customer_devices": {
+            "type": "array",
+            "description": "Array of customer devices to update or create.\nInclude `id` to update existing device, omit `id` to create new device.\n",
+            "items": {
+              "$ref": "#/components/schemas/CustomerDevicePatchRequest"
+            }
+          }
+        }
+      },
+      "CustomerDevicePatchRequest": {
+        "type": "object",
+        "description": "Customer device information to partially update or create.\n- Include `id` field to update an existing customer_device\n- Omit `id` field to create a new customer_device\n- All other fields are optional for updates\n",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "ID of existing customer device (omit to create new)",
+            "nullable": true
+          },
+          "device_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "quantity": {
+            "type": "integer"
+          },
+          "purchase_price": {
+            "type": "number",
+            "format": "decimal",
+            "nullable": true
+          },
+          "installation_cost": {
+            "type": "number",
+            "format": "decimal",
+            "nullable": true
+          },
+          "total_project_cost": {
+            "type": "number",
+            "format": "decimal",
+            "nullable": true
+          },
+          "purchase_date": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "installation_date": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "existing_equipment_age_years": {
+            "type": "integer",
+            "nullable": true
+          },
+          "existing_equipment_operational": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "existing_equipment_manufacturer": {
+            "type": "string",
+            "maxLength": 100,
+            "nullable": true
+          },
+          "existing_equipment_model": {
+            "type": "string",
+            "maxLength": 100,
+            "nullable": true
+          },
+          "installation_location": {
+            "type": "string",
+            "maxLength": 100,
+            "nullable": true
+          },
+          "contractor_name": {
+            "type": "string",
+            "maxLength": 200,
+            "nullable": true
+          },
+          "contractor_license": {
+            "type": "string",
+            "maxLength": 100,
+            "nullable": true
+          },
+          "permits_obtained": {
+            "type": "boolean"
+          },
+          "inspection_passed": {
+            "type": "boolean"
+          },
+          "application_submitted_date": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "permit_number": {
+            "type": "string",
+            "nullable": true
+          },
+          "vehicle_make": {
+            "type": "string",
+            "nullable": true
+          },
+          "vehicle_model": {
+            "type": "string",
+            "nullable": true
+          },
+          "vehicle_year": {
+            "type": "integer",
+            "nullable": true
+          },
+          "vehicle_vin": {
+            "type": "string",
+            "nullable": true
+          },
+          "dealership": {
+            "type": "string",
+            "nullable": true
+          },
+          "contractor_contact_email": {
+            "type": "string",
+            "format": "email",
+            "nullable": true
+          },
+          "contractor_contact_phone": {
+            "type": "string",
+            "nullable": true
+          },
+          "contractor_website": {
+            "type": "string",
+            "format": "uri",
+            "nullable": true
+          },
+          "trenching_required": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "contractor_contact_name": {
+            "type": "string",
+            "maxLength": 255,
+            "nullable": true
+          },
+          "contractor_address_line1": {
+            "type": "string",
+            "maxLength": 255,
+            "nullable": true
+          },
+          "contractor_city": {
+            "type": "string",
+            "maxLength": 255,
+            "nullable": true
+          },
+          "contractor_state": {
+            "type": "string",
+            "maxLength": 255,
+            "nullable": true
+          },
+          "contractor_zip": {
+            "type": "string",
+            "maxLength": 20,
+            "nullable": true
+          },
+          "existing_equipment_photos_provided": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "existing_equipment_serial": {
+            "type": "string",
+            "maxLength": 255,
+            "nullable": true
+          },
+          "existing_heating_type": {
+            "type": "string",
+            "maxLength": 255,
+            "nullable": true
+          },
+          "device_serial": {
+            "type": "string",
+            "maxLength": 255,
+            "nullable": true
+          },
+          "louvered_sides": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "contractor_fax": {
+            "type": "string",
+            "nullable": true
+          },
+          "coil_make_model": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      }
+    },
+    "responses": {
+      "UnauthorizedError": {
+        "description": "API key is missing or invalid",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "InternalServerError": {
+        "description": "Internal server error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
       }
     }
-  }
+  },
+  "tags": [
+    {
+      "name": "Incentives",
+      "description": "Calculate incentive amounts across utility programs"
+    },
+    {
+      "name": "Applications",
+      "description": "Manage rebate applications for customers"
+    }
+  ]
 }

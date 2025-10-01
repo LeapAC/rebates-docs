@@ -1,41 +1,6 @@
 ---
 title: 'Update Application'
 description: 'Upload partner data to complete a customer application'
+openapi: 'PATCH /applications/{application_id}'
 ---
 
-<Warning>
-  This endpoint is under development and will be available soon.
-</Warning>
-
-## POST /applications/[id]
-
-Upload the data requirements you provide for your customers to complete their applications. Use this endpoint to submit information for applications in `awaiting_partner` status.
-
-### Path Parameters
-
-<ParamField path="id" type="string" required>
-  The application ID (UUID) to update
-</ParamField>
-
-### Request Body
-
-<Note>
-  Request body schema and parameters will be documented when this endpoint is released.
-</Note>
-
-### Response
-
-<Note>
-  Response schema will be documented when this endpoint is released.
-</Note>
-
-## Use Cases
-
-This endpoint enables you to:
-
-- Upload invoice documents and installation photos
-- Submit contractor information (name, phone, license details)
-- Provide device installation details
-- Add any other partner-owned data requirements
-
-Check the `required_attachments` field in the GET /applications response to see which documents are needed for each application.

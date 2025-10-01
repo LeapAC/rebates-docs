@@ -1,33 +1,55 @@
 ---
 title: 'Introduction'
-description: 'Example section for showcasing API endpoints'
+description: 'Leap Energy Incentives Aggregator API documentation'
 ---
 
-<Note>
-  If you're not looking to build API reference documentation, you can delete
-  this section by removing the api-reference folder.
-</Note>
+## Overview
 
-## Welcome
-
-There are two ways to build API documentation: [OpenAPI](https://mintlify.com/docs/api-playground/openapi/setup) and [MDX components](https://mintlify.com/docs/api-playground/mdx/configuration). For the starter kit, we are using the following OpenAPI specification.
+The Leap Energy Incentives Aggregator API provides a unified interface to search for and calculate incentive amounts across multiple utility programs. By integrating with Leap's API, you can help your customers claim energy rebates and incentives automatically.
 
 <Card
-  title="Plant Store Endpoints"
-  icon="leaf"
-  href="https://github.com/mintlify/starter/blob/main/api-reference/openapi.json"
+  title="Leap Energy Incentives API"
+  icon="bolt"
+  href="https://api.leap.energy/alpha"
 >
   View the OpenAPI specification file
 </Card>
 
+## How It Works
+
+Given a customer address and building type, the Leap API:
+
+1. Identifies the utility serving the address
+2. Finds all active programs for that utility and building type
+3. Calculates incentive amounts for eligible devices
+4. Returns aggregated results across all programs
+
+## Integration Flow
+
+<Steps>
+<Step title="Check Eligibility">
+  Use the GET /incentives endpoint to check what programs and incentive amounts are available for your customer's address and building type.
+</Step>
+
+<Step title="Create Application">
+  When you find eligible incentives, create an application by including `create_application: true` in your request. This returns a Connect URL for your customer.
+</Step>
+
+<Step title="Customer Completes Application">
+  Embed the Connect URL in your customer journey (post-purchase email, order confirmation, or app setup flow). The customer completes required forms and uploads documentation.
+</Step>
+
+<Step title="Upload Partner Data">
+  For applications in `awaiting_partner` status, upload any remaining data requirements using the POST /applications/[id] endpoint to complete the application.
+</Step>
+</Steps>
+
 ## Authentication
 
-All API endpoints are authenticated using Bearer tokens and picked up from the specification file.
+All API endpoints require authentication using API keys. Include your Leap API key in the Authorization header as a Bearer token.
 
-```json
-"security": [
-  {
-    "bearerAuth": []
-  }
-]
+```http
+Authorization: Bearer YOUR_API_KEY
 ```
+
+Generate API credentials from your partner dashboard for both sandbox and production environments.

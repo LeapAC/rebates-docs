@@ -1,216 +1,443 @@
 {
-  "openapi": "3.1.0",
+  "openapi": "3.0.3",
   "info": {
-    "title": "OpenAPI Plant Store",
-    "description": "A sample API that uses a plant store as an example to demonstrate features in the OpenAPI specification",
-    "license": {
-      "name": "MIT"
-    },
-    "version": "1.0.0"
+    "title": "Leap Energy Incentives Aggregator API",
+    "description": "The Incentives Aggregator API provides a unified interface to search for and calculate\nincentive amounts across multiple utility programs. Given a customer address and building type,\nthe API identifies applicable utility programs and calculates potential incentive amounts\nfor various device and tier combinations.\n",
+    "version": "2.0.0",
+    "contact": {
+      "name": "Leap Energy",
+      "url": "https://leap.energy"
+    }
   },
   "servers": [
     {
-      "url": "http://sandbox.mintlify.com"
+      "url": "https://api.leap.energy/alpha",
+      "description": "Production API"
     }
   ],
   "security": [
     {
-      "bearerAuth": []
+      "ApiKeyAuth": []
     }
   ],
   "paths": {
-    "/plants": {
+    "/incentives": {
       "get": {
-        "description": "Returns all plants from the system that the user has access to",
+        "summary": "Get aggregated incentives for a customer",
+        "description": "Retrieves and aggregates incentive calculations from multiple utility programs\nbased on the customer's address and building type. The API automatically:\n1. Identifies the utility serving the address\n2. Finds all active programs for that utility and building type\n3. Calls each program's incentive calculation function\n4. Aggregates and returns the results\n",
+        "operationId": "getAggregatedIncentives",
+        "tags": [
+          "Incentives"
+        ],
         "parameters": [
           {
-            "name": "limit",
+            "name": "address",
             "in": "query",
-            "description": "The maximum number of results to return",
+            "description": "Full street address of the customer location, including city, state, and ZIP code.\nExample: \"456 Main St, Bend, OR 97701\"\n",
+            "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int32"
+              "type": "string",
+              "example": "456 Main St, Bend, OR 97701"
+            }
+          },
+          {
+            "name": "building_type",
+            "in": "query",
+            "description": "Type of building for which to calculate incentives.\nMust be one of the predefined building types.\n",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "RESIDENTIAL",
+                "MULTIFAMILY",
+                "MANUFACTURED_HOME",
+                "COMMERCIAL"
+              ],
+              "example": "RESIDENTIAL"
+            }
+          },
+          {
+            "name": "customer_id",
+            "in": "query",
+            "description": "Unique identifier for the customer in the Leap system.\nUsed for tracking and eligibility checks.\n",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "453"
             }
           }
         ],
         "responses": {
           "200": {
-            "description": "Plant response",
+            "description": "Successful response with aggregated incentive data",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Plant"
+                  "$ref": "#/components/schemas/IncentiveAggregationResponse"
+                },
+                "examples": {
+                  "successful_calculation": {
+                    "summary": "Successful incentive calculation",
+                    "value": {
+                      "utility": {
+                        "eiaid": 14354,
+                        "name": "PacifiCorp (Oregon)"
+                      },
+                      "address": "456 Main St, Bend, OR 97701",
+                      "building_type": "RESIDENTIAL",
+                      "customer_id": 453,
+                      "programs_evaluated": 2,
+                      "incentives": {
+                        "total_incentive_amount": 2250,
+                        "total_eligible_combinations": 4,
+                        "by_program": [
+                          {
+                            "program_id": 838,
+                            "program_name": "Pacific Power \u2013 Oregon \"Charge at Home\" EV Charger Rebate",
+                            "total_incentive": 2250,
+                            "eligible_combinations": 4,
+                            "device_tier_results": [
+                              {
+                                "device_id": 123,
+                                "device_name": "Level 2 EV Charger",
+                                "tier_id": 456,
+                                "tier_name": "Standard Rebate",
+                                "eligible": true,
+                                "incentive_amount": 750,
+                                "calculation_details": {
+                                  "base_amount": 750,
+                                  "calculation_method": "Fixed rebate per device"
+                                },
+                                "failed_requirements": [],
+                                "ignored_requirements": []
+                              }
+                            ]
+                          },
+                          {
+                            "program_id": 1597,
+                            "program_name": "Pacific Power Water Heater Rebates - Washington",
+                            "total_incentive": 0,
+                            "eligible_combinations": 0,
+                            "device_tier_results": []
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "no_eligible_programs": {
+                    "summary": "No eligible programs found",
+                    "value": {
+                      "utility": {
+                        "eiaid": 15248,
+                        "name": "Portland General Electric Co"
+                      },
+                      "address": "100 SW Main St, Portland, OR 97204",
+                      "building_type": "RESIDENTIAL",
+                      "customer_id": 453,
+                      "programs_evaluated": 0,
+                      "incentives": {
+                        "total_incentive_amount": 0,
+                        "total_eligible_combinations": 0,
+                        "by_program": []
+                      }
+                    }
                   }
                 }
               }
             }
           },
           "400": {
-            "description": "Unexpected error",
+            "description": "Bad request - missing or invalid parameters",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "description": "Creates a new plant in the store",
-        "requestBody": {
-          "description": "Plant to add to the store",
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/NewPlant"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "plant response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Plant"
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "missing_parameters": {
+                    "summary": "Missing required parameters",
+                    "value": {
+                      "error": "Missing required parameters: address, building_type, and customer_id"
+                    }
+                  }
                 }
               }
             }
           },
-          "400": {
-            "description": "unexpected error",
+          "401": {
+            "description": "Unauthorized - missing or invalid API key",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Error"
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": "Authorization header required"
                 }
               }
             }
-          }
-        }
-      }
-    },
-    "/plants/{id}": {
-      "delete": {
-        "description": "Deletes a single plant based on the ID supplied",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "ID of plant to delete",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Plant deleted",
-            "content": {}
           },
-          "400": {
-            "description": "unexpected error",
+          "405": {
+            "description": "Method not allowed",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Error"
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": "Method not allowed"
                 }
               }
             }
-          }
-        }
-      }
-    }
-  },
-  "webhooks": {
-    "/plant/webhook": {
-      "post": {
-        "description": "Information about a new plant added to the store",
-        "requestBody": {
-          "description": "Plant added to the store",
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/NewPlant"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "program_lookup_failed": {
+                    "summary": "Program lookup service failed",
+                    "value": {
+                      "error": "Failed to fetch program lookup data"
+                    }
+                  },
+                  "internal_error": {
+                    "summary": "Generic internal error",
+                    "value": {
+                      "error": "Internal server error"
+                    }
+                  }
+                }
               }
             }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Return a 200 status to indicate that the data was received successfully"
           }
         }
       }
     }
   },
   "components": {
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "Authorization",
+        "description": "API key for authentication. Include your Leap API key in the Authorization header\nas a Bearer token: `Authorization: Bearer YOUR_API_KEY`\n"
+      }
+    },
     "schemas": {
-      "Plant": {
-        "required": [
-          "name"
-        ],
+      "IncentiveAggregationResponse": {
         "type": "object",
+        "required": [
+          "utility",
+          "address",
+          "building_type",
+          "customer_id",
+          "programs_evaluated",
+          "incentives"
+        ],
         "properties": {
-          "name": {
-            "description": "The name of the plant",
-            "type": "string"
-          },
-          "tag": {
-            "description": "Tag to specify the type",
-            "type": "string"
-          }
-        }
-      },
-      "NewPlant": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/Plant"
-          },
-          {
-            "required": [
-              "id"
-            ],
+          "utility": {
             "type": "object",
+            "description": "Information about the utility serving the address",
+            "required": [
+              "eiaid",
+              "name"
+            ],
             "properties": {
-              "id": {
-                "description": "Identification number of the plant",
+              "eiaid": {
                 "type": "integer",
-                "format": "int64"
+                "description": "EIA utility identification number",
+                "example": 14354
+              },
+              "name": {
+                "type": "string",
+                "description": "Name of the utility company",
+                "example": "PacifiCorp (Oregon)"
+              }
+            }
+          },
+          "address": {
+            "type": "string",
+            "description": "The address that was queried",
+            "example": "456 Main St, Bend, OR 97701"
+          },
+          "building_type": {
+            "type": "string",
+            "description": "The building type that was queried",
+            "enum": [
+              "RESIDENTIAL",
+              "MULTIFAMILY",
+              "MANUFACTURED_HOME",
+              "COMMERCIAL"
+            ],
+            "example": "RESIDENTIAL"
+          },
+          "customer_id": {
+            "type": "integer",
+            "description": "The customer ID that was used for the query",
+            "example": 453
+          },
+          "programs_evaluated": {
+            "type": "integer",
+            "description": "Number of programs that were evaluated",
+            "example": 2
+          },
+          "incentives": {
+            "type": "object",
+            "required": [
+              "total_incentive_amount",
+              "total_eligible_combinations",
+              "by_program"
+            ],
+            "properties": {
+              "total_incentive_amount": {
+                "type": "number",
+                "format": "float",
+                "description": "Total incentive amount across all programs (in USD)",
+                "example": 2250.0
+              },
+              "total_eligible_combinations": {
+                "type": "integer",
+                "description": "Total number of eligible device-tier combinations across all programs",
+                "example": 4
+              },
+              "by_program": {
+                "type": "array",
+                "description": "Breakdown of incentives by individual program",
+                "items": {
+                  "$ref": "#/components/schemas/ProgramIncentive"
+                }
               }
             }
           }
-        ]
+        }
       },
-      "Error": {
-        "required": [
-          "error",
-          "message"
-        ],
+      "ProgramIncentive": {
         "type": "object",
+        "required": [
+          "program_id",
+          "program_name",
+          "total_incentive",
+          "eligible_combinations",
+          "device_tier_results"
+        ],
         "properties": {
-          "error": {
+          "program_id": {
             "type": "integer",
-            "format": "int32"
+            "description": "Unique identifier for the program",
+            "example": 838
           },
-          "message": {
-            "type": "string"
+          "program_name": {
+            "type": "string",
+            "description": "Name of the incentive program",
+            "example": "Pacific Power \u2013 Oregon \"Charge at Home\" EV Charger Rebate"
+          },
+          "total_incentive": {
+            "type": "number",
+            "format": "float",
+            "description": "Total incentive amount for this program (in USD)",
+            "example": 2250.0
+          },
+          "eligible_combinations": {
+            "type": "integer",
+            "description": "Number of eligible device-tier combinations for this program",
+            "example": 4
+          },
+          "device_tier_results": {
+            "type": "array",
+            "description": "Detailed results for each device-tier combination",
+            "items": {
+              "$ref": "#/components/schemas/DeviceTierResult"
+            }
           }
         }
-      }
-    },
-    "securitySchemes": {
-      "bearerAuth": {
-        "type": "http",
-        "scheme": "bearer"
+      },
+      "DeviceTierResult": {
+        "type": "object",
+        "required": [
+          "device_id",
+          "device_name",
+          "tier_id",
+          "tier_name",
+          "eligible",
+          "incentive_amount",
+          "failed_requirements",
+          "ignored_requirements"
+        ],
+        "properties": {
+          "device_id": {
+            "type": "integer",
+            "description": "Unique identifier for the device type",
+            "example": 123
+          },
+          "device_name": {
+            "type": "string",
+            "description": "Name of the device type",
+            "example": "Level 2 EV Charger"
+          },
+          "tier_id": {
+            "type": "integer",
+            "description": "Unique identifier for the incentive tier",
+            "example": 456
+          },
+          "tier_name": {
+            "type": "string",
+            "description": "Name of the incentive tier",
+            "example": "Standard Rebate"
+          },
+          "eligible": {
+            "type": "boolean",
+            "description": "Whether this device-tier combination is eligible for the customer.\nTrue if all eligibility checks passed and incentive amount > 0.\n",
+            "example": true
+          },
+          "incentive_amount": {
+            "type": "number",
+            "format": "float",
+            "description": "Incentive amount for this device-tier combination (in USD)",
+            "example": 750.0
+          },
+          "calculation_details": {
+            "type": "object",
+            "description": "Details about how the incentive was calculated",
+            "additionalProperties": true,
+            "example": {
+              "base_amount": 750,
+              "calculation_method": "Fixed rebate per device"
+            }
+          },
+          "failed_requirements": {
+            "type": "array",
+            "description": "List of eligibility requirements that failed for this combination.\nEmpty if eligible is true.\n",
+            "items": {
+              "type": "string"
+            },
+            "example": []
+          },
+          "ignored_requirements": {
+            "type": "array",
+            "description": "List of eligibility requirements that were ignored/skipped.\nProvided for transparency.\n",
+            "items": {
+              "type": "string"
+            },
+            "example": []
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "Description of the error",
+            "example": "Missing required parameters: address, building_type, and customer_id"
+          }
+        }
       }
     }
   }

@@ -27,13 +27,10 @@
         "tab": "API reference",
         "groups": [
           {
-            "group": "Endpoint examples",
+            "group": "Endpoints",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/update",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "api-reference/endpoint/get-incentives",
+              "api-reference/endpoint/update-application"
             ]
           }
         ]

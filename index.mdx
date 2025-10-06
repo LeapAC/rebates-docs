@@ -1,97 +1,68 @@
 ---
 title: "Introduction"
-description: "Welcome to the new home for your documentation"
+description: "Help your customers claim energy rebates and incentives at the point of sale"
 ---
 
-## Setting up
+## What is Leap Rebates?
 
-Get your documentation site up and running in minutes.
+Leap Rebates is a partner platform that enables retailers, installers, and manufacturers to embed energy rebate applications directly into their customer experience. Instead of customers navigating complex utility programs on their own, you can provide instant eligibility checks and streamlined applications right when they purchase qualifying equipment.
+
+## How it works
+
+<Steps>
+  <Step title="Check eligibility">
+    Send us your customer's address and device information. We'll instantly check which rebate programs they qualify for and return the total incentive amount.
+  </Step>
+  <Step title="Embed the application">
+    Display the Connect URL we provide in your checkout flow, confirmation email, or app. Your customer clicks through to complete their application.
+  </Step>
+  <Step title="Provide supporting data">
+    Upload installation details, contractor information, or other data you already have on file. This reduces what customers need to manually enter.
+  </Step>
+  <Step title="Track applications">
+    Monitor application status through our API or dashboard. We handle submission to utility programs and keep you updated on approvals.
+  </Step>
+</Steps>
+
+## What you can do
+
+<CardGroup cols={2}>
+  <Card
+    title="Check eligibility in real-time"
+    icon="magnifying-glass-dollar"
+    href="/api-reference/endpoint/get-incentives"
+  >
+    Query available incentives for any address and device combination before or after purchase
+  </Card>
+  <Card
+    title="Streamline applications"
+    icon="file-check"
+    href="/setup-claimed-fields"
+  >
+    Claim data fields you already collect to reduce customer friction
+  </Card>
+  <Card
+    title="Track application status"
+    icon="chart-line"
+    href="/api-reference/endpoint/update-application"
+  >
+    Monitor progress and update applications programmatically via API
+  </Card>
+  <Card
+    title="Integrate anywhere"
+    icon="plug"
+    href="/quickstart"
+  >
+    Embed in email, checkout flows, mobile apps, or customer portals
+  </Card>
+</CardGroup>
+
+## Get started
 
 <Card
-  title="Start here"
+  title="Quickstart Guide"
   icon="rocket"
   href="/quickstart"
-  horizontal
 >
-  Follow our three step quickstart guide.
-</Card>
-
-## Make it yours
-
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
-  </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
-  </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
-  </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
-  </Card>
-</Columns>
-
-## Create beautiful pages
-
-Everything you need to create world-class documentation.
-
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
-  </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
-
-## Need inspiration?
-
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
+  Follow our integration guide to start checking eligibility and creating applications
 </Card>

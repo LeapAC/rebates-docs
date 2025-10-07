@@ -24,20 +24,70 @@
     "/incentives": {
       "get": {
         "summary": "Get aggregated incentives for a customer",
-        "description": "Retrieves and aggregates incentive calculations from multiple utility programs\nbased on the customer's address and building type. The API automatically:\n1. Identifies the utility serving the address\n2. Finds all active programs for that utility and building type\n3. Calls each program's incentive calculation function\n4. Aggregates and returns the results\n",
+        "description": "Retrieves and aggregates incentive calculations from multiple utility programs\nbased on the customer's address and building type. Optionally creates an application\nfor a specific device and returns a connect URL for the customer to complete.\n\nThe API automatically:\n1. Creates or finds the customer based on address components\n2. Associates the device with the customer if not already linked\n3. Identifies the utility serving the address\n4. Finds all active programs for that utility and building type\n5. Calls each program's incentive calculation function\n6. Aggregates and returns the results\n7. If create_application is true, creates an application and returns a connect_url\n",
         "operationId": "getAggregatedIncentives",
         "tags": [
           "Incentives"
         ],
         "parameters": [
           {
-            "name": "address",
+            "name": "street_1",
             "in": "query",
-            "description": "Full street address of the customer location, including city, state, and ZIP code.\nExample: \"456 Main St, Bend, OR 97701\"\n",
+            "description": "Street address line 1 (primary street address)",
             "required": true,
             "schema": {
               "type": "string",
-              "example": "456 Main St, Bend, OR 97701"
+              "example": "456 Main St"
+            }
+          },
+          {
+            "name": "street_2",
+            "in": "query",
+            "description": "Street address line 2 (apartment, suite, unit, etc.)",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "Apt 2B"
+            }
+          },
+          {
+            "name": "city",
+            "in": "query",
+            "description": "City name",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "Bend"
+            }
+          },
+          {
+            "name": "state_or_province_code",
+            "in": "query",
+            "description": "State or province code (2-letter abbreviation)",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "OR"
+            }
+          },
+          {
+            "name": "postal_code",
+            "in": "query",
+            "description": "Postal/ZIP code",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "97701"
+            }
+          },
+          {
+            "name": "country_code",
+            "in": "query",
+            "description": "Country code (2-letter ISO code)",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "US"
             }
           },
           {
@@ -57,13 +107,33 @@
             }
           },
           {
-            "name": "customer_id",
+            "name": "device_id",
             "in": "query",
-            "description": "Unique identifier for the customer in the Leap system.\nUsed for tracking and eligibility checks.\n",
+            "description": "ID of the device for which to calculate incentives and optionally create an application",
             "required": true,
             "schema": {
+              "type": "integer",
+              "example": 123
+            }
+          },
+          {
+            "name": "reference_id",
+            "in": "query",
+            "description": "Your internal reference ID for tracking this calculation or application",
+            "required": false,
+            "schema": {
               "type": "string",
-              "example": "453"
+              "example": "ref-12345"
+            }
+          },
+          {
+            "name": "create_application",
+            "in": "query",
+            "description": "Whether to create an application for the specified device_id",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "example": true
             }
           }
         ],
@@ -83,9 +153,17 @@
                         "eiaid": 14354,
                         "name": "PacifiCorp (Oregon)"
                       },
-                      "address": "456 Main St, Bend, OR 97701",
+                      "address": {
+                        "street_1": "456 Main St",
+                        "street_2": "Apt 2B",
+                        "city": "Bend",
+                        "state_or_province_code": "OR",
+                        "postal_code": "97701",
+                        "country_code": "US"
+                      },
                       "building_type": "RESIDENTIAL",
                       "customer_id": 453,
+                      "reference_id": "ref-12345",
                       "programs_evaluated": 2,
                       "incentives": {
                         "total_incentive_amount": 2250,
@@ -121,7 +199,8 @@
                             "device_tier_results": []
                           }
                         ]
-                      }
+                      },
+                      "connect_url": "https://app.leap.energy/connect/abc123"
                     }
                   },
                   "no_eligible_programs": {
@@ -131,9 +210,17 @@
                         "eiaid": 15248,
                         "name": "Portland General Electric Co"
                       },
-                      "address": "100 SW Main St, Portland, OR 97204",
+                      "address": {
+                        "street_1": "100 SW Main St",
+                        "street_2": "",
+                        "city": "Portland",
+                        "state_or_province_code": "OR",
+                        "postal_code": "97204",
+                        "country_code": "US"
+                      },
                       "building_type": "RESIDENTIAL",
                       "customer_id": 453,
+                      "reference_id": "ref-67890",
                       "programs_evaluated": 0,
                       "incentives": {
                         "total_incentive_amount": 0,
@@ -157,7 +244,7 @@
                   "missing_parameters": {
                     "summary": "Missing required parameters",
                     "value": {
-                      "error": "Missing required parameters: address, building_type, and customer_id"
+                      "error": "Missing required parameters: street_1, street_2, postal_code, city, state_or_province, country_code, building_type, and device_id"
                     }
                   }
                 }
@@ -379,9 +466,48 @@
             }
           },
           "address": {
-            "type": "string",
-            "description": "The address that was queried",
-            "example": "456 Main St, Bend, OR 97701"
+            "type": "object",
+            "description": "The address components that were queried",
+            "required": [
+              "street_1",
+              "street_2",
+              "city",
+              "state_or_province_code",
+              "postal_code",
+              "country_code"
+            ],
+            "properties": {
+              "street_1": {
+                "type": "string",
+                "description": "Street address line 1",
+                "example": "456 Main St"
+              },
+              "street_2": {
+                "type": "string",
+                "description": "Street address line 2",
+                "example": "Apt 2B"
+              },
+              "city": {
+                "type": "string",
+                "description": "City name",
+                "example": "Bend"
+              },
+              "state_or_province_code": {
+                "type": "string",
+                "description": "State or province code",
+                "example": "OR"
+              },
+              "postal_code": {
+                "type": "string",
+                "description": "Postal/ZIP code",
+                "example": "97701"
+              },
+              "country_code": {
+                "type": "string",
+                "description": "Country code",
+                "example": "US"
+              }
+            }
           },
           "building_type": {
             "type": "string",
@@ -396,8 +522,14 @@
           },
           "customer_id": {
             "type": "integer",
-            "description": "The customer ID that was used for the query",
+            "description": "The customer ID (created or found based on address)",
             "example": 453
+          },
+          "reference_id": {
+            "type": "string",
+            "nullable": true,
+            "description": "Your internal reference ID that was provided in the request",
+            "example": "ref-12345"
           },
           "programs_evaluated": {
             "type": "integer",
@@ -431,6 +563,13 @@
                 }
               }
             }
+          },
+          "connect_url": {
+            "type": "string",
+            "format": "uri",
+            "nullable": true,
+            "description": "URL for the customer to complete their application (returned when create_application is true)",
+            "example": "https://app.leap.energy/connect/abc123"
           }
         }
       },
@@ -554,7 +693,7 @@
           "error": {
             "type": "string",
             "description": "Description of the error",
-            "example": "Missing required parameters: address, building_type, and customer_id"
+            "example": "Missing required parameters: street_1, street_2, postal_code, city, state_or_province, country_code, building_type, and device_id"
           }
         }
       },

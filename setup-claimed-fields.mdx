@@ -1,20 +1,23 @@
 ---
 title: Claimed Fields
-description: Plan which application fields your organization will provide on behalf of customers
+description: Plan which data points from rebate applications your organization will provide on behalf of customers
 ---
 
-As a partner organization, you can streamline the rebate application process by providing certain customer and installation data directly, reducing the burden on end customers. This guide will help you identify which fields your organization is best positioned to provide.
+You can streamline the rebate application process by providing certain data directly, reducing the burden on end customers. This guide outlines common fields required across utilities.
 
 ## How Claimed Fields Work
 
 When you claim ownership of specific fields, those fields will be:
-- Pre-populated in applications submitted on behalf of your customers
 - Removed from the customer-facing application form
 - Your responsibility to keep accurate and up-to-date
 
 <Tip>
-Start by claiming fields you already collect as part of your standard business processes. You can always expand your data coverage over time.
+Start by claiming fields you already collect across all customers. You can expand to handle territory-specific data over time.
 </Tip>
+
+<Note>
+You don't need to claim all fields in a category. Focus on what you can reliably provide with high accuracy. Start with HIGH frequency fields for maximum impact.
+</Note>
 
 ## Customer Information
 
@@ -22,18 +25,6 @@ These fields contain basic information about the rebate applicant. Most partners
 
 <AccordionGroup>
   <Accordion title="View Customer Fields (11 fields)" icon="user">
-    <ResponseField name="email" type="string">
-      **Frequency:** HIGH
-
-      The email address of the customer
-    </ResponseField>
-
-    <ResponseField name="address_line1" type="string">
-      **Frequency:** HIGH
-
-      The first portion of the physical address of the customer
-    </ResponseField>
-
     <ResponseField name="first_name" type="string">
       **Frequency:** HIGH
 
@@ -44,6 +35,12 @@ These fields contain basic information about the rebate applicant. Most partners
       **Frequency:** HIGH
 
       The last name of the customer
+    </ResponseField>
+
+    <ResponseField name="email" type="string">
+      **Frequency:** HIGH
+
+      The email address of the customer
     </ResponseField>
 
     <ResponseField name="phone" type="string">
@@ -58,10 +55,16 @@ These fields contain basic information about the rebate applicant. Most partners
       The utility account number of the customer
     </ResponseField>
 
-    <ResponseField name="zip_code" type="string">
+    <ResponseField name="address_line1" type="string">
       **Frequency:** HIGH
 
-      The zip code of the customer, found in their address
+      The first portion of the physical address of the customer
+    </ResponseField>
+
+    <ResponseField name="address_line2" type="string">
+      **Frequency:** LOW
+
+      The second portion of the physical address of the customer
     </ResponseField>
 
     <ResponseField name="city" type="string">
@@ -76,10 +79,10 @@ These fields contain basic information about the rebate applicant. Most partners
       The state of the customer, found in their address
     </ResponseField>
 
-    <ResponseField name="address_line2" type="string">
-      **Frequency:** LOW
+    <ResponseField name="zip_code" type="string">
+      **Frequency:** HIGH
 
-      The second portion of the physical address of the customer
+      The zip code of the customer, found in their address
     </ResponseField>
 
     <ResponseField name="mailing_address_line1" type="enum">
@@ -96,46 +99,16 @@ These fields capture information about the equipment installation and purchase. 
 
 <AccordionGroup>
   <Accordion title="View Installation Fields (9 fields)" icon="wrench">
-    <ResponseField name="device_serial" type="string">
-      **Frequency:** HIGH
-
-      Serial number of the newly installed device. Required for equipment registration, warranty tracking, and to prevent double-dipping on rebates.
-    </ResponseField>
-
-    <ResponseField name="purchase_date" type="date">
-      **Frequency:** HIGH
-
-      Date when the equipment was purchased. Must fall within program year dates and is used to verify eligibility timing requirements.
-    </ResponseField>
-
     <ResponseField name="is_homeowner" type="enum">
       **Frequency:** HIGH
 
       A boolean variable that defines whether the customer owns their home or not
     </ResponseField>
 
-    <ResponseField name="installation_date" type="date">
-      **Frequency:** MEDIUM
+    <ResponseField name="device_serial" type="string">
+      **Frequency:** HIGH
 
-      Date when the equipment was fully installed and operational. Critical for determining application deadlines (e.g., must apply within 30/60/90 days) and program year eligibility.
-    </ResponseField>
-
-    <ResponseField name="permit_number" type="string">
-      **Frequency:** MEDIUM
-
-      The building/electrical permit number issued by local authority. Required documentation for programs that mandate permits. Used for verification with local building departments.
-    </ResponseField>
-
-    <ResponseField name="purchase_price" type="decimal">
-      **Frequency:** MEDIUM
-
-      The retail price paid for the equipment only, excluding installation labor and materials. Used to verify rebates don't exceed equipment cost and for calculating percentage-based incentives.
-    </ResponseField>
-
-    <ResponseField name="installation_cost" type="currency">
-      **Frequency:** LOW
-
-      The cost of professional installation including labor, materials, permits, and any electrical/plumbing work. Separate from equipment cost to allow programs that reimburse installation separately.
+      Serial number of the newly installed device. Required for equipment registration, warranty tracking, and to prevent double-dipping on rebates.
     </ResponseField>
 
     <ResponseField name="quantity" type="integer">
@@ -144,10 +117,40 @@ These fields capture information about the equipment installation and purchase. 
       Number of identical units installed at the same time. Default is 1. Used when multiple identical devices (like window AC units or smart thermostats) are installed in a single project.
     </ResponseField>
 
+    <ResponseField name="purchase_date" type="date">
+      **Frequency:** HIGH
+
+      Date when the equipment was purchased. Must fall within program year dates and is used to verify eligibility timing requirements.
+    </ResponseField>
+
+    <ResponseField name="purchase_price" type="decimal">
+      **Frequency:** MEDIUM
+
+      The retail price paid for the equipment only, excluding installation labor and materials. Used to verify rebates don't exceed equipment cost and for calculating percentage-based incentives.
+    </ResponseField>
+
+    <ResponseField name="installation_date" type="date">
+      **Frequency:** MEDIUM
+
+      Date when the equipment was fully installed and operational. Critical for determining application deadlines (e.g., must apply within 30/60/90 days) and program year eligibility.
+    </ResponseField>
+
+    <ResponseField name="installation_cost" type="currency">
+      **Frequency:** LOW
+
+      The cost of professional installation including labor, materials, permits, and any electrical/plumbing work. Separate from equipment cost to allow programs that reimburse installation separately.
+    </ResponseField>
+
     <ResponseField name="trenching_required" type="enum">
       **Frequency:** LOW
 
       Boolean indicating if underground trenching was needed for installation. Relevant for EV chargers and can affect eligible installation costs.
+    </ResponseField>
+
+    <ResponseField name="permit_number" type="string">
+      **Frequency:** MEDIUM
+
+      The building/electrical permit number issued by local authority. Required documentation for programs that mandate permits. Used for verification with local building departments.
     </ResponseField>
   </Accordion>
 </AccordionGroup>
@@ -158,16 +161,10 @@ These fields identify and verify the installation contractor. General contractor
 
 <AccordionGroup>
   <Accordion title="View Contractor Fields (10 fields)" icon="helmet-safety">
-    <ResponseField name="contractor_contact_email" type="string">
+    <ResponseField name="contractor_name" type="string">
       **Frequency:** MEDIUM
 
-      Email address for the primary contact at the contracting company. Used for program communications and missing documentation requests.
-    </ResponseField>
-
-    <ResponseField name="contractor_contact_name" type="string">
-      **Frequency:** MEDIUM
-
-      Name of the primary contact person at the contracting company. Used for direct communication about projects and applications.
+      Name of the company that performed the installation. Required by programs that mandate professional installation and used for contractor participation tracking.
     </ResponseField>
 
     <ResponseField name="contractor_license" type="string">
@@ -176,10 +173,16 @@ These fields identify and verify the installation contractor. General contractor
       State license number of the installing contractor. Required to verify contractor is properly licensed per program requirements. Format varies by state.
     </ResponseField>
 
-    <ResponseField name="contractor_name" type="string">
+    <ResponseField name="contractor_contact_name" type="string">
       **Frequency:** MEDIUM
 
-      Name of the company that performed the installation. Required by programs that mandate professional installation and used for contractor participation tracking.
+      Name of the primary contact person at the contracting company. Used for direct communication about projects and applications.
+    </ResponseField>
+
+    <ResponseField name="contractor_contact_email" type="string">
+      **Frequency:** MEDIUM
+
+      Email address for the primary contact at the contracting company. Used for program communications and missing documentation requests.
     </ResponseField>
 
     <ResponseField name="contractor_contact_phone" type="string">
@@ -206,16 +209,16 @@ These fields identify and verify the installation contractor. General contractor
       State where the contracting company is located. Used to verify contractor is licensed in the state where work was performed.
     </ResponseField>
 
-    <ResponseField name="contractor_website" type="string">
-      **Frequency:** LOW
-
-      Website URL of the contracting company. Used to verify contractor legitimacy and for customer reference.
-    </ResponseField>
-
     <ResponseField name="contractor_zip" type="string">
       **Frequency:** LOW
 
       ZIP code of the contracting company. Completes contractor address for correspondence and tax reporting.
+    </ResponseField>
+
+    <ResponseField name="contractor_website" type="string">
+      **Frequency:** LOW
+
+      Website URL of the contracting company. Used to verify contractor legitimacy and for customer reference.
     </ResponseField>
   </Accordion>
 </AccordionGroup>
@@ -226,18 +229,6 @@ These fields are specific to EV charger installations. Auto dealerships and EV c
 
 <AccordionGroup>
   <Accordion title="View Vehicle Fields (5 fields)" icon="car">
-    <ResponseField name="vehicle_make" type="enum">
-      **Frequency:** MEDIUM
-
-      For EV charger installations, the make of the electric vehicle (e.g., Tesla, Nissan, Chevrolet). Required to verify customer owns/leases an EV.
-    </ResponseField>
-
-    <ResponseField name="vehicle_model" type="string">
-      **Frequency:** MEDIUM
-
-      For EV charger installations, the model of the electric vehicle (e.g., Model 3, Leaf, Bolt). Used with make to identify specific EV.
-    </ResponseField>
-
     <ResponseField name="vehicle_vin" type="string">
       **Frequency:** MEDIUM
 
@@ -250,6 +241,18 @@ These fields are specific to EV charger installations. Auto dealerships and EV c
       For EV charger installations, the model year of the electric vehicle. Some programs have requirements about vehicle age.
     </ResponseField>
 
+    <ResponseField name="vehicle_make" type="enum">
+      **Frequency:** MEDIUM
+
+      For EV charger installations, the make of the electric vehicle (e.g., Tesla, Nissan, Chevrolet). Required to verify customer owns/leases an EV.
+    </ResponseField>
+
+    <ResponseField name="vehicle_model" type="string">
+      **Frequency:** MEDIUM
+
+      For EV charger installations, the model of the electric vehicle (e.g., Model 3, Leaf, Bolt). Used with make to identify specific EV.
+    </ResponseField>
+
     <ResponseField name="dealership" type="string">
       **Frequency:** LOW
 
@@ -257,37 +260,3 @@ These fields are specific to EV charger installations. Auto dealerships and EV c
     </ResponseField>
   </Accordion>
 </AccordionGroup>
-
-## Understanding Field Frequency
-
-Each field displays a frequency indicator to help you prioritize which fields to claim:
-
-<CardGroup cols={3}>
-  <Card title="HIGH Frequency" icon="star">
-    Requested by most rebate programs. Claiming these will have the biggest impact on customer experience.
-  </Card>
-  <Card title="MEDIUM Frequency" icon="chart-simple">
-    Commonly requested but not universal. Good candidates if you have the data.
-  </Card>
-  <Card title="LOW Frequency" icon="circle">
-    Occasionally requested. Consider claiming if you already collect this data for other purposes.
-  </Card>
-</CardGroup>
-
-<Note>
-You don't need to claim all fields in a category. Focus on what you can reliably provide with high accuracy. Start with HIGH frequency fields for maximum impact.
-</Note>
-
-## Next Steps
-
-Ready to configure your claimed fields? Complete our partner data survey to let us know which fields your organization will provide:
-
-<Card
-  title="Claimed Fields Survey"
-  icon="clipboard-list"
-  href="https://forms.gle/your-survey-link"
->
-  Tell us which fields you'll provide to streamline applications
-</Card>
-
-After you submit the survey, our team will configure your partner account and provide documentation on how to submit these fields via API.

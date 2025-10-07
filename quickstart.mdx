@@ -21,7 +21,7 @@ description: "Embed an offer for customers to claim incentives after purchase an
 
 ## Get URL
 
-Get a Connect URL to embed for eligible customers in your App.
+[Get Incentives](/api-reference/endpoint/get-incentives) to retrieve a Connect URL for eligible customers in your App.
 
 <Info>
   **Options:** API, CSV Upload
@@ -46,19 +46,28 @@ POST /incentives
 <Accordion title="Eligible Customer">
 ```json
 {
-    "application_id": uuid,
-    "connect_url": url,
-    "customer_id": uuid,
-    "incentive_amount": int,
-    "reference_id": string,
-    "programs": [
+  "utility": {
+    "eiaid": 14354,
+    "name": "PacifiCorp (Oregon)"
+  },
+  "address": "456 Main St, Bend, OR 97701",
+  "building_type": "RESIDENTIAL",
+  "customer_id": 453,
+  "reference_id": "ref-12345",
+  "programs_evaluated": 1,
+  "incentives": {
+    "total_incentive_amount": 750,
+    "total_eligible_combinations": 1,
+    "by_program": [
       {
-        "program_name": string,
-        "is_eligible": true,
-        "incentive_amount": int,
-        "type": enum
+        "program_id": 838,
+        "program_name": "Pacific Power – Oregon \"Charge at Home\" EV Charger Rebate",
+        "total_incentive": 750,
+        "eligible_combinations": 1
       }
     ]
+  },
+  "connect_url": "https://app.leap.energy/connect/abc123"
 }
 ```
 </Accordion>
@@ -66,19 +75,20 @@ POST /incentives
 <Accordion title="Ineligible Customer">
 ```json
 {
-    "application_id": uuid,
-    "connect_url": url,
-    "customer_id": uuid,
-    "incentive_amount": 0,
-    "reference_id": string,
-    "programs": [
-      {
-        "program_name": string,
-        "is_eligible": true,
-        "incentive_amount": int,
-        "type": enum
-      }
-    ]
+  "utility": {
+    "eiaid": 15248,
+    "name": "Portland General Electric Co"
+  },
+  "address": "100 SW Main St, Portland, OR 97204",
+  "building_type": "RESIDENTIAL",
+  "customer_id": 453,
+  "reference_id": "ref-67890",
+  "programs_evaluated": 0,
+  "incentives": {
+    "total_incentive_amount": 0,
+    "total_eligible_combinations": 0,
+    "by_program": []
+  }
 }
 ```
 </Accordion>
@@ -86,25 +96,34 @@ POST /incentives
 <Accordion title="Multiple Programs">
 ```json
 {
-    "application_id": uuid,
-    "connect_url": url,
-    "customer_id": uuid,
-    "incentive_amount": int,
-    "reference_id": string,
-    "programs": [
+  "utility": {
+    "eiaid": 14354,
+    "name": "PacifiCorp (Oregon)"
+  },
+  "address": "456 Main St, Bend, OR 97701",
+  "building_type": "RESIDENTIAL",
+  "customer_id": 453,
+  "reference_id": "ref-12345",
+  "programs_evaluated": 2,
+  "incentives": {
+    "total_incentive_amount": 2250,
+    "total_eligible_combinations": 4,
+    "by_program": [
       {
-        "program_name": string,
-        "is_eligible": true,
-        "incentive_amount": int,
-        "type": enum
+        "program_id": 838,
+        "program_name": "Pacific Power – Oregon \"Charge at Home\" EV Charger Rebate",
+        "total_incentive": 2250,
+        "eligible_combinations": 4
       },
       {
-        "program_name": string,
-        "is_eligible": true,
-        "incentive_amount": int,
-        "type": enum
+        "program_id": 1597,
+        "program_name": "Pacific Power Water Heater Rebates - Washington",
+        "total_incentive": 0,
+        "eligible_combinations": 0
       }
     ]
+  },
+  "connect_url": "https://app.leap.energy/connect/abc123"
 }
 ```
 </Accordion>
@@ -119,7 +138,7 @@ Place the offer to Claim Incentives inside your customer journey.
   Send the incentive link in your order confirmation or follow-up emails
 </Card>
 
-<Card title="Order Confirmation" icon="check-circle">
+<Card title="Order Confirmation" icon="circle-check">
   Display immediately after purchase completion
 </Card>
 
@@ -138,69 +157,62 @@ Customer completes the application in Leap Connect. After completion, applicatio
 
 ## Upload Remaining Data Requirements
 
-Provide information to complete the customer's application.
-
-### Step 1: Search for Applications
-
-Search for all applications in `awaiting_partner` status.
-
-<Info>
-  **Options:** CSV Upload, API
-</Info>
+[Update Applications](/api-reference/endpoint/update-application) to provide information to complete the customer's application.
 
 ### Request
 
-```http
-GET /applications
-```
+Use the [Update Application](/api-reference/endpoint/update-application) endpoint to upload partner data.
 
-**Query Parameters:**
-- `application_status`: Filter by status (options: `not_started`, `in_progress`, `awaiting_partner`, `completed`, `submitted`, `approved`, `rejected`)
+```json
+PATCH /applications/{application_id}
+{
+  "customer": {
+    "first_name": "John",
+    "last_name": "Doe",
+    "email": "john.doe@example.com",
+    "phone": "555-123-4567",
+    "customer_devices": [
+      {
+        "id": 45,
+        "purchase_price": 599.99,
+        "installation_cost": 450.00,
+        "purchase_date": "2025-01-05",
+        "installation_date": "2025-01-10"
+      }
+    ]
+  },
+  "status": "customer_complete"
+}
+```
 
 ### Response
 
 ```json
 {
-  "next_page_token": "242c3e24-43e6-4ad7-88b3-666cda21582b",
-  "results": [
+  "id": 123,
+  "program_id": 339,
+  "customer_id": 609,
+  "status": "customer_complete",
+  "customer": {
+    "id": 609,
+    "first_name": "John",
+    "last_name": "Doe",
+    "email": "john.doe@example.com",
+    "phone": "555-123-4567",
+    "address_line1": "123 Peachtree St",
+    "city": "Atlanta",
+    "state": "GA",
+    "zip_code": "30303",
+    "customer_devices": [
       {
-          "application_id": uuid,
-          "url": url,
-          "application_status": string,
-          "customer_devices": [
-              {
-                  "customer_device_id": uuid
-                  // additional device fields
-              }
-          ],
-          "customer": {
-              "customer_id": uuid
-              // additional customer fields
-          },
-          "required_attachments": {
-              "invoice": true,
-              "install_photo": false
-          },
-          "utility": {
-              "auth_status": enum,
-              "account_number": string,
-              "meter_number": string,
-              "account_status": enum
-          },
-          "contractor": {
-              "contractor_name": string,
-              "contractor_phone": string
-              // additional contractor fields
-          }
+        "id": 45,
+        "customer_id": 609,
+        "purchase_price": 599.99,
+        "installation_cost": 450.00,
+        "purchase_date": "2025-01-05",
+        "installation_date": "2025-01-10"
       }
-  ]
+    ]
+  }
 }
 ```
-
-### Step 2: Upload Partner Data
-
-Upload the data requirements you provide for your customers to complete their applications.
-
-<Tip>
-  Check the `required_attachments` field to see which documents are needed for each application.
-</Tip>

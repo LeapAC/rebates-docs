@@ -42,12 +42,7 @@
         "label": "Support",
         "href": "mailto:sean@leap.energy"
       }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://incentive-platform.vercel.app"
-    }
+    ]
   },
   "contextual": {
     "options": [

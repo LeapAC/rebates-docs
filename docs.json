@@ -8,30 +8,32 @@
     "dark": "#7E00FC"
   },
   "favicon": "/favicon.png",
-  "navigation": [
-    {
-      "group": "Getting Started",
-      "pages": [
-        "index",
-        "quickstart"
-      ]
-    },
-    {
-      "group": "API Reference",
-      "pages": [
-        "api-reference/introduction",
-        "api-reference/endpoint/get-incentives",
-        "api-reference/endpoint/get-application",
-        "api-reference/endpoint/update-application"
-      ]
-    },
-    {
-      "group": "Guides",
-      "pages": [
-        "setup-claimed-fields"
-      ]
-    }
-  ],
+  "navigation": {
+    "groups": [
+      {
+        "group": "Getting Started",
+        "pages": [
+          "index",
+          "quickstart"
+        ]
+      },
+      {
+        "group": "API Reference",
+        "pages": [
+          "api-reference/introduction",
+          "api-reference/endpoint/get-incentives",
+          "api-reference/endpoint/get-application",
+          "api-reference/endpoint/update-application"
+        ]
+      },
+      {
+        "group": "Guides",
+        "pages": [
+          "setup-claimed-fields"
+        ]
+      }
+    ]
+  },
   "logo": {
     "light": "/logo/leap_black.svg",
     "dark": "/logo/leap_white.svg"

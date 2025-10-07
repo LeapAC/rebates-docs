@@ -30,6 +30,7 @@
             "group": "Endpoints",
             "pages": [
               "api-reference/endpoint/get-incentives",
+              "api-reference/endpoint/get-application",
               "api-reference/endpoint/update-application"
             ]
           }

@@ -331,6 +331,61 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Application"
+                },
+                "example": {
+                  "id": 123,
+                  "program_id": 339,
+                  "customer_id": 609,
+                  "customer_device_id": [45, 46],
+                  "status": "started",
+                  "rebate_type": "instant",
+                  "payee_type": "customer",
+                  "total_requested_amount": 150.0,
+                  "agree_terms": true,
+                  "customer_signature": true,
+                  "customer_sig_date": "2025-01-15",
+                  "project_name": "EV Charger Installation",
+                  "created_at": "2025-01-10T15:30:00Z",
+                  "updated_at": "2025-01-15T10:45:00Z",
+                  "customer": {
+                    "id": 609,
+                    "first_name": "John",
+                    "last_name": "Doe",
+                    "email": "john.doe@example.com",
+                    "phone": "555-123-4567",
+                    "address_line1": "123 Peachtree St",
+                    "address_line2": "Apt 4B",
+                    "city": "Atlanta",
+                    "state": "GA",
+                    "zip_code": "30303",
+                    "eiaid": "14354",
+                    "utility_account_number": "ACC-123456789",
+                    "is_homeowner": true,
+                    "building_age_years": 25,
+                    "household_size": 4,
+                    "customer_devices": [
+                      {
+                        "id": 45,
+                        "customer_id": 609,
+                        "device_id": 240,
+                        "quantity": 1,
+                        "purchase_price": 599.99,
+                        "installation_cost": 450.0,
+                        "total_project_cost": 1049.99,
+                        "purchase_date": "2025-01-05",
+                        "installation_date": "2025-01-10",
+                        "contractor_name": "ABC Electric",
+                        "contractor_license": "EC-12345",
+                        "permits_obtained": true,
+                        "inspection_passed": true,
+                        "vehicle_make": "Tesla",
+                        "vehicle_model": "Model 3",
+                        "vehicle_year": 2023,
+                        "created_at": "2025-01-10T12:00:00Z",
+                        "updated_at": "2025-01-15T14:30:00Z"
+                      }
+                    ]
+                  }
                 }
               }
             }

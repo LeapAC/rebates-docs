@@ -7,11 +7,11 @@ description: "Embed an offer for customers to claim incentives after purchase an
 
 <Steps>
 <Step title="Create your API Key">
-  Generate API credentials from your partner dashboard for both sandbox and production environments.
+  Leap will share an API Key for authenticating requests. 
 </Step>
 
 <Step title="Map devices to your system">
-  Create a mapping between Leap's device_id and your product list. Leap can add new devices as needed.
+  Send your list of devices and Leap will return the list with `device_id` mapped for your API requests. 
 </Step>
 
 <Step title="Set up Claimed Fields (Optional)">
@@ -21,11 +21,7 @@ description: "Embed an offer for customers to claim incentives after purchase an
 
 ## Check Eligibility & Get URL
 
-Get a Connect URL to embed for eligible customers in your App.
-
-<Info>
-  **Options:** API, CSV Upload
-</Info>
+Check a customer's eligibility for incentives. Leap will return a Connect URL which customers use to submit applications across all eligible programs.
 
 ### Request
 

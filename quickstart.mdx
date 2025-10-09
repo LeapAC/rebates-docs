@@ -91,7 +91,10 @@ POST /incentives
               "calculation_method": "Fixed rebate per device"
             },
             "failed_requirements": [],
-            "ignored_requirements": []
+            "ignored_requirements": [
+              "Installation must be within 90 days of application",
+              "Must use licensed contractor"
+            ]
           }
         ]
       }
@@ -120,13 +123,35 @@ POST /incentives
   "building_type": "RESIDENTIAL",
   "customer_id": 454,
   "reference_id": "ref-67890",
-  "programs_evaluated": 0,
+  "programs_evaluated": 1,
   "incentives": {
     "total_incentive_amount": 0,
     "total_eligible_combinations": 0,
-    "by_program": []
-  },
-  "connect_url": "https://app.leap.energy/connect/def456"
+    "by_program": [
+      {
+        "program_id": 900,
+        "program_name": "PGE Smart Charging – Tesla Telematics Path",
+        "total_incentive": 0,
+        "eligible_combinations": 0,
+        "device_tier_results": [
+          {
+            "device_id": 123,
+            "device_name": "Dumb Level 1 Charger",
+            "tier_id": 501,
+            "tier_name": "Smart Charger Tier",
+            "eligible": false,
+            "incentive_amount": 0,
+            "calculation_details": {},
+            "failed_requirements": [
+              "Device not OCPP compliant",
+              "Charger level must be at least LEVEL_2"
+            ],
+            "ignored_requirements": []
+          }
+        ]
+      }
+    ]
+  }
 }
 ```
 </Accordion>
@@ -171,7 +196,9 @@ POST /incentives
               "base_amount": 500
             },
             "failed_requirements": [],
-            "ignored_requirements": []
+            "ignored_requirements": [
+              "Installation must be within 90 days of application"
+            ]
           }
         ]
       },
@@ -192,7 +219,9 @@ POST /incentives
               "base_amount": 750
             },
             "failed_requirements": [],
-            "ignored_requirements": []
+            "ignored_requirements": [
+              "Must use licensed contractor"
+            ]
           }
         ]
       }

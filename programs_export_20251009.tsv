@@ -1,0 +1,67 @@
+Utility Name	Program Name	Device Category Name	Target Date
+Austin Energy	Austin Energy Home EV Charger Rebate	EV_CHARGER	Nov-25
+BC Hydro	CleanBC Go Electric – Single-Family Home Level-2 Charger Rebate	EV_CHARGER	Nov-25
+Commonwealth Edison Co	ComEd Residential EV Charger & Installation Rebate Program	EV_CHARGER	Nov-25
+Georgia Power Co	Georgia Power Residential Level-2 EV Charger Rebate	EV_CHARGER	Nov-25
+Long Island Power Authority	PSEG-LI Residential Level-2 EV Charger Rebate	EV_CHARGER	Nov-25
+Los Angeles Department of Water & Power	LADWP Residential EV Charger Rebate (Charge Up LA!)	EV_CHARGER	Nov-25
+Pacific Gas & Electric Co.	PG&E Residential Charging Solutions EV Charger Rebate	EV_CHARGER	Nov-25
+PacifiCorp	Pacific Power – Oregon Charge at Home" EV Charger Rebate"	EV_CHARGER	Nov-25
+Puget Sound Energy Inc	PSE Up & Go Electric™ – Home EV Charger Rebate	EV_CHARGER	Nov-25
+Sacramento Municipal Util Dist	SMUD Charge@Home EV Rebates	EV_CHARGER	Nov-25
+Salt River Project	SRP EV Smart Charge – Residential Level-2 EV Charger Rebate	EV_CHARGER	Nov-25
+Xcel Energy Inc	Xcel Energy Residential EV Charger & Home-Wiring Rebate (CO & NM)	EV_CHARGER	Nov-25
+Arizona Public Service Co	APS Level 2 EV Charger Rebate	EV_CHARGER	Dec-25
+BC Hydro	BC Hydro Peak Saver – EV Charger Track	EV_CHARGER	Dec-25
+Commonwealth Edison Co	ComEd Residential Managed EV Charging (Residential Optimized Charging Pilot)	EV_CHARGER	Dec-25
+Georgia Power Co	Georgia Power Residential EV Managed Charging Pilot	EV_CHARGER	Dec-25
+Sacramento Municipal Util Dist	SMUD Managed EV Charging Pilot	EV_CHARGER	Dec-25
+Ameren Illinois Co	Ameren Illinois Residential ChargeSmart EV Charging Rate Credit	EV_CHARGER	Q1-26
+Arizona Public Service Co	Arizona Public Service Co Residential EV Managed Charging Assistant Rewards	VEHICLE	Q1-26
+Arizona Public Service Co	Arizona Public Service Co Residential EV Data Rewards	VEHICLE	Q1-26
+Arizona Public Service Co	Arizona Public Service Co Residential EV Managed Charging (SmartCharge)	EV_CHARGER	Q1-26
+Ava Community Energy	Ava SmartHome Charging – Residential Managed-Charging Rebate	EV_CHARGER	Q1-26
+Baltimore Gas & Electric Co	Baltimore Gas & Electric Residential EV Charger	EV_CHARGER	Q1-26
+City of Santa Clara - (CA)	Silicon Valley Power Residential Level-2 EV Charger Rebate	EV_CHARGER	Q1-26
+City of Santa Clara - (CA)	SVP Smart Electric Panel & Main-Service-Panel Upgrade Rebates	PANEL_MAKE_READY	Q1-26
+City of Tacoma - (WA)	Tacoma Power EV Charging – Smart Splitter & 240-V Outlet Bill Credits	EV_CHARGER	Q1-26
+City of Tacoma - (WA)	Tacoma Power Residential EV Charging Rebate	EV_CHARGER	Q1-26
+CMS Energy Resource Management	CMS Energy Resource Management Residential EV Charger	EV_CHARGER	Q1-26
+CMS Energy Resource Management	CMS Energy Resource Management Residential EV Smart Charging Incentive	EV_CHARGER	Q1-26
+Cobb Electric Membership Corp	Cobb EMC Residential EV Charger	EV_CHARGER	Q1-26
+Connecticut Light & Power Co	Connecticut Light & Power Co Residential EV Managed Charging	EV_CHARGER	Q1-26
+Connecticut Light & Power Co	Connecticut Light & Power Co Residential EV Charger	EV_CHARGER	Q1-26
+Consolidated Edison Co of New York Inc	Con Edison Residential Managed EV Charging (SmartCharge New York)	VEHICLE	Q1-26
+Consolidated Edison Co of New York Inc	Con Edison Residential Electric Panel and Make Ready (Energy Exchange)	PANEL_MAKE_READY	Q1-26
+Consumers Energy Co - (MI)	Consumers Energy PowerMIDrive Residential EV Charger Rebate	EV_CHARGER	Q1-26
+Consumers Energy Co - (MI)	Consumers Energy Residential EV Managed Charging	EV_CHARGER	Q1-26
+Dominion Energy Marketing Inc.	Dominion Energy Virginia – EV Charger Rewards (Residential)	EV_CHARGER	Q1-26
+DTE Electric Co	DTE Energy Residential Home EV Charger Rebate	EV_CHARGER	Q1-26
+DTE Electric Co	DTE Energy Residential Smart Charge Managed Charging	EV_CHARGER	Q1-26
+DTE Electric Company	DTE Electric Company Residential Vehicle Rebate	VEHICLE	Q1-26
+DTE Electric Company	DTE Electric – Home EV Charger Rebate	EV_CHARGER	Q1-26
+Illinois Power Co	Illinois Power Co Residential EV Charger	EV_CHARGER	Q1-26
+Kauai Island Utility Cooperative	KIUC Residential Level-2 EV Charger Rebate	EV_CHARGER	Q1-26
+Los Angeles Department of Water & Power	LADWP Charge Up L.A! – Used Electric Vehicle Rebate	VEHICLE	Q1-26
+Marin Clean Energy	MCE Flex Market – Residential Electric Panel & Make-Ready Incentive	PANEL_MAKE_READY	Q1-26
+New England Power Company	National Grid MA Residential EV Charging Upgrade Program	EV_CHARGER	Q1-26
+New England Power Company	National Grid MA Off-Peak EV Charging Program	EV_CHARGER	Q1-26
+NSTAR Electric Company	Eversource – NSTAR MA Residential EV Home Charging Rebate	EV_CHARGER	Q1-26
+Pacific Gas & Electric Co.	PG&E Pre-Owned Electric Vehicle Rebate	VEHICLE	Q1-26
+Philadelphia Electric Co	PECO Residential Vehicle	VEHICLE	Q1-26
+Portland General Electric Co	PGE Smart Charging – Tesla Telematics Path	EV_CHARGER	Q1-26
+Public Service Elec & Gas Co	PSE&G Residential EV Off‑Peak Charging Credit	EV_CHARGER	Q1-26
+Public Service Elec & Gas Co	PSE&G Residential FlexPower EV	EV_CHARGER	Q1-26
+Public Service Elec & Gas Co	PSE&G Residential EV Make‑Ready	PANEL_MAKE_READY	Q1-26
+Puget Sound Energy Inc	Puget Sound Energy – Flex EV Demand-Response Program	EV_CHARGER	Q1-26
+Sacramento Municipal Util Dist	SMUD Go Electric Bonus – Residential Panel-Upgrade & Make-Ready Rebate	PANEL_MAKE_READY	Q1-26
+San Diego Gas & Electric Co	SDG&E Pre-Owned EV Rebate (Residential)	VEHICLE	Q1-26
+Silicon Valley Clean Energy Authority	SVCE GridShift Residential EV Charger Rebate	EV_CHARGER	Q1-26
+Silicon Valley Clean Energy Authority	GridShift – Residential EV Charger Managed Charging Rebate	EV_CHARGER	Q1-26
+Southern California Edison Co	Charge Smart – SoCal (Residential Managed EV-Charging Rewards)	EV_CHARGER	Q1-26
+Southern California Edison Co	Southern California Edison – Charge Ready Home (Panel-Upgrade Rebate)	PANEL_MAKE_READY	Q1-26
+Virginia Electric & Power Co	Virginia Electric & Power Co Residential EV Telematics Rewards	VEHICLE	Q1-26
+Virginia Electric & Power Co	Virginia Electric & Power Co Residential EV Charger Rewards	EV_CHARGER	Q1-26
+Wisconsin Electric Power Co	We Energies Residential EV Pilot – Off-Peak Bill-Credit	VEHICLE	Q1-26
+Xcel Energy Inc	Xcel Energy Residential EV Accelerate At Home	EV_CHARGER	Q1-26
+Xcel Energy Inc	Xcel Energy Residential EV Charger Managed Charging (Optimize Your Charge)	EV_CHARGER	Q1-26

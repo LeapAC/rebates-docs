@@ -32,11 +32,18 @@ Get a Connect URL to embed for eligible customers in your App.
 ```json
 POST /incentives
 {
-    "address": string,
-    "building_type": enum,
-    "device_id": uuid,
-    "reference_id": string,
-    "create_application": true
+  "address": {
+    "street_1": "456 Main St",
+    "street_2": "Apt 2B",
+    "city": "Bend",
+    "state_or_province_code": "OR",
+    "postal_code": "97701",
+    "country_code": "US"
+  },
+  "building_type": "RESIDENTIAL",
+  "device_id": 123,
+  "reference_id": "ref-12345",
+  "create_application": true
 }
 ```
 
@@ -46,19 +53,51 @@ POST /incentives
 <Accordion title="Eligible Customer">
 ```json
 {
-    "application_id": uuid,
-    "connect_url": url,
-    "customer_id": uuid,
-    "incentive_amount": int,
-    "reference_id": string,
-    "programs": [
+  "utility": {
+    "eiaid": 14354,
+    "name": "PacifiCorp (Oregon)"
+  },
+  "address": {
+    "street_1": "456 Main St",
+    "street_2": "Apt 2B",
+    "city": "Bend",
+    "state_or_province_code": "OR",
+    "postal_code": "97701",
+    "country_code": "US"
+  },
+  "building_type": "RESIDENTIAL",
+  "customer_id": 453,
+  "reference_id": "ref-12345",
+  "programs_evaluated": 2,
+  "incentives": {
+    "total_incentive_amount": 750,
+    "total_eligible_combinations": 1,
+    "by_program": [
       {
-        "program_name": string,
-        "is_eligible": true,
-        "incentive_amount": int,
-        "type": enum
+        "program_id": 838,
+        "program_name": "Pacific Power – Oregon \"Charge at Home\" EV Charger Rebate",
+        "total_incentive": 750,
+        "eligible_combinations": 1,
+        "device_tier_results": [
+          {
+            "device_id": 123,
+            "device_name": "Level 2 EV Charger",
+            "tier_id": 456,
+            "tier_name": "Standard Rebate",
+            "eligible": true,
+            "incentive_amount": 750,
+            "calculation_details": {
+              "base_amount": 750,
+              "calculation_method": "Fixed rebate per device"
+            },
+            "failed_requirements": [],
+            "ignored_requirements": []
+          }
+        ]
       }
     ]
+  },
+  "connect_url": "https://app.leap.energy/connect/abc123"
 }
 ```
 </Accordion>
@@ -66,19 +105,28 @@ POST /incentives
 <Accordion title="Ineligible Customer">
 ```json
 {
-    "application_id": uuid,
-    "connect_url": url,
-    "customer_id": uuid,
-    "incentive_amount": 0,
-    "reference_id": string,
-    "programs": [
-      {
-        "program_name": string,
-        "is_eligible": true,
-        "incentive_amount": int,
-        "type": enum
-      }
-    ]
+  "utility": {
+    "eiaid": 15248,
+    "name": "Portland General Electric Co"
+  },
+  "address": {
+    "street_1": "100 SW Main St",
+    "street_2": "",
+    "city": "Portland",
+    "state_or_province_code": "OR",
+    "postal_code": "97204",
+    "country_code": "US"
+  },
+  "building_type": "RESIDENTIAL",
+  "customer_id": 454,
+  "reference_id": "ref-67890",
+  "programs_evaluated": 0,
+  "incentives": {
+    "total_incentive_amount": 0,
+    "total_eligible_combinations": 0,
+    "by_program": []
+  },
+  "connect_url": "https://app.leap.energy/connect/def456"
 }
 ```
 </Accordion>
@@ -86,25 +134,71 @@ POST /incentives
 <Accordion title="Multiple Programs">
 ```json
 {
-    "application_id": uuid,
-    "connect_url": url,
-    "customer_id": uuid,
-    "incentive_amount": int,
-    "reference_id": string,
-    "programs": [
+  "utility": {
+    "eiaid": 17609,
+    "name": "Sacramento Municipal Util Dist"
+  },
+  "address": {
+    "street_1": "789 Oak Avenue",
+    "street_2": "",
+    "city": "Sacramento",
+    "state_or_province_code": "CA",
+    "postal_code": "95814",
+    "country_code": "US"
+  },
+  "building_type": "RESIDENTIAL",
+  "customer_id": 455,
+  "reference_id": "ref-24680",
+  "programs_evaluated": 2,
+  "incentives": {
+    "total_incentive_amount": 1250,
+    "total_eligible_combinations": 2,
+    "by_program": [
       {
-        "program_name": string,
-        "is_eligible": true,
-        "incentive_amount": int,
-        "type": enum
+        "program_id": 1001,
+        "program_name": "SMUD Charge@Home EV Rebates",
+        "total_incentive": 500,
+        "eligible_combinations": 1,
+        "device_tier_results": [
+          {
+            "device_id": 123,
+            "device_name": "Level 2 EV Charger",
+            "tier_id": 789,
+            "tier_name": "Standard Tier",
+            "eligible": true,
+            "incentive_amount": 500,
+            "calculation_details": {
+              "base_amount": 500
+            },
+            "failed_requirements": [],
+            "ignored_requirements": []
+          }
+        ]
       },
       {
-        "program_name": string,
-        "is_eligible": true,
-        "incentive_amount": int,
-        "type": enum
+        "program_id": 1002,
+        "program_name": "SMUD Go Electric Bonus – Residential Panel-Upgrade & Make-Ready Rebate",
+        "total_incentive": 750,
+        "eligible_combinations": 1,
+        "device_tier_results": [
+          {
+            "device_id": 456,
+            "device_name": "Electric Panel Upgrade",
+            "tier_id": 790,
+            "tier_name": "Panel Make Ready",
+            "eligible": true,
+            "incentive_amount": 750,
+            "calculation_details": {
+              "base_amount": 750
+            },
+            "failed_requirements": [],
+            "ignored_requirements": []
+          }
+        ]
       }
     ]
+  },
+  "connect_url": "https://app.leap.energy/connect/ghi789"
 }
 ```
 </Accordion>

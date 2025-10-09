@@ -20,7 +20,7 @@
       {
         "group": "API Reference",
         "pages": [
-          "api-reference/endpoint/get-incentives",
+          "api-reference/endpoint/check-incentives",
           "api-reference/endpoint/get-application",
           "api-reference/endpoint/update-application"
         ]

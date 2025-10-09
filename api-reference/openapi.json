@@ -21,122 +21,167 @@
     }
   ],
   "paths": {
-    "/incentives": {
+    "/applications": {
       "get": {
+        "summary": "Search applications",
+        "description": "Search and filter applications with optional pagination. Returns a list of applications\nmatching the specified criteria.\n",
+        "operationId": "searchApplications",
+        "tags": [
+          "Applications"
+        ],
+        "parameters": [
+          {
+            "name": "customer_id",
+            "in": "query",
+            "description": "Filter by customer ID",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "example": 609
+            }
+          },
+          {
+            "name": "application_status",
+            "in": "query",
+            "description": "Filter by application status",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "not_started",
+                "in_progress",
+                "awaiting_partner",
+                "completed",
+                "submitted",
+                "approved",
+                "rejected"
+              ],
+              "example": "awaiting_partner"
+            }
+          },
+          {
+            "name": "page_token",
+            "in": "query",
+            "description": "Token for pagination to fetch the next page of results",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "example": "242c3e24-43e6-4ad7-88b3-666cda21582b"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of results to return per page",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 50,
+              "minimum": 1,
+              "maximum": 100,
+              "example": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response with list of applications",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationSearchResponse"
+                },
+                "examples": {
+                  "awaiting_partner_applications": {
+                    "summary": "Applications awaiting partner data",
+                    "value": {
+                      "next_page_token": "242c3e24-43e6-4ad7-88b3-666cda21582b",
+                      "results": [
+                        {
+                          "id": 123,
+                          "program_id": 339,
+                          "customer_id": 609,
+                          "customer_device_id": [45, 46],
+                          "status": "awaiting_partner",
+                          "rebate_type": "instant",
+                          "payee_type": "customer",
+                          "total_requested_amount": 150.0,
+                          "created_at": "2025-01-10T15:30:00Z",
+                          "updated_at": "2025-01-15T10:45:00Z",
+                          "customer": {
+                            "id": 609,
+                            "first_name": "John",
+                            "last_name": "Doe",
+                            "email": "john.doe@example.com",
+                            "phone": "555-123-4567",
+                            "address_line1": "123 Peachtree St",
+                            "city": "Atlanta",
+                            "state": "GA",
+                            "zip_code": "30303"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request - invalid parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/incentives": {
+      "post": {
         "summary": "Get aggregated incentives for a customer",
-        "description": "Retrieves and aggregates incentive calculations from multiple utility programs\nbased on the customer's address and building type. Optionally creates an application\nfor a specific device and returns a connect URL for the customer to complete.\n\nThe API automatically:\n1. Creates or finds the customer based on address components\n2. Associates the device with the customer if not already linked\n3. Identifies the utility serving the address\n4. Finds all active programs for that utility and building type\n5. Calls each program's incentive calculation function\n6. Aggregates and returns the results\n7. If create_application is true, creates an application and returns a connect_url\n",
+        "description": "Retrieves and aggregates incentive calculations from multiple utility programs\nbased on the customer's address and building type.\n\nThe API automatically:\n1. Creates or finds the customer based on address components\n2. Associates the device with the customer if not already linked\n3. Identifies the utility serving the address\n4. Finds all active programs for that utility and building type\n5. Calls each program's incentive calculation function\n6. Aggregates and returns the results\n\n**Note:** The `reference_id`, `create_application`, and `connect_url` features are planned\nbut not yet implemented in the current version.\n",
         "operationId": "getAggregatedIncentives",
         "tags": [
           "Incentives"
         ],
-        "parameters": [
-          {
-            "name": "street_1",
-            "in": "query",
-            "description": "Street address line 1 (primary street address)",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "example": "456 Main St"
-            }
-          },
-          {
-            "name": "street_2",
-            "in": "query",
-            "description": "Street address line 2 (apartment, suite, unit, etc.)",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "example": "Apt 2B"
-            }
-          },
-          {
-            "name": "city",
-            "in": "query",
-            "description": "City name",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "example": "Bend"
-            }
-          },
-          {
-            "name": "state_or_province_code",
-            "in": "query",
-            "description": "State or province code (2-letter abbreviation)",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "example": "OR"
-            }
-          },
-          {
-            "name": "postal_code",
-            "in": "query",
-            "description": "Postal/ZIP code",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "example": "97701"
-            }
-          },
-          {
-            "name": "country_code",
-            "in": "query",
-            "description": "Country code (2-letter ISO code)",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "example": "US"
-            }
-          },
-          {
-            "name": "building_type",
-            "in": "query",
-            "description": "Type of building for which to calculate incentives.\nMust be one of the predefined building types.\n",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "enum": [
-                "RESIDENTIAL",
-                "MULTIFAMILY",
-                "MANUFACTURED_HOME",
-                "COMMERCIAL"
-              ],
-              "example": "RESIDENTIAL"
-            }
-          },
-          {
-            "name": "device_id",
-            "in": "query",
-            "description": "ID of the device for which to calculate incentives and optionally create an application",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "example": 123
-            }
-          },
-          {
-            "name": "reference_id",
-            "in": "query",
-            "description": "Your internal reference ID for tracking this calculation or application",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "example": "ref-12345"
-            }
-          },
-          {
-            "name": "create_application",
-            "in": "query",
-            "description": "Whether to create an application for the specified device_id",
-            "required": false,
-            "schema": {
-              "type": "boolean",
-              "example": true
+        "requestBody": {
+          "required": true,
+          "description": "Customer address, building type, and device information for incentive calculation",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IncentiveRequest"
+              },
+              "examples": {
+                "residential_request": {
+                  "summary": "Residential EV charger incentive request",
+                  "value": {
+                    "address": {
+                      "street_1": "456 Main St",
+                      "street_2": "Apt 2B",
+                      "city": "Bend",
+                      "state_or_province_code": "OR",
+                      "postal_code": "97701",
+                      "country_code": "US"
+                    },
+                    "building_type": "RESIDENTIAL",
+                    "device_id": 123
+                  }
+                }
+              }
             }
           }
-        ],
+        },
         "responses": {
           "200": {
             "description": "Successful response with aggregated incentive data",
@@ -163,7 +208,6 @@
                       },
                       "building_type": "RESIDENTIAL",
                       "customer_id": 453,
-                      "reference_id": "ref-12345",
                       "programs_evaluated": 2,
                       "incentives": {
                         "total_incentive_amount": 2250,
@@ -220,7 +264,6 @@
                       },
                       "building_type": "RESIDENTIAL",
                       "customer_id": 453,
-                      "reference_id": "ref-67890",
                       "programs_evaluated": 0,
                       "incentives": {
                         "total_incentive_amount": 0,
@@ -242,9 +285,15 @@
                 },
                 "examples": {
                   "missing_parameters": {
-                    "summary": "Missing required parameters",
+                    "summary": "Missing required fields",
                     "value": {
-                      "error": "Missing required parameters: street_1, street_2, postal_code, city, state_or_province, country_code, building_type, and device_id"
+                      "error": "Missing required fields: address (street_1, city, state_or_province_code, postal_code, country_code), building_type, and device_id"
+                    }
+                  },
+                  "invalid_json": {
+                    "summary": "Invalid JSON body",
+                    "value": {
+                      "error": "Invalid or empty JSON body"
                     }
                   }
                 }
@@ -277,6 +326,24 @@
               }
             }
           },
+          "404": {
+            "description": "No utility found for the provided address",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "no_utility_found": {
+                    "summary": "No utility found",
+                    "value": {
+                      "error": "Program lookup failed - no utility found"
+                    }
+                  }
+                }
+              }
+            }
+          },
           "500": {
             "description": "Internal server error",
             "content": {
@@ -289,6 +356,18 @@
                     "summary": "Program lookup service failed",
                     "value": {
                       "error": "Failed to fetch program lookup data"
+                    }
+                  },
+                  "customer_creation_failed": {
+                    "summary": "Failed to create customer",
+                    "value": {
+                      "error": "Failed to create customer. Required fields: address_line1, city, state, zip_code are all provided."
+                    }
+                  },
+                  "device_creation_failed": {
+                    "summary": "Failed to create customer device",
+                    "value": {
+                      "error": "Failed to create customer device. Required fields: customer_id, device_id are all provided."
                     }
                   },
                   "internal_error": {
@@ -337,7 +416,7 @@
                   "program_id": 339,
                   "customer_id": 609,
                   "customer_device_id": [45, 46],
-                  "status": "started",
+                  "status": "in_progress",
                   "rebate_type": "instant",
                   "payee_type": "customer",
                   "total_requested_amount": 150.0,
@@ -489,6 +568,106 @@
       }
     },
     "schemas": {
+      "ApplicationSearchResponse": {
+        "type": "object",
+        "required": [
+          "results"
+        ],
+        "properties": {
+          "next_page_token": {
+            "type": "string",
+            "nullable": true,
+            "description": "Token to fetch the next page of results. Null if no more pages available.",
+            "example": "242c3e24-43e6-4ad7-88b3-666cda21582b"
+          },
+          "results": {
+            "type": "array",
+            "description": "Array of applications matching the search criteria",
+            "items": {
+              "$ref": "#/components/schemas/Application"
+            }
+          }
+        }
+      },
+      "IncentiveRequest": {
+        "type": "object",
+        "required": [
+          "address",
+          "building_type",
+          "device_id"
+        ],
+        "properties": {
+          "address": {
+            "type": "object",
+            "description": "Customer's address information",
+            "required": [
+              "street_1",
+              "city",
+              "state_or_province_code",
+              "postal_code",
+              "country_code"
+            ],
+            "properties": {
+              "street_1": {
+                "type": "string",
+                "description": "Street address line 1 (primary street address)",
+                "example": "456 Main St"
+              },
+              "street_2": {
+                "type": "string",
+                "description": "Street address line 2 (apartment, suite, unit, etc.). Optional.",
+                "example": "Apt 2B"
+              },
+              "city": {
+                "type": "string",
+                "description": "City name",
+                "example": "Bend"
+              },
+              "state_or_province_code": {
+                "type": "string",
+                "description": "State or province code (2-letter abbreviation)",
+                "example": "OR"
+              },
+              "postal_code": {
+                "type": "string",
+                "description": "Postal/ZIP code",
+                "example": "97701"
+              },
+              "country_code": {
+                "type": "string",
+                "description": "Country code (2-letter ISO code)",
+                "example": "US"
+              }
+            }
+          },
+          "building_type": {
+            "type": "string",
+            "description": "Type of building for which to calculate incentives",
+            "enum": [
+              "RESIDENTIAL",
+              "MULTIFAMILY",
+              "MANUFACTURED_HOME",
+              "COMMERCIAL"
+            ],
+            "example": "RESIDENTIAL"
+          },
+          "device_id": {
+            "type": "integer",
+            "description": "ID of the device for which to calculate incentives",
+            "example": 123
+          },
+          "reference_id": {
+            "type": "string",
+            "description": "Your internal reference ID for tracking this calculation or application",
+            "example": "ref-12345"
+          },
+          "create_application": {
+            "type": "boolean",
+            "description": "Whether to create an application for the specified device_id and return a connect_url",
+            "example": true
+          }
+        }
+      },
       "IncentiveAggregationResponse": {
         "type": "object",
         "required": [
@@ -932,14 +1111,17 @@
           "status": {
             "type": "string",
             "enum": [
-              "new",
-              "started",
-              "customer_complete",
-              "submitted"
+              "not_started",
+              "in_progress",
+              "awaiting_partner",
+              "completed",
+              "submitted",
+              "approved",
+              "rejected"
             ],
-            "default": "new",
+            "default": "not_started",
             "description": "Current status of the application",
-            "example": "started"
+            "example": "in_progress"
           },
           "equipment_complete": {
             "type": "boolean",
@@ -1627,10 +1809,13 @@
           "status": {
             "type": "string",
             "enum": [
-              "new",
-              "started",
-              "customer_complete",
-              "submitted"
+              "not_started",
+              "in_progress",
+              "awaiting_partner",
+              "completed",
+              "submitted",
+              "approved",
+              "rejected"
             ],
             "description": "Current status of the application"
           },

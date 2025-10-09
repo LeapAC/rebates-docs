@@ -142,61 +142,63 @@ Provide information to complete the customer's application.
 
 ### Step 1: Search for Applications
 
-Search for all applications in `awaiting_partner` status.
-
-### Request
+Search for applications in `awaiting_partner` status.
 
 ```http
-GET /applications
+GET /applications?application_status=awaiting_partner
 ```
 
-**Query Parameters:**
-- `application_status`: Filter by status (options: `not_started`, `in_progress`, `awaiting_partner`, `completed`, `submitted`, `approved`, `rejected`)
-
-### Response
-
+**Response:**
 ```json
 {
-  "next_page_token": "242c3e24-43e6-4ad7-88b3-666cda21582b",
+  "next_page_token": null,
   "results": [
-      {
-          "application_id": uuid,
-          "url": url,
-          "application_status": string,
-          "customer_devices": [
-              {
-                  "customer_device_id": uuid
-                  // additional device fields
-              }
-          ],
-          "customer": {
-              "customer_id": uuid
-              // additional customer fields
-          },
-          "required_attachments": {
-              "invoice": true,
-              "install_photo": false
-          },
-          "utility": {
-              "auth_status": enum,
-              "account_number": string,
-              "meter_number": string,
-              "account_status": enum
-          },
-          "contractor": {
-              "contractor_name": string,
-              "contractor_phone": string
-              // additional contractor fields
-          }
+    {
+      "id": 123,
+      "status": "awaiting_partner",
+      "customer_id": 609,
+      "customer_device_id": [45],
+      "customer": {
+        "id": 609,
+        "address_line1": "123 Main St",
+        "city": "Atlanta",
+        "state": "GA",
+        "zip_code": "30303"
       }
+    }
   ]
 }
 ```
 
-### Step 2: Upload Partner Data
+### Step 2: Update Application
 
-Upload the data requirements you provide for your customers to complete their applications.
+Upload partner data using the application ID from the search results.
+
+```http
+PATCH /applications/123
+```
+
+**Request:**
+```json
+{
+  "customer": {
+    "first_name": "John",
+    "last_name": "Doe",
+    "email": "john@example.com",
+    "phone": "555-1234"
+  },
+  "customer_devices": [
+    {
+      "id": 45,
+      "purchase_date": "2025-01-15",
+      "installation_date": "2025-01-20",
+      "contractor_name": "ABC Electric",
+      "contractor_license": "EC-12345"
+    }
+  ]
+}
+```
 
 <Tip>
-  Check the `required_attachments` field to see which documents are needed for each application.
+  The PATCH endpoint supports partial updates - only include fields you want to modify.
 </Tip>

@@ -264,7 +264,8 @@ Provide information to complete the customer's application.
 Search for applications in `awaiting_partner` status.
 
 ```http
-GET /applications?application_status=awaiting_partner
+GET /application/applications?application_status=awaiting_partner
+Authorization: Bearer YOUR_API_KEY
 ```
 
 **Response:**
@@ -291,10 +292,10 @@ GET /applications?application_status=awaiting_partner
 
 ### Step 2: Update Application
 
-Upload partner data using the application ID from the search results.
+Upload partner data using the reference ID from the application. The `refID` should match the `reference_id` you provided when creating the application.
 
 ```http
-PATCH /applications/123
+PATCH /application?refID=ref-12345
 ```
 
 **Request:**
@@ -317,6 +318,10 @@ PATCH /applications/123
   ]
 }
 ```
+
+<Note>
+The PATCH endpoint does **not** require API key authentication. It uses the anonymous key and identifies applications via the `refID` query parameter.
+</Note>
 
 <Tip>
   The PATCH endpoint supports partial updates - only include fields you want to modify.

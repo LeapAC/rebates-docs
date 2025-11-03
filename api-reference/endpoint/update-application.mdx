@@ -1,6 +1,21 @@
 ---
 title: 'Update Application'
-description: 'Upload partner data to complete a customer application'
-openapi: 'PATCH /applications/{application_id}'
+description: 'Bulk update applications using reference ID. Supports updating customer information, customer devices, and application fields.'
+openapi: 'PATCH /application'
 ---
 
+<Note>
+This endpoint does **not** require API key authentication. It uses the anonymous key and identifies applications via the `refID` query parameter.
+
+Use the `refID` query parameter to specify which application(s) to update. The `refID` corresponds to the `reference_id` field used when creating applications.
+
+Set `dryRun=true` to validate the request without applying changes.
+</Note>
+
+## Bulk Updates
+
+This endpoint supports updating multiple applications in a single request by providing an array of application objects in the request body. All updates are processed within a single transaction.
+
+## Reference ID
+
+The `refID` query parameter is used to identify the application(s) to update. This should match the `reference_id` that was provided when the application was initially created via the Connect URL flow.

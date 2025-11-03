@@ -21,7 +21,7 @@
     }
   ],
   "paths": {
-    "/applications": {
+    "/application/applications": {
       "get": {
         "summary": "Search applications",
         "description": "Search and filter applications with optional pagination. Returns a list of applications\nmatching the specified criteria.\n",
@@ -383,7 +383,7 @@
         }
       }
     },
-    "/applications/{application_id}": {
+    "/application/applications/{application_id}": {
       "get": {
         "summary": "Get an application by ID",
         "description": "Retrieves a complete application including customer information and all associated\ncustomer devices. The response includes nested customer and device data.\n",
@@ -486,44 +486,77 @@
             "$ref": "#/components/responses/InternalServerError"
           }
         }
-      },
+      }
+    },
+    "/application": {
       "patch": {
-        "summary": "Partially update an application",
-        "description": "Partially updates an existing application including customer information and customer devices.\nOnly the fields provided in the request body will be updated - omitted fields will remain unchanged.\n\nThis endpoint supports partial updates to:\n- Application fields (status, signatures, dates, etc.)\n- Nested customer information (address, contact info, demographics, etc.)\n- Customer devices (equipment details, contractor info, vehicle info, etc.)\n\n**Partial Update Behavior:**\n- Only include fields you want to change in the request body\n- Omitted fields will keep their current values\n- Set a field to `null` to clear its value (where nullable)\n- Nested objects (customer, customer_devices) also support partial updates\n\n**Customer Devices:**\n- Include `id` in a customer_device object to update an existing device\n- Omit `id` to create a new customer_device\n- To delete a device, use a separate DELETE endpoint (not implemented in this version)\n\nThe update is transactional - if any part of the update fails, the entire operation\nis rolled back.\n",
-        "operationId": "patchApplication",
+        "summary": "Bulk update applications by reference ID",
+        "description": "Updates one or more applications identified by reference ID. Supports bulk updates via an array of application objects.\n\nThis endpoint does **not** require API key authentication - it uses the anonymous key.\n\n**Reference ID:**\nUse the `refID` query parameter to identify which application(s) to update. This should match the `reference_id` provided when creating applications.\n\n**Bulk Updates:**\nProvide an array of application objects in the request body to update multiple applications in a single transaction.\n\n**Dry Run:**\nSet `dryRun=true` to validate the request without applying changes.\n\n**Partial Update Behavior:**\n- Only include fields you want to change in the request body\n- Omitted fields will keep their current values\n- Set a field to `null` to clear its value (where nullable)\n- Nested objects (customer, customer_devices) also support partial updates\n\n**Customer Devices:**\n- Include `id` in a customer_device object to update an existing device\n- Omit `id` to create a new customer_device\n\nAll updates are transactional - if any part fails, the entire operation is rolled back.\n",
+        "operationId": "patchApplicationByRefId",
         "tags": [
           "Applications"
         ],
         "parameters": [
           {
-            "name": "application_id",
-            "in": "path",
-            "description": "Unique identifier for the application",
+            "name": "refID",
+            "in": "query",
+            "description": "Reference ID used to identify the application(s) to update. Should match the reference_id provided when creating the application.",
             "required": true,
             "schema": {
-              "type": "integer",
-              "example": 123
+              "type": "string",
+              "example": "ref-12345"
+            }
+          },
+          {
+            "name": "dryRun",
+            "in": "query",
+            "description": "If true, validates the request without applying changes",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "example": false
             }
           }
         ],
         "requestBody": {
           "required": true,
-          "description": "Partial application update. Only include fields you want to modify.\nAll fields are optional - omitted fields will remain unchanged.\n",
+          "description": "Partial application update(s). Can be a single object or array of objects for bulk updates.\nOnly include fields you want to modify - omitted fields will remain unchanged.\n",
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ApplicationPatchRequest"
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/ApplicationPatchRequest"
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/ApplicationPatchRequest"
+                    }
+                  }
+                ]
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "Successfully updated application",
+            "description": "Successfully updated application(s)",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Application"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/Application"
+                    },
+                    {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Application"
+                      }
+                    }
+                  ]
                 }
               }
             }
@@ -539,7 +572,7 @@
             }
           },
           "404": {
-            "description": "Application not found",
+            "description": "Application not found for the given reference ID",
             "content": {
               "application/json": {
                 "schema": {
@@ -548,8 +581,201 @@
               }
             }
           },
-          "401": {
-            "$ref": "#/components/responses/UnauthorizedError"
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/application/attachments": {
+      "post": {
+        "summary": "Create signed upload URL for attachment",
+        "description": "Creates a signed upload URL for uploading an attachment to the application. After receiving the signed URL, upload the file using a PUT request, then commit using the commit endpoint.\n\nThis endpoint does **not** require API key authentication - it uses the anonymous key.",
+        "operationId": "createAttachmentUploadUrl",
+        "tags": [
+          "Applications"
+        ],
+        "parameters": [
+          {
+            "name": "refID",
+            "in": "query",
+            "description": "Reference ID used to identify the application. Should match the reference_id provided when creating the application.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "ref-12345"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "Attachment metadata for creating the upload URL",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "attachment_type",
+                  "file_name",
+                  "content_type"
+                ],
+                "properties": {
+                  "attachment_type": {
+                    "type": "string",
+                    "enum": [
+                      "INVOICE_EQUIPMENT",
+                      "INVOICE_INSTALL",
+                      "PERMIT",
+                      "PHOTO_NAMEPLATE",
+                      "PHOTO_INSTALL",
+                      "PHOTO_METER",
+                      "AHRI_CERT",
+                      "NEAT_REPORT",
+                      "INCOME_FORM",
+                      "W9",
+                      "OTHER"
+                    ],
+                    "description": "Type of attachment being uploaded",
+                    "example": "INVOICE_EQUIPMENT"
+                  },
+                  "file_name": {
+                    "type": "string",
+                    "description": "Name of the file being uploaded",
+                    "example": "invoice.pdf"
+                  },
+                  "content_type": {
+                    "type": "string",
+                    "description": "MIME type of the file",
+                    "example": "application/pdf"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successfully created upload URL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "upload_url": {
+                      "type": "string",
+                      "format": "uri",
+                      "description": "Signed URL for uploading the file",
+                      "example": "https://storage.example.com/bucket/path?signature=..."
+                    },
+                    "attachment_id": {
+                      "type": "integer",
+                      "description": "ID of the attachment record",
+                      "example": 123
+                    },
+                    "expires_at": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "Expiration time of the signed URL",
+                      "example": "2025-01-20T12:00:00Z"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/application/attachments/commit": {
+      "post": {
+        "summary": "Commit uploaded attachment",
+        "description": "Commits an attachment after the file has been successfully uploaded to the signed URL from the create endpoint.\n\nThis endpoint does **not** require API key authentication - it uses the anonymous key.",
+        "operationId": "commitAttachment",
+        "tags": [
+          "Applications"
+        ],
+        "parameters": [
+          {
+            "name": "refID",
+            "in": "query",
+            "description": "Reference ID used to identify the application. Should match the reference_id provided when creating the application.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "ref-12345"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "Attachment ID to commit",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "attachment_id"
+                ],
+                "properties": {
+                  "attachment_id": {
+                    "type": "integer",
+                    "description": "ID of the attachment to commit (returned from create endpoint)",
+                    "example": 123
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successfully committed attachment",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "attachment_id": {
+                      "type": "integer",
+                      "example": 123
+                    },
+                    "file_url": {
+                      "type": "string",
+                      "format": "uri",
+                      "description": "URL to access the uploaded file",
+                      "example": "https://storage.example.com/bucket/path/file.pdf"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "500": {
             "$ref": "#/components/responses/InternalServerError"
@@ -934,13 +1160,29 @@
       "Error": {
         "type": "object",
         "required": [
-          "error"
+          "code",
+          "message",
+          "requestId"
         ],
         "properties": {
-          "error": {
+          "code": {
             "type": "string",
-            "description": "Error message describing what went wrong",
-            "example": "Application not found"
+            "description": "Error code identifying the type of error",
+            "example": "not_found"
+          },
+          "message": {
+            "type": "string",
+            "description": "Human-readable error message",
+            "example": "Application 123 not found"
+          },
+          "details": {
+            "description": "Additional error details (optional)",
+            "example": "Additional context about the error"
+          },
+          "requestId": {
+            "type": "string",
+            "description": "Unique request identifier for tracking and debugging",
+            "example": "550e8400-e29b-41d4-a716-446655440000"
           }
         }
       },

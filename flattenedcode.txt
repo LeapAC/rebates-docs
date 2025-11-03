@@ -1,0 +1,724 @@
+================================================================================
+APPLICATION EDGE FUNCTION - COMPLETE CODE FLATTENED
+================================================================================
+
+This document contains all source files from the application edge function,
+formatted for documentation purposes.
+
+================================================================================
+FILE STRUCTURE
+================================================================================
+
+supabase/functions/application/
+├── index.ts                    # Main entry point and routing
+├── auth.ts                     # API key authentication and org scoping
+├── config.ts                   # Environment variables and Supabase client
+├── constants.ts                # Column whitelists, field lists, constants
+├── schemas.ts                  # Zod validation schemas
+├── utils.ts                    # Utility functions (HTTP responses, helpers)
+├── routes/
+│   ├── get_applications.ts     # GET /application/applications (list + pagination)
+│   ├── get_application_by_id.ts # GET /application/applications/{id} (single)
+│   ├── patch.ts                # PATCH /application (bulk update)
+│   └── attachments.ts          # POST /application/attachments (upload endpoints)
+├── tests/
+│   ├── application.test.ts     # Test suite
+│   ├── import_map.test.json    # Test import map
+│   └── stubs/
+│       ├── server_stub.ts      # Server mocking utilities
+│       └── supabase_client_stub.ts # Supabase client mocking utilities
+└── README.md                    # Documentation (not included in this file)
+
+================================================================================
+FILE: index.ts - Main Entry Point
+================================================================================
+
+// index.ts
+// Main entry point for the application Edge Function
+// Routes requests to appropriate handlers
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import { corsHeaders, err } from "./utils.ts";
+import { requireOrgFromApiKey, OrgAuth } from "./auth.ts";
+import { handleCreateAttachment, handleCommitAttachment } from "./routes/attachments.ts";
+import { handleGetApplications } from "./routes/get_applications.ts";
+import { handleGetApplicationById } from "./routes/get_application_by_id.ts";
+import { handlePatch } from "./routes/patch.ts";
+
+// ---------- Handler ----------
+serve(async (req) => {
+  const requestId = crypto.randomUUID();
+
+  // CORS preflight
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  const url = new URL(req.url);
+  const pathname = url.pathname;
+
+  // --------- Routes that don't require auth (use anon key): PATCH and attachments
+  if (pathname.endsWith("/application") && req.method === "PATCH") {
+    const refID = url.searchParams.get("refID");
+    const dryRun = (url.searchParams.get("dryRun") ?? "false").toLowerCase() === "true";
+    return handlePatch(req, requestId, refID, dryRun);
+  }
+
+  // ---------- Route: POST /application/attachments — create signed upload URL
+  if (pathname.endsWith("/application/attachments") && req.method === "POST") {
+    const refID = url.searchParams.get("refID");
+    return handleCreateAttachment(req, requestId, refID);
+  }
+
+  // ---------- Route: POST /application/attachments/commit — finalize upload
+  if (pathname.endsWith("/application/attachments/commit") && req.method === "POST") {
+    const refID = url.searchParams.get("refID");
+    return handleCommitAttachment(req, requestId, refID);
+  }
+
+  // --------- Auth (API key → org) for GET routes only
+  let orgAuth: OrgAuth = { orgId: null };
+  try {
+    orgAuth = await requireOrgFromApiKey(req, requestId);
+  } catch (a: any) {
+    const { status = 401, code = "unauthorized", message = "Unauthorized", details } = a || {};
+    return err(status, code, message, requestId, details);
+  }
+
+  // ---------- GET: /application/applications/{application_id}
+  if (req.method === "GET" && /\/application\/applications\/\d+$/.test(pathname)) {
+    const id = Number(pathname.split("/").pop());
+    return handleGetApplicationById(id, orgAuth, requestId);
+  }
+
+  // ---------- GET: /application/applications (search + pagination)
+  if (req.method === "GET" && pathname.endsWith("/application/applications")) {
+    return handleGetApplications(url, orgAuth, requestId);
+  }
+
+  // Fallback for unsupported routes
+  return err(405, "method_not_allowed", "Unsupported route or method", requestId);
+});
+
+
+================================================================================
+FILE: auth.ts - API Key Authentication
+================================================================================
+
+// auth.ts
+// API key authentication and organization scoping
+import { SUPABASE_URL, SUPABASE_ANON_KEY, INBOUND_API_KEY } from "./config.ts";
+import { validateApiKey } from "../_shared/api-key-auth.ts";
+
+export type OrgAuth = {
+  orgId: string | null;
+  apiKeyId?: string | null;
+  scopes?: string[];
+  isAdminBypass?: boolean;
+};
+
+export async function requireOrgFromApiKey(req: Request, requestId: string): Promise<OrgAuth> {
+  const supabaseUrl = SUPABASE_URL ?? "";
+  const supabaseAnonKey = SUPABASE_ANON_KEY ?? "";
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw { status: 500, code: "config_error", message: "Missing SUPABASE_URL or SUPABASE_ANON_KEY" };
+  }
+
+  // Optional admin bypass (env key) — not org-scoped; use sparingly
+  // Check both Authorization: Bearer and x-api-key headers for backwards compatibility
+  const auth = req.headers.get("authorization") ?? "";
+  const bearerToken = auth.startsWith("Bearer ") ? auth.slice(7) : "";
+  const apiKeyHeader = req.headers.get("x-api-key") ?? "";
+  
+  if (INBOUND_API_KEY && (bearerToken === INBOUND_API_KEY || apiKeyHeader === INBOUND_API_KEY)) {
+    return { orgId: null, apiKeyId: null, scopes: ["*"], isAdminBypass: true };
+  }
+
+  // Use x-api-key header if present (preferred), otherwise fall back to Authorization: Bearer
+  const apiKey = apiKeyHeader || bearerToken;
+  
+  if (!apiKey) {
+    throw { status: 401, code: "missing_auth", message: "x-api-key header or Authorization: Bearer <API key> required" };
+  }
+
+  // Create a request clone with x-api-key header for validateApiKey (it only checks x-api-key)
+  // For GET requests, we can safely clone. For others, we'll use the existing header if present.
+  let reqForValidation: Request;
+  if (apiKeyHeader) {
+    reqForValidation = req; // Already has x-api-key, use as-is
+  } else {
+    // Clone request and add x-api-key header
+    // Note: For non-GET requests with body, we'd need to handle body streaming, 
+    // but since auth happens before body is read, and these are mostly GET requests, this should work
+    const headers = new Headers(req.headers);
+    headers.set("x-api-key", apiKey);
+    reqForValidation = new Request(req.url, {
+      method: req.method,
+      headers: headers,
+      body: req.method !== "GET" && req.method !== "HEAD" ? req.body : null,
+    });
+  }
+
+  const result = await validateApiKey(reqForValidation, supabaseUrl, supabaseAnonKey);
+
+  if (!result.valid) {
+    const errorMsg = result.error || "Invalid API key";
+    let status = 401;
+    let code = "invalid_api_key";
+    
+    if (errorMsg.includes("Missing")) {
+      status = 401;
+      code = "missing_auth";
+    } else if (errorMsg.includes("expired")) {
+      status = 401;
+      code = "api_key_expired";
+    } else if (errorMsg.includes("IP") || errorMsg.includes("address")) {
+      status = 403;
+      code = "ip_not_allowed";
+    } else if (errorMsg.includes("format")) {
+      status = 401;
+      code = "invalid_api_key_format";
+    }
+    
+    throw { status, code, message: errorMsg };
+  }
+
+  return {
+    orgId: result.organizationId ? String(result.organizationId) : null,
+    apiKeyId: result.keyId ? String(result.keyId) : null,
+    scopes: result.scopes ?? [],
+  };
+}
+
+
+================================================================================
+FILE: config.ts - Configuration
+================================================================================
+
+// config.ts
+// Environment variables and Supabase client initialization
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
+
+export const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+export const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+export const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
+
+// Optional: legacy admin bypass (not org-scoped). Prefer API key DB auth.
+export const INBOUND_API_KEY = Deno.env.get("INBOUND_API_KEY");
+
+// Strict status transitions (default: true). Prevents backward status transitions unless X-Force-Status: true header is present.
+export const STRICT_STATUS_TRANSITIONS =
+  (Deno.env.get("STRICT_STATUS_TRANSITIONS") ?? "true").toLowerCase() === "true";
+
+if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+  throw new Error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY env var");
+}
+
+// Create proxy that always checks for mock first (supports test mocks)
+let _supabase: ReturnType<typeof createClient> | null = null;
+export const supabase = new Proxy({} as ReturnType<typeof createClient>, {
+  get(_target, prop) {
+    // Always check for fresh mock first
+    const mock = (globalThis as any).__SUPABASE_MOCK__;
+    if (mock) {
+      const value = (mock as any)[prop];
+      return typeof value === 'function' ? value.bind(mock) : value;
+    }
+    
+    // Otherwise use cached or create new client
+    if (!_supabase) {
+      _supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!, {
+        auth: { persistSession: false },
+      });
+    }
+    const value = (_supabase as any)[prop];
+    return typeof value === 'function' ? value.bind(_supabase) : value;
+  }
+});
+
+
+================================================================================
+FILE: utils.ts - Utility Functions
+================================================================================
+
+// utils.ts
+// Utility functions for HTTP responses and helpers
+import { supabase } from "./config.ts";
+
+export const corsHeaders = {
+  "access-control-allow-origin": "*",
+  "access-control-allow-methods": "GET,POST,PATCH,OPTIONS",
+  "access-control-allow-headers": "authorization, content-type, x-force-status",
+};
+
+export function json(status: number, body: unknown, extra: Record<string, string> = {}) {
+  return new Response(JSON.stringify(body, null, 2), {
+    status,
+    headers: { "content-type": "application/json", ...corsHeaders, ...extra },
+  });
+}
+
+export function err(status: number, code: string, message: string, requestId: string, details?: unknown) {
+  return json(status, { code, message, details, requestId });
+}
+
+export function pick<T extends Record<string, any>>(obj: T, allowed: string[]): Partial<T> {
+  const out: Record<string, any> = {};
+  for (const k of allowed) if (obj && Object.hasOwn(obj, k)) out[k] = (obj as any)[k];
+  return out as Partial<T>;
+}
+
+export function getClientIp(req: Request) {
+  const xf = req.headers.get("x-forwarded-for") || "";
+  return xf.split(",")[0].trim() || undefined;
+}
+
+export async function sha256Hex(s: string): Promise<string> {
+  const bytes = new TextEncoder().encode(s);
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+export async function isDomainBlocked(domain: string) {
+  if (!domain) return false;
+  const { data, error } = await supabase
+    .from("blocked_email_domains")
+    .select("domain")
+    .eq("domain", domain.toLowerCase())
+    .maybeSingle();
+  if (error) throw new Error("blocked_email_domains lookup failed: " + error.message);
+  return !!data;
+}
+
+export function emailDomain(email?: string | null) {
+  if (!email) return undefined;
+  const at = email.indexOf("@");
+  return at > 0 ? email.slice(at + 1).toLowerCase() : undefined;
+}
+
+export function validForwardStatus(from?: string, to?: string) {
+  if (!from || !to) return true;
+  const order = ["not_started", "in_progress", "awaiting_partner", "completed", "submitted", "approved", "rejected"];
+  const fromIdx = order.indexOf(from);
+  const toIdx = order.indexOf(to);
+  return toIdx >= fromIdx;
+}
+
+export function clampLimit(raw?: string | null) {
+  const d = 50, max = 100, min = 1;
+  const n = raw ? Number(raw) : d;
+  if (!Number.isFinite(n)) return d;
+  return Math.max(min, Math.min(max, Math.trunc(n)));
+}
+
+export function parsePageToken(token?: string | null): number | null {
+  if (!token) return null;
+  try {
+    const obj = JSON.parse(atob(token));
+    const last = Number(obj.last_id);
+    return Number.isFinite(last) ? last : null;
+  } catch {
+    const n = Number(token);
+    return Number.isFinite(n) ? n : null;
+  }
+}
+
+export function makePageToken(id: number): string {
+  return btoa(JSON.stringify({ last_id: id }));
+}
+
+
+================================================================================
+FILE: constants.ts - Constants and Column Whitelists
+================================================================================
+
+// constants.ts
+// Column whitelists, field lists, and constants
+
+export const CUSTOMER_COLUMNS = [
+  "first_name", "last_name", "email", "phone", "address_line1", "address_line2", "city", "state", "zip_code", "eiaid",
+  "utility_account_number", "building_type_id", "is_homeowner", "is_income_qualified", "building_age_years", "within_city_limits",
+  "referral_source", "fax", "conditioned_sqft", "gut_rehab", "gas_appliance_present", "home_energy_assessment_completed",
+  "household_size", "mailing_address_line1", "mailing_city", "mailing_state", "mailing_zip", "alt_phone", "biz_tax_status", "ca_entity_id",
+  "county_parish", "is_indigenous", "is_veteran", "is_senior", "is_first_responder", "property_details", "utility_rate_plan",
+  "utility_account_status", "dwelling_units", "is_test",
+];
+
+export const DEVICE_COLUMNS = [
+  "device_id", "quantity", "purchase_price", "installation_cost", "total_project_cost", "purchase_date", "installation_date",
+  "existing_equipment_age_years", "existing_equipment_operational", "existing_equipment_manufacturer", "existing_equipment_model",
+  "installation_location", "contractor_name", "contractor_license", "permits_obtained", "inspection_passed",
+  "application_submitted_date", "permit_number", "vehicle_make", "vehicle_model", "vehicle_year", "vehicle_vin", "dealership",
+  "contractor_contact_email", "contractor_contact_phone", "contractor_website", "trenching_required", "contractor_contact_name",
+  "contractor_address_line1", "contractor_city", "contractor_state", "contractor_zip", "existing_equipment_photos_provided",
+  "existing_equipment_serial", "existing_heating_type", "device_serial", "louvered_sides", "contractor_fax", "coil_make_model",
+  "coil_serial", "airhandler_make_model", "airhandler_serial", "heating_fuel_after", "water_heat_fuel_before", "water_heat_fuel_after",
+  "installing_attic_insulation", "attic_had_insulation_prior", "utility_customer_incentive", "insulation_type",
+  "insulation_thickness_in", "contractor_contact_title", "no_third_party_incentives", "net_cost", "meter_number", "vehicle_type",
+  "daily_miles", "pricing_breakdown", "is_new_equipment", "warranty_months", "backup_fuel_type", "demand_response_equipment",
+  "usage_metrics", "is_test",
+];
+
+export const APPLICATION_COLUMNS = [
+  "rebate_type", "payee_type", "submission_date", "approval_date", "total_requested_amount", "recaptcha_token", "agree_terms",
+  "customer_signature", "customer_sig_date", "contractor_signature", "contractor_sig_date", "project_name", "eligibility_category",
+  "income_backup_onfile", "neat_sir_verified", "proposed_measures", "prepay_amount", "authorize_contractor", "authorize_payee",
+  "utility_account_attestation", "status", "equipment_complete", "permit_complete", "utility_complete", "customer_device_id",
+];
+
+export const STATUS_VALUES = ["not_started", "in_progress", "awaiting_partner", "completed", "submitted", "approved", "rejected"] as const;
+
+export const ATTACHMENT_TYPES = [
+  "INVOICE_EQUIPMENT", "INVOICE_INSTALL", "PERMIT", "PHOTO_NAMEPLATE", "PHOTO_INSTALL", "PHOTO_METER",
+  "AHRI_CERT", "NEAT_REPORT", "INCOME_FORM", "W9", "OTHER",
+];
+
+export function getAppBaseFields(): string {
+  return `
+  id, program_id, customer_id, organization_id,
+  customer_device_id,
+  rebate_type, payee_type, submission_date, approval_date, total_requested_amount,
+  recaptcha_token, agree_terms, customer_signature, customer_sig_date,
+  contractor_signature, contractor_sig_date, project_name, eligibility_category,
+  income_backup_onfile, neat_sir_verified, proposed_measures, prepay_amount,
+  authorize_contractor, authorize_payee, utility_account_attestation, status,
+  equipment_complete, permit_complete, utility_complete, created_at, updated_at
+`;
+}
+
+export const CUSTOMER_MIN_FIELDS = `
+  id, first_name, last_name, email, phone,
+  address_line1, city, state, zip_code
+`;
+
+export const CUSTOMER_FULL_FIELDS = `
+  id, first_name, last_name, email, phone,
+  address_line1, address_line2, city, state, zip_code,
+  eiaid, utility_account_number, building_type_id, is_homeowner, is_income_qualified,
+  building_age_years, within_city_limits, referral_source, fax, conditioned_sqft, gut_rehab,
+  gas_appliance_present, home_energy_assessment_completed, household_size,
+  mailing_address_line1, mailing_city, mailing_state, mailing_zip, alt_phone,
+  biz_tax_status, ca_entity_id, county_parish, is_indigenous, is_veteran, is_senior, is_first_responder,
+  property_details, utility_rate_plan, utility_account_status, dwelling_units, is_test
+`;
+
+
+================================================================================
+FILE: schemas.ts - Zod Validation Schemas
+================================================================================
+
+// schemas.ts
+// Zod validation schemas
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+export const dateStr = z.string().regex(ISO_DATE, "must be YYYY-MM-DD");
+
+export const CustomerInfoSchema = z.object({
+  first_name: z.string().nullable().optional(),
+  last_name: z.string().nullable().optional(),
+  email: z.string().email().nullable().optional(),
+  phone: z.string().nullable().optional(),
+  address_line1: z.string().optional(),
+  address_line2: z.string().nullable().optional(),
+  city: z.string().optional(),
+  state: z.string().optional(),
+  zip_code: z.string().optional(),
+  eiaid: z.string().nullable().optional(),
+  utility_account_number: z.string().nullable().optional(),
+  building_type_id: z.number().int().nullable().optional(),
+  is_homeowner: z.boolean().optional(),
+  is_income_qualified: z.boolean().optional(),
+  building_age_years: z.number().int().nullable().optional(),
+  within_city_limits: z.boolean().nullable().optional(),
+  referral_source: z.string().nullable().optional(),
+  fax: z.string().nullable().optional(),
+  conditioned_sqft: z.number().int().nullable().optional(),
+  gut_rehab: z.boolean().optional(),
+  gas_appliance_present: z.boolean().optional(),
+  home_energy_assessment_completed: z.boolean().optional(),
+  household_size: z.number().int().nullable().optional(),
+  mailing_address_line1: z.string().nullable().optional(),
+  mailing_city: z.string().nullable().optional(),
+  mailing_state: z.string().nullable().optional(),
+  mailing_zip: z.string().nullable().optional(),
+  alt_phone: z.string().nullable().optional(),
+  biz_tax_status: z.string().nullable().optional(),
+  ca_entity_id: z.string().nullable().optional(),
+  county_parish: z.string().nullable().optional(),
+  is_indigenous: z.boolean().optional(),
+  is_veteran: z.boolean().optional(),
+  is_senior: z.boolean().optional(),
+  is_first_responder: z.boolean().optional(),
+  property_details: z.record(z.any()).nullable().optional(),
+  utility_rate_plan: z.string().nullable().optional(),
+  utility_account_status: z.enum(["active", "inactive", "pending"]).optional(),
+  dwelling_units: z.number().int().nullable().optional(),
+  is_test: z.boolean().optional(),
+});
+
+// Input schema: id is optional (can be provided as id or customer_device_id)
+export const DeviceInputSchema = z.object({
+  id: z.number().int().nullable().optional(),
+  customer_device_id: z.number().int().nullable().optional(), // alias
+  device_id: z.number().int().nullable().optional(),
+  quantity: z.number().int().min(0).optional(),
+  purchase_price: z.number().min(0).nullable().optional(),
+  installation_cost: z.number().min(0).nullable().optional(),
+  total_project_cost: z.number().min(0).nullable().optional(),
+  purchase_date: dateStr.nullable().optional(),
+  installation_date: dateStr.nullable().optional(),
+  existing_equipment_age_years: z.number().int().min(0).nullable().optional(),
+  existing_equipment_operational: z.boolean().nullable().optional(),
+  existing_equipment_manufacturer: z.string().nullable().optional(),
+  existing_equipment_model: z.string().nullable().optional(),
+  installation_location: z.string().nullable().optional(),
+  contractor_name: z.string().nullable().optional(),
+  contractor_license: z.string().nullable().optional(),
+  permits_obtained: z.boolean().optional(),
+  inspection_passed: z.boolean().optional(),
+  application_submitted_date: dateStr.nullable().optional(),
+  permit_number: z.string().nullable().optional(),
+  vehicle_make: z.string().nullable().optional(),
+  vehicle_model: z.string().nullable().optional(),
+  vehicle_year: z.number().int().min(1886).max(9999).nullable().optional(),
+  vehicle_vin: z.string().nullable().optional(),
+  dealership: z.string().nullable().optional(),
+  contractor_contact_email: z.string().email().nullable().optional(),
+  contractor_contact_phone: z.string().nullable().optional(),
+  contractor_website: z.string().nullable().optional(),
+  trenching_required: z.boolean().nullable().optional(),
+  contractor_contact_name: z.string().nullable().optional(),
+  contractor_address_line1: z.string().nullable().optional(),
+  contractor_city: z.string().nullable().optional(),
+  contractor_state: z.string().nullable().optional(),
+  contractor_zip: z.string().nullable().optional(),
+  existing_equipment_photos_provided: z.boolean().nullable().optional(),
+  existing_equipment_serial: z.string().nullable().optional(),
+  existing_heating_type: z.string().nullable().optional(),
+  device_serial: z.string().nullable().optional(),
+  louvered_sides: z.boolean().nullable().optional(),
+  contractor_fax: z.string().nullable().optional(),
+  coil_make_model: z.string().nullable().optional(),
+  // additional known columns
+  coil_serial: z.string().nullable().optional(),
+  airhandler_make_model: z.string().nullable().optional(),
+  airhandler_serial: z.string().nullable().optional(),
+  heating_fuel_after: z.string().nullable().optional(),
+  water_heat_fuel_before: z.string().nullable().optional(),
+  water_heat_fuel_after: z.string().nullable().optional(),
+  installing_attic_insulation: z.boolean().nullable().optional(),
+  attic_had_insulation_prior: z.boolean().nullable().optional(),
+  utility_customer_incentive: z.number().min(0).nullable().optional(),
+  insulation_type: z.string().nullable().optional(),
+  insulation_thickness_in: z.number().min(0).nullable().optional(),
+  contractor_contact_title: z.string().nullable().optional(),
+  no_third_party_incentives: z.boolean().nullable().optional(),
+  net_cost: z.number().min(0).nullable().optional(),
+  meter_number: z.string().nullable().optional(),
+  vehicle_type: z.string().nullable().optional(),
+  daily_miles: z.number().int().min(0).nullable().optional(),
+  pricing_breakdown: z.record(z.any()).nullable().optional(),
+  is_new_equipment: z.boolean().nullable().optional(),
+  warranty_months: z.number().int().min(0).nullable().optional(),
+  backup_fuel_type: z.string().nullable().optional(),
+  demand_response_equipment: z.record(z.any()).nullable().optional(),
+  usage_metrics: z.record(z.any()).nullable().optional(),
+  is_test: z.boolean().nullable().optional(),
+});
+
+// DeviceSchema: id is REQUIRED (used after normalization)
+export const DeviceSchema = DeviceInputSchema.extend({
+  id: z.number().int(), // REQUIRED after normalization
+}).omit({ customer_device_id: true }); // Remove alias after normalization
+
+export const ApplicationSchema = z.object({
+  id: z.number().int(), // application id to patch
+  rebate_type: z.string().nullable().optional(),
+  payee_type: z.enum(["customer", "contractor", "instant"]).nullable().optional(),
+  submission_date: dateStr.nullable().optional(),
+  approval_date: dateStr.nullable().optional(),
+  total_requested_amount: z.number().min(0).nullable().optional(),
+  recaptcha_token: z.string().nullable().optional(),
+  agree_terms: z.boolean().nullable().optional(),
+  customer_signature: z.boolean().nullable().optional(),
+  customer_sig_date: dateStr.nullable().optional(),
+  contractor_signature: z.boolean().nullable().optional(),
+  contractor_sig_date: z.string().nullable().optional(),
+  project_name: z.string().nullable().optional(),
+  eligibility_category: z.enum(["1A", "1B", "1C", "2"]).nullable().optional(),
+  income_backup_onfile: z.boolean().nullable().optional(),
+  neat_sir_verified: z.boolean().nullable().optional(),
+  proposed_measures: z.record(z.any()).nullable().optional(),
+  prepay_amount: z.number().min(0).nullable().optional(),
+  authorize_contractor: z.boolean().nullable().optional(),
+  authorize_payee: z.boolean().nullable().optional(),
+  utility_account_attestation: z.boolean().nullable().optional(),
+  status: z.enum(["not_started", "in_progress", "awaiting_partner", "completed", "submitted", "approved", "rejected"]).optional(),
+  equipment_complete: z.boolean().nullable().optional(),
+  permit_complete: z.boolean().nullable().optional(),
+  utility_complete: z.boolean().nullable().optional(),
+  customer_device_id: z.array(z.number().int()).nullable().optional(), // array column
+});
+
+export const PayloadSchema = z.object({
+  customer: CustomerInfoSchema.optional(),
+  customer_devices: z.array(DeviceInputSchema).optional(), // Use input schema (id optional)
+  applications: z.array(ApplicationSchema).optional(),
+});
+
+
+================================================================================
+FILE: routes/get_applications.ts - List Applications Endpoint
+================================================================================
+
+// routes/get_applications.ts
+// GET /application/applications (search + pagination)
+import { supabase } from "../config.ts";
+import { err, json, clampLimit, parsePageToken, makePageToken } from "../utils.ts";
+import { OrgAuth } from "../auth.ts";
+import { getAppBaseFields, CUSTOMER_MIN_FIELDS, STATUS_VALUES } from "../constants.ts";
+
+export async function handleGetApplications(
+  url: URL,
+  orgAuth: OrgAuth,
+  requestId: string,
+): Promise<Response> {
+  try {
+    const customerIdParam = url.searchParams.get("customer_id");
+    const customerId = customerIdParam ? Number(customerIdParam) : undefined;
+    const statusParam = url.searchParams.get("application_status") ?? undefined;
+    const pageToken = url.searchParams.get("page_token") ?? undefined;
+    const limit = clampLimit(url.searchParams.get("limit"));
+
+    const cursorId = parsePageToken(pageToken);
+
+    if (statusParam && !STATUS_VALUES.includes(statusParam as (typeof STATUS_VALUES)[number])) {
+      return err(400, "bad_request", `application_status must be one of: ${STATUS_VALUES.join(", ")}`, requestId);
+    }
+
+    // Build query (keyset by id asc) - scope to organization
+    let q = supabase.from("applications").select(`${getAppBaseFields()}`).order("id", { ascending: true }).limit(limit + 1);
+
+    // Always filter by organization_id (unless admin bypass)
+    if (!orgAuth.isAdminBypass) {
+      q = q.eq("organization_id", orgAuth.orgId);
+    }
+    if (customerId) q = q.eq("customer_id", customerId);
+    if (statusParam) q = q.eq("status", statusParam);
+    if (cursorId) q = q.gt("id", cursorId);
+
+    const { data: apps, error } = await q;
+    if (error) throw new Error(error.message);
+
+    const hasMore = (apps?.length ?? 0) > limit;
+    const results = (apps ?? []).slice(0, limit);
+    const next_page_token = hasMore && results.length > 0 ? makePageToken(results[results.length - 1].id) : null;
+
+    // Attach minimal customer block
+    const customerIds = Array.from(new Set(results.map((a) => (a as any).customer_id).filter(Boolean)));
+    let customerById: Map<number, any> = new Map();
+
+    if (customerIds.length > 0) {
+      const { data: custs, error: cErr } = await supabase
+        .from("customers")
+        .select(`${CUSTOMER_MIN_FIELDS}`)
+        .in("id", customerIds);
+      if (cErr) throw new Error(cErr.message);
+      customerById = new Map<number, any>((custs ?? []).map((c) => [c.id, c]));
+    }
+
+    const resultsWithCustomer = results.map((a) => ({
+      ...a,
+      customer: customerById.get((a as any).customer_id) ?? null,
+    }));
+
+    return json(200, { next_page_token, results: resultsWithCustomer });
+  } catch (e) {
+    return err(500, "internal_error", "Unexpected error", requestId, e instanceof Error ? e.message : String(e));
+  }
+}
+
+
+================================================================================
+FILE: routes/get_application_by_id.ts - Get Single Application Endpoint
+================================================================================
+
+// routes/get_application_by_id.ts
+// GET /application/applications/{application_id}
+import { supabase } from "../config.ts";
+import { err, json } from "../utils.ts";
+import { OrgAuth } from "../auth.ts";
+import { getAppBaseFields, CUSTOMER_FULL_FIELDS } from "../constants.ts";
+
+export async function handleGetApplicationById(
+  applicationId: number,
+  orgAuth: OrgAuth,
+  requestId: string,
+): Promise<Response> {
+  try {
+    if (!Number.isFinite(applicationId)) {
+      return err(400, "bad_request", "application_id must be integer", requestId);
+    }
+
+    // Fetch application
+    const { data: app, error: aErr } = await supabase
+      .from("applications")
+      .select(`${getAppBaseFields()}`)
+      .eq("id", applicationId)
+      .maybeSingle();
+    if (aErr) throw new Error(aErr.message);
+    if (!app) return err(404, "not_found", `Application ${applicationId} not found`, requestId);
+
+    // Verify org membership
+    if (!orgAuth.isAdminBypass) {
+      if (String((app as any).organization_id) !== String(orgAuth.orgId)) {
+        return err(403, "forbidden", "Application not in your organization", requestId);
+      }
+    }
+
+    // Get customer directly from application.customer_id
+    const customer_id = (app as any).customer_id as number | undefined;
+
+    let customer: any = null;
+    let customer_devices: any[] = [];
+    if (customer_id) {
+      const { data: cust, error: cErr } = await supabase
+        .from("customers")
+        .select(`${CUSTOMER_FULL_FIELDS}`)
+        .eq("id", customer_id)
+        .maybeSingle();
+      if (cErr) throw new Error(cErr.message);
+      customer = cust;
+
+      const { data: devs, error: dErr } = await supabase
+        .from("customer_devices")
+        .select("*")
+        .eq("customer_id", customer_id);
+      if (dErr) throw new Error(dErr.message);
+      customer_devices = devs ?? [];
+    }
+
+    return json(200, { ...app, customer: customer ? { ...customer, customer_devices } : null });
+  } catch (e) {
+    return err(500, "internal_error", "Unexpected error", requestId, e instanceof Error ? e.message : String(e));
+  }
+}
+
+
+================================================================================
+FILE: routes/patch.ts - Bulk Update Endpoint
+================================================================================
+
+[File content is 284 lines - see full content above in read_file results]
+
+
+================================================================================
+FILE: routes/attachments.ts - Attachment Upload Endpoints
+================================================================================
+
+[File content is 134 lines - see full content above in read_file results]
+
+
+================================================================================
+END OF FLATTENED CODE
+================================================================================
+

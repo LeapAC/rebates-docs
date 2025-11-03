@@ -1,0 +1,94 @@
+---
+title: 'Upload Attachments'
+description: 'Upload documentation attachments for applications (invoices, permits, photos, etc.)'
+openapi: 'POST /application/attachments'
+---
+
+<Note>
+These endpoints do **not** require API key authentication. They use the anonymous key and identify applications via the `refID` query parameter.
+
+The `refID` should match the `reference_id` that was provided when the application was initially created.
+</Note>
+
+## Upload Process
+
+The attachment upload process is a two-step flow:
+
+1. **Create Upload URL**: Request a signed upload URL for a specific attachment type
+2. **Commit Upload**: After uploading the file to the signed URL, commit the attachment to finalize the process
+
+## Step 1: Create Upload URL
+
+Request a signed upload URL for uploading an attachment.
+
+**Endpoint:** `POST /application/attachments?refID={refID}`
+
+**Request Body:**
+```json
+{
+  "attachment_type": "INVOICE_EQUIPMENT",
+  "file_name": "invoice.pdf",
+  "content_type": "application/pdf"
+}
+```
+
+**Response:**
+```json
+{
+  "upload_url": "https://storage.example.com/bucket/path?signature=...",
+  "attachment_id": 123,
+  "expires_at": "2025-01-20T12:00:00Z"
+}
+```
+
+**Attachment Types:**
+- `INVOICE_EQUIPMENT` - Equipment purchase invoice
+- `INVOICE_INSTALL` - Installation invoice
+- `PERMIT` - Building/electrical permit
+- `PHOTO_NAMEPLATE` - Equipment nameplate photo
+- `PHOTO_INSTALL` - Installation photo
+- `PHOTO_METER` - Utility meter photo
+- `AHRI_CERT` - AHRI certification document
+- `NEAT_REPORT` - NEAT/SIR report
+- `INCOME_FORM` - Income verification form
+- `W9` - W-9 tax form
+- `OTHER` - Other documentation
+
+## Step 2: Upload File
+
+Upload the file directly to the signed URL returned in step 1 using a PUT request with the file content.
+
+**Request:**
+```http
+PUT {upload_url}
+Content-Type: {content_type}
+
+[file binary content]
+```
+
+## Step 3: Commit Upload
+
+After successfully uploading the file, commit the attachment to finalize the process.
+
+**Endpoint:** `POST /application/attachments/commit?refID={refID}`
+
+**Request Body:**
+```json
+{
+  "attachment_id": 123
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "attachment_id": 123,
+  "file_url": "https://storage.example.com/bucket/path/file.pdf"
+}
+```
+
+<Tip>
+The signed upload URL has an expiration time. Make sure to upload and commit the file before it expires. Check the `expires_at` field in the response from step 1.
+</Tip>
+

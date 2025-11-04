@@ -1,45 +1,60 @@
 ---
 title: 'Update Application'
-description: 'Bulk update applications using reference ID. Supports updating customer information, customer devices, and application fields.'
+description: 'Update an application by application ID. Supports updating application fields, customer information, and customer devices.'
 openapi: 'PATCH /applications'
 ---
 
 <Note>
-This endpoint does **not** require API key authentication. It uses the anonymous key and identifies applications via the `refID` query parameter.
+This endpoint requires API key authentication via `Authorization: Bearer <API_KEY>` or `x-api-key` header. The application must belong to your organization.
 
-Use the `refID` query parameter to specify which application(s) to update. The `refID` corresponds to the `reference_id` field used when creating applications.
+Use the `application_id` query parameter or path parameter (`PATCH /applications/{application_id}`) to identify which application to update. The API verifies the application belongs to your organization.
 
 Set `dryRun=true` to validate the request without applying changes.
 </Note>
 
 ## Query Parameters
 
-- `refID` (required): Reference ID to resolve customer_id
+- `application_id` (required): Application ID to update. The application must belong to your organization.
 - `dryRun` (optional): true/false - if true, validates without making changes
+
+## Alternative: Path Parameter
+
+You can also use the path parameter instead of the query parameter:
+
+- `PATCH /applications/{application_id}` - Same as using `?application_id={id}` in the query
+
+## Request Body Structure
+
+The request body matches the GET `/applications/{id}` response structure (without protected fields):
+
+**Application fields at top level:**
+- `status`, `rebate_type`, `approval_date`, `submission_date`, `total_requested_amount`, etc.
+
+**Optional nested objects:**
+- `customer`: Customer fields to update
+- `customer_devices`: Array of devices to update (must include `id` - UPDATE ONLY)
+
+**Protected fields** (cannot be updated): `id`, `customer_id`, `organization_id`, `program_id`, `created_at`, `updated_at`
 
 ## Example Request (Dry Run)
 
 ```bash
 curl -X PATCH \
-  "https://your-project.supabase.co/functions/v1/applications?refID=ref-abc123&dryRun=true" \
+  "https://api.leap.energy/alpha/applications?application_id=123&dryRun=true" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
+    "status": "approved",
+    "approval_date": "2025-01-25",
     "customer": {
       "email": "newemail@example.com",
       "phone": "+15559876543"
     },
     "customer_devices": [
       {
-        "customer_device_id": 78,
+        "id": 78,
         "inspection_passed": true,
         "permit_number": "PERMIT-2025-001"
-      }
-    ],
-    "applications": [
-      {
-        "id": 123,
-        "status": "submitted",
-        "submission_date": "2025-01-20"
       }
     ]
   }'
@@ -52,30 +67,27 @@ curl -X PATCH \
   "ok": true,
   "requestId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
   "dryRun": true,
-  "refID": "ref-abc123",
+  "application_id": 123,
   "customer_id": 456,
   "validations": {
-    "applications_checked": 1,
+    "organization_verified": true,
     "devices_checked": 1,
     "strictStatusTransitions": true
   },
   "wouldMutate": {
+    "application": {
+      "status": "approved",
+      "approval_date": "2025-01-25"
+    },
     "customer": {
       "email": "newemail@example.com",
       "phone": "+15559876543"
     },
     "customer_devices": [
       {
-        "customer_device_id": 10,
+        "id": 78,
         "inspection_passed": true,
         "permit_number": "PERMIT-2025-001"
-      }
-    ],
-    "applications": [
-      {
-        "id": 123,
-        "status": "submitted",
-        "submission_date": "2025-01-20"
       }
     ]
   }
@@ -86,19 +98,15 @@ curl -X PATCH \
 
 ```bash
 curl -X PATCH \
-  "https://your-project.supabase.co/functions/v1/applications?refID=ref-abc123" \
+  "https://api.leap.energy/alpha/applications?application_id=123" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
+    "status": "approved",
+    "approval_date": "2025-01-25",
     "customer": {
       "email": "newemail@example.com"
-    },
-    "applications": [
-      {
-        "id": 123,
-        "status": "approved",
-        "approval_date": "2025-01-25"
-      }
-    ]
+    }
   }'
 ```
 
@@ -108,24 +116,28 @@ curl -X PATCH \
 {
   "ok": true,
   "requestId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-  "refID": "ref-abc123",
+  "application_id": 123,
   "customer_id": 456,
   "mutations": {
-    "customer_id": 456,
+    "application": {
+      "updated": true,
+      "fields": ["status", "approval_date"]
+    },
     "customer": {
       "updated": true,
       "fields": ["email"]
-    },
-    "applications": [
-      {
-        "id": 123,
-        "action": "updated",
-        "fields": ["status", "approval_date"]
-      }
-    ]
+    }
   },
   "data": {
+    "id": 123,
+    "program_id": 45,
     "customer_id": 456,
+    "organization_id": "550e8400-e29b-41d4-a716-446655440000",
+    "status": "approved",
+    "approval_date": "2025-01-25",
+    "submission_date": "2025-01-15",
+    "created_at": "2025-01-10T10:00:00Z",
+    "updated_at": "2025-01-25T16:45:00Z",
     "customer": {
       "id": 456,
       "first_name": "Jane",
@@ -133,21 +145,71 @@ curl -X PATCH \
       "email": "newemail@example.com",
       "customer_devices": [
         {
-          "id": 10,
+          "id": 78,
           "customer_id": 456,
           "device_id": 5,
           "quantity": 1
         }
       ]
-    },
-    "applications": [
-      {
-        "id": 123,
-        "customer_id": 456,
-        "status": "approved",
-        "approval_date": "2025-01-25"
-      }
-    ]
+    }
   }
 }
 ```
+
+## Status Transitions
+
+By default, status transitions are restricted to forward progress only. The allowed order is:
+`not_started` → `in_progress` → `awaiting_partner` → `completed` → `submitted` → `approved` / `rejected`
+
+To override this restriction (e.g., move backward), include the `X-Force-Status: true` header:
+
+```bash
+curl -X PATCH \
+  "https://api.leap.energy/alpha/applications?application_id=123" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "X-Force-Status: true" \
+  -H "Content-Type: application/json" \
+  -d '{"status": "in_progress"}'
+```
+
+## Error Responses
+
+**401 Unauthorized** - Missing or invalid API key:
+```json
+{
+  "code": "missing_auth",
+  "message": "x-api-key header or Authorization: Bearer <API key> required",
+  "requestId": "..."
+}
+```
+
+**403 Forbidden** - Application not in your organization:
+```json
+{
+  "code": "forbidden",
+  "message": "Application not in your organization",
+  "requestId": "..."
+}
+```
+
+**404 Not Found** - Application not found:
+```json
+{
+  "code": "not_found",
+  "message": "Application 123 not found",
+  "requestId": "..."
+}
+```
+
+**409 Conflict** - Invalid status transition:
+```json
+{
+  "code": "invalid_status_transition",
+  "message": "Cannot move approved → in_progress without X-Force-Status: true",
+  "requestId": "..."
+}
+```
+
+<Tip>
+**Customer Devices:** Each device in `customer_devices` must include `id`. Devices are **update-only** - no inserts allowed. If you need to add a new device, use the appropriate creation endpoint.
+</Tip>

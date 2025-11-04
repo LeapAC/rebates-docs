@@ -21,7 +21,7 @@
     }
   ],
   "paths": {
-    "/application/applications": {
+    "/applications": {
       "get": {
         "summary": "Search applications",
         "description": "Search and filter applications with optional pagination. Returns a list of applications\nmatching the specified criteria.\n",
@@ -139,6 +139,266 @@
           },
           "401": {
             "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      },
+      "patch": {
+        "summary": "Bulk update applications by reference ID",
+        "description": "Updates one or more applications identified by reference ID. Supports bulk updates to customer, customer devices, and applications.\n\nThis endpoint does **not** require API key authentication - it uses the anonymous key.\n\n**Reference ID:**\nUse the `refID` query parameter to identify which customer to update. This should match the `reference_id` provided when creating applications.\n\n**Request Structure:**\nProvide any combination of:\n- `customer`: Customer fields to update\n- `customer_devices`: Array of devices to update (must include `id` or `customer_device_id` - UPDATE ONLY)\n- `applications`: Array of applications to update (must include `id`)\n\n**Dry Run:**\nSet `dryRun=true` to validate the request without applying changes.\n\n**Partial Update Behavior:**\n- Only include fields you want to change\n- Omitted fields will keep their current values\n- Set a field to `null` to clear its value (where nullable)\n\n**Customer Devices:**\n- Must include `id` or `customer_device_id` to identify the device\n- UPDATE ONLY - no inserts allowed\n\nAll updates are transactional - if any part fails, the entire operation is rolled back.\n",
+        "operationId": "patchApplicationByRefId",
+        "security": [],
+        "tags": [
+          "Applications"
+        ],
+        "x-codeSamples": [
+          {
+            "lang": "curl",
+            "label": "cURL",
+            "source": "curl -X PATCH \\\n  \"https://api.leap.energy/alpha/applications?refID=ref-abc123\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"customer\": {\n      \"email\": \"newemail@example.com\"\n    },\n    \"applications\": [\n      {\n        \"id\": 123,\n        \"status\": \"approved\",\n        \"approval_date\": \"2025-01-25\"\n      }\n    ]\n  }'"
+          },
+          {
+            "lang": "python",
+            "label": "Python",
+            "source": "import requests\n\nurl = \"https://api.leap.energy/alpha/applications?refID=ref-abc123\"\n\npayload = {\n    \"customer\": {\n        \"email\": \"newemail@example.com\"\n    },\n    \"applications\": [\n        {\n            \"id\": 123,\n            \"status\": \"approved\",\n            \"approval_date\": \"2025-01-25\"\n        }\n    ]\n}\n\nheaders = {\"Content-Type\": \"application/json\"}\n\nresponse = requests.patch(url, json=payload, headers=headers)\nprint(response.json())"
+          },
+          {
+            "lang": "javascript",
+            "label": "JavaScript",
+            "source": "const response = await fetch(\n  'https://api.leap.energy/alpha/applications?refID=ref-abc123',\n  {\n    method: 'PATCH',\n    headers: {\n      'Content-Type': 'application/json'\n    },\n    body: JSON.stringify({\n      customer: {\n        email: 'newemail@example.com'\n      },\n      applications: [\n        {\n          id: 123,\n          status: 'approved',\n          approval_date: '2025-01-25'\n        }\n      ]\n    })\n  }\n);\n\nconst data = await response.json();\nconsole.log(data);"
+          },
+          {
+            "lang": "node",
+            "label": "Node.js",
+            "source": "const axios = require('axios');\n\nconst url = 'https://api.leap.energy/alpha/applications?refID=ref-abc123';\n\nconst payload = {\n  customer: {\n    email: 'newemail@example.com'\n  },\n  applications: [\n    {\n      id: 123,\n      status: 'approved',\n      approval_date: '2025-01-25'\n    }\n  ]\n};\n\nconst response = await axios.patch(url, payload, {\n  headers: { 'Content-Type': 'application/json' }\n});\n\nconsole.log(response.data);"
+          },
+          {
+            "lang": "php",
+            "label": "PHP",
+            "source": "<?php\n\n$url = 'https://api.leap.energy/alpha/applications?refID=ref-abc123';\n\n$payload = [\n    'customer' => [\n        'email' => 'newemail@example.com'\n    ],\n    'applications' => [\n        [\n            'id' => 123,\n            'status' => 'approved',\n            'approval_date' => '2025-01-25'\n        ]\n    ]\n];\n\n$ch = curl_init($url);\ncurl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PATCH');\ncurl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));\ncurl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);\ncurl_setopt($ch, CURLOPT_RETURNTRANSFER, true);\n\n$response = curl_exec($ch);\ncurl_close($ch);\n\nprint_r(json_decode($response, true));"
+          },
+          {
+            "lang": "java",
+            "label": "Java",
+            "source": "import java.net.http.*;\nimport java.net.URI;\n\nHttpClient client = HttpClient.newHttpClient();\n\nString json = \"\"\"{\n  \"customer\": {\n    \"email\": \"newemail@example.com\"\n  },\n  \"applications\": [\n    {\n      \"id\": 123,\n      \"status\": \"approved\",\n      \"approval_date\": \"2025-01-25\"\n    }\n  ]\n}\"\"\";\n\nHttpRequest request = HttpRequest.newBuilder()\n    .uri(URI.create(\"https://api.leap.energy/alpha/applications?refID=ref-abc123\"))\n    .header(\"Content-Type\", \"application/json\")\n    .method(\"PATCH\", HttpRequest.BodyPublishers.ofString(json))\n    .build();\n\nHttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());\nSystem.out.println(response.body());"
+          },
+          {
+            "lang": "ruby",
+            "label": "Ruby",
+            "source": "require 'net/http'\nrequire 'json'\n\nuri = URI('https://api.leap.energy/alpha/applications?refID=ref-abc123')\n\npayload = {\n  customer: {\n    email: 'newemail@example.com'\n  },\n  applications: [\n    {\n      id: 123,\n      status: 'approved',\n      approval_date: '2025-01-25'\n    }\n  ]\n}\n\nhttp = Net::HTTP.new(uri.host, uri.port)\nhttp.use_ssl = true\n\nrequest = Net::HTTP::Patch.new(uri)\nrequest['Content-Type'] = 'application/json'\nrequest.body = payload.to_json\n\nresponse = http.request(request)\nputs JSON.parse(response.body)"
+          },
+          {
+            "lang": "go",
+            "label": "Go",
+            "source": "package main\n\nimport (\n\t\"bytes\"\n\t\"encoding/json\"\n\t\"fmt\"\n\t\"net/http\"\n)\n\nfunc main() {\n\turl := \"https://api.leap.energy/alpha/applications?refID=ref-abc123\"\n\n\tpayload := map[string]interface{}{\n\t\t\"customer\": map[string]interface{}{\n\t\t\t\"email\": \"newemail@example.com\",\n\t\t},\n\t\t\"applications\": []map[string]interface{}{\n\t\t\t{\n\t\t\t\t\"id\":             123,\n\t\t\t\t\"status\":         \"approved\",\n\t\t\t\t\"approval_date\": \"2025-01-25\",\n\t\t\t},\n\t\t},\n\t}\n\n\tjsonData, _ := json.Marshal(payload)\n\treq, _ := http.NewRequest(\"PATCH\", url, bytes.NewBuffer(jsonData))\n\treq.Header.Set(\"Content-Type\", \"application/json\")\n\n\tclient := &http.Client{}\n\tresp, _ := client.Do(req)\n\tdefer resp.Body.Close()\n\n\tvar result map[string]interface{}\n\tjson.NewDecoder(resp.Body).Decode(&result)\n\tfmt.Println(result)\n}"
+          },
+          {
+            "lang": "csharp",
+            "label": "C#",
+            "source": "using System;\nusing System.Net.Http;\nusing System.Text;\nusing System.Text.Json;\nusing System.Threading.Tasks;\n\nvar client = new HttpClient();\nvar url = \"https://api.leap.energy/alpha/applications?refID=ref-abc123\";\n\nvar payload = new {\n    customer = new {\n        email = \"newemail@example.com\"\n    },\n    applications = new[] {\n        new {\n            id = 123,\n            status = \"approved\",\n            approval_date = \"2025-01-25\"\n        }\n    }\n};\n\nvar content = new StringContent(\n    JsonSerializer.Serialize(payload),\n    Encoding.UTF8,\n    \"application/json\"\n);\n\nvar request = new HttpRequestMessage(new HttpMethod(\"PATCH\"), url) {\n    Content = content\n};\n\nvar response = await client.SendAsync(request);\nvar result = await response.Content.ReadAsStringAsync();\nConsole.WriteLine(result);"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "refID",
+            "in": "query",
+            "description": "Reference ID used to identify the application(s) to update. Should match the reference_id provided when creating the application.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "ref-abc123"
+          },
+          {
+            "name": "dryRun",
+            "in": "query",
+            "description": "If true, validates the request without applying changes",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "example": false
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "Bulk update request. Provide any combination of customer, customer_devices, and applications.\nAll sections are optional - only include sections you want to modify.\n",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplicationPatchRequest"
+              },
+              "examples": {
+                "bulk_update": {
+                  "summary": "Bulk update example",
+                  "value": {
+                    "customer": {
+                      "email": "newemail@example.com",
+                      "phone": "+15559876543"
+                    },
+                    "customer_devices": [
+                      {
+                        "customer_device_id": 78,
+                        "inspection_passed": true,
+                        "permit_number": "PERMIT-2025-001"
+                      }
+                    ],
+                    "applications": [
+                      {
+                        "id": 123,
+                        "status": "submitted",
+                        "submission_date": "2025-01-20"
+                      }
+                    ]
+                  }
+                },
+                "customer_only": {
+                  "summary": "Update customer only",
+                  "value": {
+                    "customer": {
+                      "email": "updated@example.com"
+                    }
+                  }
+                },
+                "application_only": {
+                  "summary": "Update application only",
+                  "value": {
+                    "applications": [
+                      {
+                        "id": 123,
+                        "status": "approved",
+                        "approval_date": "2025-01-25"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successfully updated application(s)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "example": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                    },
+                    "refID": {
+                      "type": "string",
+                      "example": "ref-abc123"
+                    },
+                    "customer_id": {
+                      "type": "integer",
+                      "example": 456
+                    },
+                    "mutations": {
+                      "type": "object",
+                      "description": "Details about what was updated"
+                    },
+                    "data": {
+                      "type": "object",
+                      "description": "Complete snapshot of customer with all devices and applications",
+                      "properties": {
+                        "customer_id": {
+                          "type": "integer"
+                        },
+                        "customer": {
+                          "$ref": "#/components/schemas/Customer"
+                        },
+                        "applications": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/Application"
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "examples": {
+                  "successful_update": {
+                    "summary": "Successful bulk update",
+                    "value": {
+                      "ok": true,
+                      "requestId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+                      "refID": "ref-abc123",
+                      "customer_id": 456,
+                      "mutations": {
+                        "customer_id": 456,
+                        "customer": {
+                          "updated": true,
+                          "fields": ["email"]
+                        },
+                        "applications": [
+                          {
+                            "id": 123,
+                            "action": "updated",
+                            "fields": ["status", "approval_date"]
+                          }
+                        ]
+                      },
+                      "data": {
+                        "customer_id": 456,
+                        "customer": {
+                          "id": 456,
+                          "first_name": "Jane",
+                          "last_name": "Doe",
+                          "email": "newemail@example.com",
+                          "customer_devices": [
+                            {
+                              "id": 10,
+                              "customer_id": 456,
+                              "device_id": 5,
+                              "quantity": 1
+                            }
+                          ]
+                        },
+                        "applications": [
+                          {
+                            "id": 123,
+                            "customer_id": 456,
+                            "status": "approved",
+                            "approval_date": "2025-01-25"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Application not found for the given reference ID",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "500": {
             "$ref": "#/components/responses/InternalServerError"
@@ -383,7 +643,7 @@
         }
       }
     },
-    "/application/applications/{application_id}": {
+    "/applications/{application_id}": {
       "get": {
         "summary": "Get an application by ID",
         "description": "Retrieves a complete application including customer information and all associated\ncustomer devices. The response includes nested customer and device data.\n",
@@ -488,112 +748,51 @@
         }
       }
     },
-    "/application": {
-      "patch": {
-        "summary": "Bulk update applications by reference ID",
-        "description": "Updates one or more applications identified by reference ID. Supports bulk updates via an array of application objects.\n\nThis endpoint does **not** require API key authentication - it uses the anonymous key.\n\n**Reference ID:**\nUse the `refID` query parameter to identify which application(s) to update. This should match the `reference_id` provided when creating applications.\n\n**Bulk Updates:**\nProvide an array of application objects in the request body to update multiple applications in a single transaction.\n\n**Dry Run:**\nSet `dryRun=true` to validate the request without applying changes.\n\n**Partial Update Behavior:**\n- Only include fields you want to change in the request body\n- Omitted fields will keep their current values\n- Set a field to `null` to clear its value (where nullable)\n- Nested objects (customer, customer_devices) also support partial updates\n\n**Customer Devices:**\n- Include `id` in a customer_device object to update an existing device\n- Omit `id` to create a new customer_device\n\nAll updates are transactional - if any part fails, the entire operation is rolled back.\n",
-        "operationId": "patchApplicationByRefId",
-        "tags": [
-          "Applications"
-        ],
-        "parameters": [
-          {
-            "name": "refID",
-            "in": "query",
-            "description": "Reference ID used to identify the application(s) to update. Should match the reference_id provided when creating the application.",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "example": "ref-12345"
-            }
-          },
-          {
-            "name": "dryRun",
-            "in": "query",
-            "description": "If true, validates the request without applying changes",
-            "required": false,
-            "schema": {
-              "type": "boolean",
-              "default": false,
-              "example": false
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "description": "Partial application update(s). Can be a single object or array of objects for bulk updates.\nOnly include fields you want to modify - omitted fields will remain unchanged.\n",
-          "content": {
-            "application/json": {
-              "schema": {
-                "oneOf": [
-                  {
-                    "$ref": "#/components/schemas/ApplicationPatchRequest"
-                  },
-                  {
-                    "type": "array",
-                    "items": {
-                      "$ref": "#/components/schemas/ApplicationPatchRequest"
-                    }
-                  }
-                ]
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successfully updated application(s)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "oneOf": [
-                    {
-                      "$ref": "#/components/schemas/Application"
-                    },
-                    {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/Application"
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request body",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Application not found for the given reference ID",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "$ref": "#/components/responses/InternalServerError"
-          }
-        }
-      }
-    },
-    "/application/attachments": {
+    "/applications/attachments": {
       "post": {
         "summary": "Create signed upload URL for attachment",
         "description": "Creates a signed upload URL for uploading an attachment to the application. After receiving the signed URL, upload the file using a PUT request, then commit using the commit endpoint.\n\nThis endpoint does **not** require API key authentication - it uses the anonymous key.",
         "operationId": "createAttachmentUploadUrl",
+        "security": [],
         "tags": [
           "Applications"
+        ],
+        "x-codeSamples": [
+          {
+            "lang": "curl",
+            "label": "cURL",
+            "source": "curl -X POST \\\n  \"https://api.leap.energy/alpha/applications/attachments?refID=ref-abc123\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"application_id\": 123,\n    \"attachment_type\": \"INVOICE_EQUIPMENT\",\n    \"filename\": \"invoice.pdf\",\n    \"contentType\": \"application/pdf\"\n  }'"
+          },
+          {
+            "lang": "python",
+            "label": "Python",
+            "source": "import requests\n\nurl = \"https://api.leap.energy/alpha/applications/attachments?refID=ref-abc123\"\n\npayload = {\n    \"application_id\": 123,\n    \"attachment_type\": \"INVOICE_EQUIPMENT\",\n    \"filename\": \"invoice.pdf\",\n    \"contentType\": \"application/pdf\"\n}\n\nheaders = {\"Content-Type\": \"application/json\"}\n\nresponse = requests.post(url, json=payload, headers=headers)\nprint(response.json())"
+          },
+          {
+            "lang": "javascript",
+            "label": "JavaScript",
+            "source": "const response = await fetch(\n  'https://api.leap.energy/alpha/applications/attachments?refID=ref-abc123',\n  {\n    method: 'POST',\n    headers: {\n      'Content-Type': 'application/json'\n    },\n    body: JSON.stringify({\n      application_id: 123,\n      attachment_type: 'INVOICE_EQUIPMENT',\n      filename: 'invoice.pdf',\n      contentType: 'application/pdf'\n    })\n  }\n);\n\nconst data = await response.json();\nconsole.log(data);"
+          },
+          {
+            "lang": "php",
+            "label": "PHP",
+            "source": "<?php\n\n$url = 'https://api.leap.energy/alpha/applications/attachments?refID=ref-abc123';\n\n$payload = [\n    'application_id' => 123,\n    'attachment_type' => 'INVOICE_EQUIPMENT',\n    'filename' => 'invoice.pdf',\n    'contentType' => 'application/pdf'\n];\n\n$ch = curl_init($url);\ncurl_setopt($ch, CURLOPT_POST, true);\ncurl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));\ncurl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);\ncurl_setopt($ch, CURLOPT_RETURNTRANSFER, true);\n\n$response = curl_exec($ch);\ncurl_close($ch);\n\nprint_r(json_decode($response, true));"
+          },
+          {
+            "lang": "java",
+            "label": "Java",
+            "source": "import java.net.http.*;\nimport java.net.URI;\n\nHttpClient client = HttpClient.newHttpClient();\n\nString json = \"\"\"{\n  \"application_id\": 123,\n  \"attachment_type\": \"INVOICE_EQUIPMENT\",\n  \"filename\": \"invoice.pdf\",\n  \"contentType\": \"application/pdf\"\n}\"\"\";\n\nHttpRequest request = HttpRequest.newBuilder()\n    .uri(URI.create(\"https://api.leap.energy/alpha/applications/attachments?refID=ref-abc123\"))\n    .header(\"Content-Type\", \"application/json\")\n    .POST(HttpRequest.BodyPublishers.ofString(json))\n    .build();\n\nHttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());\nSystem.out.println(response.body());"
+          },
+          {
+            "lang": "ruby",
+            "label": "Ruby",
+            "source": "require 'net/http'\nrequire 'json'\n\nuri = URI('https://api.leap.energy/alpha/applications/attachments?refID=ref-abc123')\n\npayload = {\n  application_id: 123,\n  attachment_type: 'INVOICE_EQUIPMENT',\n  filename: 'invoice.pdf',\n  contentType: 'application/pdf'\n}\n\nhttp = Net::HTTP.new(uri.host, uri.port)\nhttp.use_ssl = true\n\nrequest = Net::HTTP::Post.new(uri)\nrequest['Content-Type'] = 'application/json'\nrequest.body = payload.to_json\n\nresponse = http.request(request)\nputs JSON.parse(response.body)"
+          },
+          {
+            "lang": "go",
+            "label": "Go",
+            "source": "package main\n\nimport (\n\t\"bytes\"\n\t\"encoding/json\"\n\t\"fmt\"\n\t\"net/http\"\n)\n\nfunc main() {\n\turl := \"https://api.leap.energy/alpha/applications/attachments?refID=ref-abc123\"\n\n\tpayload := map[string]interface{}{\n\t\t\"application_id\":   123,\n\t\t\"attachment_type\": \"INVOICE_EQUIPMENT\",\n\t\t\"filename\":        \"invoice.pdf\",\n\t\t\"contentType\":     \"application/pdf\",\n\t}\n\n\tjsonData, _ := json.Marshal(payload)\n\treq, _ := http.NewRequest(\"POST\", url, bytes.NewBuffer(jsonData))\n\treq.Header.Set(\"Content-Type\", \"application/json\")\n\n\tclient := &http.Client{}\n\tresp, _ := client.Do(req)\n\tdefer resp.Body.Close()\n\n\tvar result map[string]interface{}\n\tjson.NewDecoder(resp.Body).Decode(&result)\n\tfmt.Println(result)\n}"
+          }
         ],
         "parameters": [
           {
@@ -602,9 +801,9 @@
             "description": "Reference ID used to identify the application. Should match the reference_id provided when creating the application.",
             "required": true,
             "schema": {
-              "type": "string",
-              "example": "ref-12345"
-            }
+              "type": "string"
+            },
+            "example": "ref-abc123"
           }
         ],
         "requestBody": {
@@ -699,13 +898,51 @@
         }
       }
     },
-    "/application/attachments/commit": {
+    "/applications/attachments/commit": {
       "post": {
         "summary": "Commit uploaded attachment",
         "description": "Commits an attachment after the file has been successfully uploaded to the signed URL from the create endpoint.\n\nThis endpoint does **not** require API key authentication - it uses the anonymous key.",
         "operationId": "commitAttachment",
+        "security": [],
         "tags": [
           "Applications"
+        ],
+        "x-codeSamples": [
+          {
+            "lang": "curl",
+            "label": "cURL",
+            "source": "curl -X POST \\\n  \"https://api.leap.energy/alpha/applications/attachments/commit?refID=ref-abc123\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"application_id\": 123,\n    \"attachment_type\": \"INVOICE_EQUIPMENT\",\n    \"path\": \"ref-abc123/123/uuid-invoice.pdf\",\n    \"makePublic\": true\n  }'"
+          },
+          {
+            "lang": "python",
+            "label": "Python",
+            "source": "import requests\n\nurl = \"https://api.leap.energy/alpha/applications/attachments/commit?refID=ref-abc123\"\n\npayload = {\n    \"application_id\": 123,\n    \"attachment_type\": \"INVOICE_EQUIPMENT\",\n    \"path\": \"ref-abc123/123/uuid-invoice.pdf\",\n    \"makePublic\": True\n}\n\nheaders = {\"Content-Type\": \"application/json\"}\n\nresponse = requests.post(url, json=payload, headers=headers)\nprint(response.json())"
+          },
+          {
+            "lang": "javascript",
+            "label": "JavaScript",
+            "source": "const response = await fetch(\n  'https://api.leap.energy/alpha/applications/attachments/commit?refID=ref-abc123',\n  {\n    method: 'POST',\n    headers: {\n      'Content-Type': 'application/json'\n    },\n    body: JSON.stringify({\n      application_id: 123,\n      attachment_type: 'INVOICE_EQUIPMENT',\n      path: 'ref-abc123/123/uuid-invoice.pdf',\n      makePublic: true\n    })\n  }\n);\n\nconst data = await response.json();\nconsole.log(data);"
+          },
+          {
+            "lang": "php",
+            "label": "PHP",
+            "source": "<?php\n\n$url = 'https://api.leap.energy/alpha/applications/attachments/commit?refID=ref-abc123';\n\n$payload = [\n    'application_id' => 123,\n    'attachment_type' => 'INVOICE_EQUIPMENT',\n    'path' => 'ref-abc123/123/uuid-invoice.pdf',\n    'makePublic' => true\n];\n\n$ch = curl_init($url);\ncurl_setopt($ch, CURLOPT_POST, true);\ncurl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));\ncurl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);\ncurl_setopt($ch, CURLOPT_RETURNTRANSFER, true);\n\n$response = curl_exec($ch);\ncurl_close($ch);\n\nprint_r(json_decode($response, true));"
+          },
+          {
+            "lang": "java",
+            "label": "Java",
+            "source": "import java.net.http.*;\nimport java.net.URI;\n\nHttpClient client = HttpClient.newHttpClient();\n\nString json = \"\"\"{\n  \"application_id\": 123,\n  \"attachment_type\": \"INVOICE_EQUIPMENT\",\n  \"path\": \"ref-abc123/123/uuid-invoice.pdf\",\n  \"makePublic\": true\n}\"\"\";\n\nHttpRequest request = HttpRequest.newBuilder()\n    .uri(URI.create(\"https://api.leap.energy/alpha/applications/attachments/commit?refID=ref-abc123\"))\n    .header(\"Content-Type\", \"application/json\")\n    .POST(HttpRequest.BodyPublishers.ofString(json))\n    .build();\n\nHttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());\nSystem.out.println(response.body());"
+          },
+          {
+            "lang": "ruby",
+            "label": "Ruby",
+            "source": "require 'net/http'\nrequire 'json'\n\nuri = URI('https://api.leap.energy/alpha/applications/attachments/commit?refID=ref-abc123')\n\npayload = {\n  application_id: 123,\n  attachment_type: 'INVOICE_EQUIPMENT',\n  path: 'ref-abc123/123/uuid-invoice.pdf',\n  makePublic: true\n}\n\nhttp = Net::HTTP.new(uri.host, uri.port)\nhttp.use_ssl = true\n\nrequest = Net::HTTP::Post.new(uri)\nrequest['Content-Type'] = 'application/json'\nrequest.body = payload.to_json\n\nresponse = http.request(request)\nputs JSON.parse(response.body)"
+          },
+          {
+            "lang": "go",
+            "label": "Go",
+            "source": "package main\n\nimport (\n\t\"bytes\"\n\t\"encoding/json\"\n\t\"fmt\"\n\t\"net/http\"\n)\n\nfunc main() {\n\turl := \"https://api.leap.energy/alpha/applications/attachments/commit?refID=ref-abc123\"\n\n\tpayload := map[string]interface{}{\n\t\t\"application_id\":   123,\n\t\t\"attachment_type\": \"INVOICE_EQUIPMENT\",\n\t\t\"path\":            \"ref-abc123/123/uuid-invoice.pdf\",\n\t\t\"makePublic\":      true,\n\t}\n\n\tjsonData, _ := json.Marshal(payload)\n\treq, _ := http.NewRequest(\"POST\", url, bytes.NewBuffer(jsonData))\n\treq.Header.Set(\"Content-Type\", \"application/json\")\n\n\tclient := &http.Client{}\n\tresp, _ := client.Do(req)\n\tdefer resp.Body.Close()\n\n\tvar result map[string]interface{}\n\tjson.NewDecoder(resp.Body).Decode(&result)\n\tfmt.Println(result)\n}"
+          }
         ],
         "parameters": [
           {
@@ -714,9 +951,9 @@
             "description": "Reference ID used to identify the application. Should match the reference_id provided when creating the application.",
             "required": true,
             "schema": {
-              "type": "string",
-              "example": "ref-12345"
-            }
+              "type": "string"
+            },
+            "example": "ref-abc123"
           }
         ],
         "requestBody": {
@@ -1931,8 +2168,38 @@
       },
       "ApplicationPatchRequest": {
         "type": "object",
-        "description": "Request body for partially updating an application.\nAll fields are optional - only include fields you want to modify.\nOmitted fields will keep their current values.\n",
+        "description": "Request body for bulk updating applications via reference ID.\nAll top-level fields are optional - only include sections you want to modify.\n",
         "properties": {
+          "customer": {
+            "$ref": "#/components/schemas/CustomerPatchRequest",
+            "description": "Customer fields to update (optional)"
+          },
+          "customer_devices": {
+            "type": "array",
+            "description": "Array of customer devices to update. Each device must include 'id' or 'customer_device_id' to identify the device. Updates only - no inserts.",
+            "items": {
+              "$ref": "#/components/schemas/CustomerDevicePatchRequest"
+            }
+          },
+          "applications": {
+            "type": "array",
+            "description": "Array of applications to update. Each application must include 'id' to identify it.",
+            "items": {
+              "$ref": "#/components/schemas/ApplicationFieldsUpdate"
+            }
+          }
+        }
+      },
+      "ApplicationFieldsUpdate": {
+        "type": "object",
+        "required": ["id"],
+        "description": "Application fields to update. 'id' is required to identify which application to update.",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Application ID to update (required)",
+            "example": 123
+          },
           "rebate_type": {
             "type": "string",
             "nullable": true,
@@ -1952,13 +2219,15 @@
             "type": "string",
             "format": "date",
             "nullable": true,
-            "description": "Date the application was submitted"
+            "description": "Date the application was submitted",
+            "example": "2025-01-20"
           },
           "approval_date": {
             "type": "string",
             "format": "date",
             "nullable": true,
-            "description": "Date the application was approved"
+            "description": "Date the application was approved",
+            "example": "2025-01-25"
           },
           "total_requested_amount": {
             "type": "number",
@@ -1994,7 +2263,6 @@
           },
           "contractor_sig_date": {
             "type": "string",
-            "format": "date",
             "nullable": true,
             "description": "Date of contractor signature"
           },
@@ -2017,6 +2285,7 @@
           },
           "income_backup_onfile": {
             "type": "boolean",
+            "nullable": true,
             "description": "Whether income verification documentation is on file"
           },
           "neat_sir_verified": {
@@ -2037,10 +2306,12 @@
           },
           "authorize_contractor": {
             "type": "boolean",
+            "nullable": true,
             "description": "Authorization to pay contractor directly"
           },
           "authorize_payee": {
             "type": "boolean",
+            "nullable": true,
             "description": "Authorization to pay specified payee"
           },
           "utility_account_attestation": {
@@ -2076,8 +2347,13 @@
             "nullable": true,
             "description": "Whether all utility documentation is complete"
           },
-          "customer": {
-            "$ref": "#/components/schemas/CustomerPatchRequest"
+          "customer_device_id": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "nullable": true,
+            "description": "Array of customer device IDs associated with this application"
           }
         }
       },
@@ -2244,12 +2520,19 @@
       },
       "CustomerDevicePatchRequest": {
         "type": "object",
-        "description": "Customer device information to partially update or create.\n- Include `id` field to update an existing customer_device\n- Omit `id` field to create a new customer_device\n- All other fields are optional for updates\n",
+        "description": "Customer device information to update.\n- Must include 'id' or 'customer_device_id' to identify the device\n- UPDATE ONLY - no inserts allowed\n- All other fields are optional\n",
         "properties": {
           "id": {
             "type": "integer",
-            "description": "ID of existing customer device (omit to create new)",
-            "nullable": true
+            "description": "ID of existing customer device (alias for customer_device_id)",
+            "nullable": true,
+            "example": 78
+          },
+          "customer_device_id": {
+            "type": "integer",
+            "description": "ID of existing customer device (alias for id)",
+            "nullable": true,
+            "example": 78
           },
           "device_id": {
             "type": "integer",

@@ -1,7 +1,7 @@
 ---
 title: 'Update Application'
 description: 'Bulk update applications using reference ID. Supports updating customer information, customer devices, and application fields.'
-openapi: 'PATCH /application'
+openapi: 'PATCH /applications'
 ---
 
 <Note>
@@ -12,10 +12,142 @@ Use the `refID` query parameter to specify which application(s) to update. The `
 Set `dryRun=true` to validate the request without applying changes.
 </Note>
 
-## Bulk Updates
+## Query Parameters
 
-This endpoint supports updating multiple applications in a single request by providing an array of application objects in the request body. All updates are processed within a single transaction.
+- `refID` (required): Reference ID to resolve customer_id
+- `dryRun` (optional): true/false - if true, validates without making changes
 
-## Reference ID
+## Example Request (Dry Run)
 
-The `refID` query parameter is used to identify the application(s) to update. This should match the `reference_id` that was provided when the application was initially created via the Connect URL flow.
+```bash
+curl -X PATCH \
+  "https://your-project.supabase.co/functions/v1/applications?refID=ref-abc123&dryRun=true" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "customer": {
+      "email": "newemail@example.com",
+      "phone": "+15559876543"
+    },
+    "customer_devices": [
+      {
+        "customer_device_id": 78,
+        "inspection_passed": true,
+        "permit_number": "PERMIT-2025-001"
+      }
+    ],
+    "applications": [
+      {
+        "id": 123,
+        "status": "submitted",
+        "submission_date": "2025-01-20"
+      }
+    ]
+  }'
+```
+
+## Example Response - Dry Run
+
+```json
+{
+  "ok": true,
+  "requestId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "dryRun": true,
+  "refID": "ref-abc123",
+  "customer_id": 456,
+  "validations": {
+    "applications_checked": 1,
+    "devices_checked": 1,
+    "strictStatusTransitions": true
+  },
+  "wouldMutate": {
+    "customer": {
+      "email": "newemail@example.com",
+      "phone": "+15559876543"
+    },
+    "customer_devices": [
+      {
+        "customer_device_id": 10,
+        "inspection_passed": true,
+        "permit_number": "PERMIT-2025-001"
+      }
+    ],
+    "applications": [
+      {
+        "id": 123,
+        "status": "submitted",
+        "submission_date": "2025-01-20"
+      }
+    ]
+  }
+}
+```
+
+## Example Request (Real Update)
+
+```bash
+curl -X PATCH \
+  "https://your-project.supabase.co/functions/v1/applications?refID=ref-abc123" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "customer": {
+      "email": "newemail@example.com"
+    },
+    "applications": [
+      {
+        "id": 123,
+        "status": "approved",
+        "approval_date": "2025-01-25"
+      }
+    ]
+  }'
+```
+
+## Example Response - Real Update
+
+```json
+{
+  "ok": true,
+  "requestId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "refID": "ref-abc123",
+  "customer_id": 456,
+  "mutations": {
+    "customer_id": 456,
+    "customer": {
+      "updated": true,
+      "fields": ["email"]
+    },
+    "applications": [
+      {
+        "id": 123,
+        "action": "updated",
+        "fields": ["status", "approval_date"]
+      }
+    ]
+  },
+  "data": {
+    "customer_id": 456,
+    "customer": {
+      "id": 456,
+      "first_name": "Jane",
+      "last_name": "Doe",
+      "email": "newemail@example.com",
+      "customer_devices": [
+        {
+          "id": 10,
+          "customer_id": 456,
+          "device_id": 5,
+          "quantity": 1
+        }
+      ]
+    },
+    "applications": [
+      {
+        "id": 123,
+        "customer_id": 456,
+        "status": "approved",
+        "approval_date": "2025-01-25"
+      }
+    ]
+  }
+}
+```

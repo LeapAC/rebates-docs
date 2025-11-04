@@ -264,7 +264,7 @@ Provide information to complete the customer's application.
 Search for applications in `awaiting_partner` status.
 
 ```http
-GET /application/applications?application_status=awaiting_partner
+GET /applications?application_status=awaiting_partner
 Authorization: Bearer YOUR_API_KEY
 ```
 
@@ -295,7 +295,7 @@ Authorization: Bearer YOUR_API_KEY
 Upload partner data using the reference ID from the application. The `refID` should match the `reference_id` you provided when creating the application.
 
 ```http
-PATCH /application?refID=ref-12345
+PATCH /applications?refID=ref-12345
 ```
 
 **Request:**

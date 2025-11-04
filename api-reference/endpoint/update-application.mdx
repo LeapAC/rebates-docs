@@ -211,5 +211,11 @@ curl -X PATCH \
 ```
 
 <Tip>
-**Customer Devices:** Each device in `customer_devices` must include `id`. Devices are **update-only** - no inserts allowed. If you need to add a new device, use the appropriate creation endpoint.
+**Customer Devices:** 
+- Each device in `customer_devices` must include `id` (required, not optional)
+- The `customer_device_id` alias is no longer supported - use `id` only
+- Devices are **update-only** - no inserts allowed
+- Missing `id` will return a 400 Bad Request error
+
+If you need to add a new device, use the appropriate creation endpoint.
 </Tip>

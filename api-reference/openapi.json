@@ -147,7 +147,7 @@
       },
       "patch": {
         "summary": "Update application by application ID",
-        "description": "Updates an application identified by application ID. Supports updating application fields, customer information, and customer devices.\n\n**Authentication:**\nRequires API key authentication via `Authorization: Bearer <API_KEY>` or `x-api-key` header. The application must belong to your organization.\n\n**Application ID:**\nUse the `application_id` query parameter or path parameter to identify which application to update. The API verifies the application belongs to your organization.\n\n**Request Structure:**\nMatches the GET `/applications/{id}` response structure (without protected fields):\n- Application fields at top level (e.g., `status`, `rebate_type`, `approval_date`)\n- `customer` (optional): Customer fields to update\n- `customer_devices` (optional): Array of devices to update (must include `id` - UPDATE ONLY)\n\n**Protected Fields:**\nThe following fields cannot be updated: `id`, `customer_id`, `organization_id`, `program_id`, `created_at`, `updated_at`\n\n**Dry Run:**\nSet `dryRun=true` to validate the request without applying changes.\n\n**Partial Update Behavior:**\n- Only include fields you want to change\n- Omitted fields will keep their current values\n- Set a field to `null` to clear its value (where nullable)\n\n**Customer Devices:**\n- Must include `id` to identify the device\n- UPDATE ONLY - no inserts allowed\n\n**Status Transitions:**\nBy default, status transitions are restricted to forward progress only. Use `X-Force-Status: true` header to override.\n\nAll updates are transactional - if any part fails, the entire operation is rolled back.\n",
+        "description": "Updates an application identified by application ID. Supports updating application fields, customer information, and customer devices.\n\n**Authentication:**\nRequires API key authentication via `Authorization: Bearer <API_KEY>` or `x-api-key` header. The application must belong to your organization.\n\n**Application ID:**\nUse the `application_id` query parameter or path parameter to identify which application to update. The API verifies the application belongs to your organization.\n\n**Request Structure:**\nMatches the GET `/applications/{id}` response structure (without protected fields):\n- Application fields at top level (e.g., `status`, `rebate_type`, `approval_date`)\n- `customer` (optional): Customer fields to update\n- `customer_devices` (optional): Array of devices to update (must include `id` - UPDATE ONLY)\n\n**Protected Fields:**\nThe following fields cannot be updated: `id`, `customer_id`, `organization_id`, `program_id`, `created_at`, `updated_at`\n\n**Dry Run:**\nSet `dryRun=true` to validate the request without applying changes.\n\n**Partial Update Behavior:**\n- Only include fields you want to change\n- Omitted fields will keep their current values\n- Set a field to `null` to clear its value (where nullable)\n\n**Customer Devices:**\n- Must include `id` (required) to identify the device\n- The `customer_device_id` alias is no longer supported - use `id` only\n- UPDATE ONLY - no inserts allowed\n- Missing `id` will return 400 Bad Request with error code `invalid_body`\n\n**Status Transitions:**\nBy default, status transitions are restricted to forward progress only. Use `X-Force-Status: true` header to override.\n\nAll updates are transactional - if any part fails, the entire operation is rolled back.\n",
         "operationId": "patchApplicationById",
         "tags": [
           "Applications"
@@ -2301,7 +2301,7 @@
           },
           "customer_devices": {
             "type": "array",
-            "description": "Array of customer devices to update. Each device must include 'id' or 'customer_device_id' to identify the device. Updates only - no inserts.",
+            "description": "Array of customer devices to update. Each device must include 'id' to identify the device. Updates only - no inserts.",
             "items": {
               "$ref": "#/components/schemas/CustomerDevicePatchRequest"
             }
@@ -2721,18 +2721,12 @@
       },
       "CustomerDevicePatchRequest": {
         "type": "object",
-        "description": "Customer device information to update.\n- Must include 'id' or 'customer_device_id' to identify the device\n- UPDATE ONLY - no inserts allowed\n- All other fields are optional\n",
+        "description": "Customer device information to update.\n- Must include 'id' (required) to identify the device\n- UPDATE ONLY - no inserts allowed\n- All other fields are optional\n",
+        "required": ["id"],
         "properties": {
           "id": {
             "type": "integer",
-            "description": "ID of existing customer device (alias for customer_device_id)",
-            "nullable": true,
-            "example": 78
-          },
-          "customer_device_id": {
-            "type": "integer",
-            "description": "ID of existing customer device (alias for id)",
-            "nullable": true,
+            "description": "ID of existing customer device (required)",
             "example": 78
           },
           "device_id": {

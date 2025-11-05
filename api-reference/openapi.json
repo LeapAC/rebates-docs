@@ -24,7 +24,7 @@
     "/applications": {
       "get": {
         "summary": "Search applications",
-        "description": "Search and filter applications with optional pagination. Returns a list of applications\nmatching the specified criteria.\n",
+        "description": "Search and filter applications with optional pagination. Returns a list of applications\nmatching the specified criteria. All results are automatically filtered to applications belonging to your organization.\n\n**Authentication:**\nRequires API key authentication via `x-api-key` header.\n\n**Organization Scoping:**\nResults are automatically filtered by your organization ID. You can only access applications that belong to your organization.\n",
         "operationId": "searchApplications",
         "tags": [
           "Applications"
@@ -81,6 +81,23 @@
               "maximum": 100,
               "example": 50
             }
+          }
+        ],
+        "x-codeSamples": [
+          {
+            "lang": "curl",
+            "label": "cURL",
+            "source": "curl -X GET \\\n  \"https://api.leap.energy/alpha/applications?application_status=awaiting_partner&limit=50\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -H \"Content-Type: application/json\""
+          },
+          {
+            "lang": "python",
+            "label": "Python",
+            "source": "import requests\n\nurl = \"https://api.leap.energy/alpha/applications\"\nparams = {\n    \"application_status\": \"awaiting_partner\",\n    \"limit\": 50\n}\nheaders = {\n    \"x-api-key\": \"YOUR_API_KEY\",\n    \"Content-Type\": \"application/json\"\n}\n\nresponse = requests.get(url, params=params, headers=headers)\nprint(response.json())"
+          },
+          {
+            "lang": "javascript",
+            "label": "JavaScript",
+            "source": "const response = await fetch(\n  'https://api.leap.energy/alpha/applications?application_status=awaiting_partner&limit=50',\n  {\n    method: 'GET',\n    headers: {\n      'x-api-key': 'YOUR_API_KEY',\n      'Content-Type': 'application/json'\n    }\n  }\n);\n\nconst data = await response.json();\nconsole.log(data);"
           }
         ],
         "responses": {
@@ -140,6 +157,21 @@
           "401": {
             "$ref": "#/components/responses/UnauthorizedError"
           },
+          "403": {
+            "description": "Application not in your organization",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "code": "forbidden",
+                  "message": "Application not in your organization",
+                  "requestId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                }
+              }
+            }
+          },
           "500": {
             "$ref": "#/components/responses/InternalServerError"
           }
@@ -147,7 +179,7 @@
       },
       "patch": {
         "summary": "Update application by application ID",
-        "description": "Updates an application identified by application ID. Supports updating application fields, customer information, and customer devices.\n\n**Authentication:**\nRequires API key authentication via `Authorization: Bearer <API_KEY>` or `x-api-key` header. The application must belong to your organization.\n\n**Application ID:**\nUse the `application_id` query parameter or path parameter to identify which application to update. The API verifies the application belongs to your organization.\n\n**Request Structure:**\nMatches the GET `/applications/{id}` response structure (without protected fields):\n- Application fields at top level (e.g., `status`, `rebate_type`, `approval_date`)\n- `customer` (optional): Customer fields to update\n- `customer_devices` (optional): Array of devices to update (must include `id` - UPDATE ONLY)\n\n**Protected Fields:**\nThe following fields cannot be updated: `id`, `customer_id`, `organization_id`, `program_id`, `created_at`, `updated_at`\n\n**Dry Run:**\nSet `dryRun=true` to validate the request without applying changes.\n\n**Partial Update Behavior:**\n- Only include fields you want to change\n- Omitted fields will keep their current values\n- Set a field to `null` to clear its value (where nullable)\n\n**Customer Devices:**\n- Must include `id` (required) to identify the device\n- The `customer_device_id` alias is no longer supported - use `id` only\n- UPDATE ONLY - no inserts allowed\n- Missing `id` will return 400 Bad Request with error code `invalid_body`\n\n**Status Transitions:**\nBy default, status transitions are restricted to forward progress only. Use `X-Force-Status: true` header to override.\n\nAll updates are transactional - if any part fails, the entire operation is rolled back.\n",
+        "description": "Updates an application identified by application ID. Supports updating application fields, customer information, and customer devices.\n\n**Authentication:**\nRequires API key authentication via `x-api-key` header. The application must belong to your organization.\n\n**Application ID:**\nUse the `application_id` query parameter or path parameter to identify which application to update. The API verifies the application belongs to your organization.\n\n**Request Structure:**\nMatches the GET `/applications/{id}` response structure (without protected fields):\n- Application fields at top level (e.g., `status`, `rebate_type`, `approval_date`)\n- `customer` (optional): Customer fields to update\n- `customer_devices` (optional): Array of devices to update (must include `id` - UPDATE ONLY)\n\n**Protected Fields:**\nThe following fields cannot be updated: `id`, `customer_id`, `organization_id`, `program_id`, `created_at`, `updated_at`\n\n**Dry Run:**\nSet `dryRun=true` to validate the request without applying changes.\n\n**Partial Update Behavior:**\n- Only include fields you want to change\n- Omitted fields will keep their current values\n- Set a field to `null` to clear its value (where nullable)\n\n**Customer Devices:**\n- Must include `id` (required) to identify the device\n- The `customer_device_id` alias is no longer supported - use `id` only\n- UPDATE ONLY - no inserts allowed\n- Missing `id` will return 400 Bad Request with error code `invalid_body`\n\n**Status Transitions:**\nBy default, status transitions are restricted to forward progress only. Use `X-Force-Status: true` header to override.\n\nAll updates are transactional - if any part fails, the entire operation is rolled back.\n",
         "operationId": "patchApplicationById",
         "tags": [
           "Applications"
@@ -156,47 +188,47 @@
           {
             "lang": "curl",
             "label": "cURL",
-            "source": "curl -X PATCH \\\n  \"https://api.leap.energy/alpha/applications?application_id=123\" \\\n  -H \"Authorization: Bearer YOUR_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"status\": \"approved\",\n    \"approval_date\": \"2025-01-25\",\n    \"customer\": {\n      \"email\": \"newemail@example.com\"\n    }\n  }'"
+            "source": "curl -X PATCH \\\n  \"https://api.leap.energy/alpha/applications?application_id=123\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"status\": \"approved\",\n    \"approval_date\": \"2025-01-25\",\n    \"customer\": {\n      \"email\": \"newemail@example.com\"\n    }\n  }'"
           },
           {
             "lang": "python",
             "label": "Python",
-            "source": "import requests\n\nurl = \"https://api.leap.energy/alpha/applications?application_id=123\"\n\npayload = {\n    \"status\": \"approved\",\n    \"approval_date\": \"2025-01-25\",\n    \"customer\": {\n        \"email\": \"newemail@example.com\"\n    }\n}\n\nheaders = {\n    \"Authorization\": \"Bearer YOUR_API_KEY\",\n    \"Content-Type\": \"application/json\"\n}\n\nresponse = requests.patch(url, json=payload, headers=headers)\nprint(response.json())"
+            "source": "import requests\n\nurl = \"https://api.leap.energy/alpha/applications?application_id=123\"\n\npayload = {\n    \"status\": \"approved\",\n    \"approval_date\": \"2025-01-25\",\n    \"customer\": {\n        \"email\": \"newemail@example.com\"\n    }\n}\n\nheaders = {\n    \"x-api-key\": \"YOUR_API_KEY\",\n    \"Content-Type\": \"application/json\"\n}\n\nresponse = requests.patch(url, json=payload, headers=headers)\nprint(response.json())"
           },
           {
             "lang": "javascript",
             "label": "JavaScript",
-            "source": "const response = await fetch(\n  'https://api.leap.energy/alpha/applications?application_id=123',\n  {\n    method: 'PATCH',\n    headers: {\n      'Authorization': 'Bearer YOUR_API_KEY',\n      'Content-Type': 'application/json'\n    },\n    body: JSON.stringify({\n      status: 'approved',\n      approval_date: '2025-01-25',\n      customer: {\n        email: 'newemail@example.com'\n      }\n    })\n  }\n);\n\nconst data = await response.json();\nconsole.log(data);"
+            "source": "const response = await fetch(\n  'https://api.leap.energy/alpha/applications?application_id=123',\n  {\n    method: 'PATCH',\n    headers: {\n      'x-api-key': 'YOUR_API_KEY',\n      'Content-Type': 'application/json'\n    },\n    body: JSON.stringify({\n      status: 'approved',\n      approval_date: '2025-01-25',\n      customer: {\n        email: 'newemail@example.com'\n      }\n    })\n  }\n);\n\nconst data = await response.json();\nconsole.log(data);"
           },
           {
             "lang": "node",
             "label": "Node.js",
-            "source": "const axios = require('axios');\n\nconst url = 'https://api.leap.energy/alpha/applications?application_id=123';\n\nconst payload = {\n  status: 'approved',\n  approval_date: '2025-01-25',\n  customer: {\n    email: 'newemail@example.com'\n  }\n};\n\nconst response = await axios.patch(url, payload, {\n  headers: {\n    'Authorization': 'Bearer YOUR_API_KEY',\n    'Content-Type': 'application/json'\n  }\n});\n\nconsole.log(response.data);"
+            "source": "const axios = require('axios');\n\nconst url = 'https://api.leap.energy/alpha/applications?application_id=123';\n\nconst payload = {\n  status: 'approved',\n  approval_date: '2025-01-25',\n  customer: {\n    email: 'newemail@example.com'\n  }\n};\n\nconst response = await axios.patch(url, payload, {\n  headers: {\n    'x-api-key': 'YOUR_API_KEY',\n    'Content-Type': 'application/json'\n  }\n});\n\nconsole.log(response.data);"
           },
           {
             "lang": "php",
             "label": "PHP",
-            "source": "<?php\n\n$url = 'https://api.leap.energy/alpha/applications?application_id=123';\n\n$payload = [\n    'status' => 'approved',\n    'approval_date' => '2025-01-25',\n    'customer' => [\n        'email' => 'newemail@example.com'\n    ]\n];\n\n$ch = curl_init($url);\ncurl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PATCH');\ncurl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));\ncurl_setopt($ch, CURLOPT_HTTPHEADER, [\n    'Authorization: Bearer YOUR_API_KEY',\n    'Content-Type: application/json'\n]);\ncurl_setopt($ch, CURLOPT_RETURNTRANSFER, true);\n\n$response = curl_exec($ch);\ncurl_close($ch);\n\nprint_r(json_decode($response, true));"
+            "source": "<?php\n\n$url = 'https://api.leap.energy/alpha/applications?application_id=123';\n\n$payload = [\n    'status' => 'approved',\n    'approval_date' => '2025-01-25',\n    'customer' => [\n        'email' => 'newemail@example.com'\n    ]\n];\n\n$ch = curl_init($url);\ncurl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PATCH');\ncurl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));\ncurl_setopt($ch, CURLOPT_HTTPHEADER, [\n    'x-api-key: YOUR_API_KEY',\n    'Content-Type: application/json'\n]);\ncurl_setopt($ch, CURLOPT_RETURNTRANSFER, true);\n\n$response = curl_exec($ch);\ncurl_close($ch);\n\nprint_r(json_decode($response, true));"
           },
           {
             "lang": "java",
             "label": "Java",
-            "source": "import java.net.http.*;\nimport java.net.URI;\n\nHttpClient client = HttpClient.newHttpClient();\n\nString json = \"\"\"{\n  \"status\": \"approved\",\n  \"approval_date\": \"2025-01-25\",\n  \"customer\": {\n    \"email\": \"newemail@example.com\"\n  }\n}\"\"\";\n\nHttpRequest request = HttpRequest.newBuilder()\n    .uri(URI.create(\"https://api.leap.energy/alpha/applications?application_id=123\"))\n    .header(\"Authorization\", \"Bearer YOUR_API_KEY\")\n    .header(\"Content-Type\", \"application/json\")\n    .method(\"PATCH\", HttpRequest.BodyPublishers.ofString(json))\n    .build();\n\nHttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());\nSystem.out.println(response.body());"
+            "source": "import java.net.http.*;\nimport java.net.URI;\n\nHttpClient client = HttpClient.newHttpClient();\n\nString json = \"\"\"{\n  \"status\": \"approved\",\n  \"approval_date\": \"2025-01-25\",\n  \"customer\": {\n    \"email\": \"newemail@example.com\"\n  }\n}\"\"\";\n\nHttpRequest request = HttpRequest.newBuilder()\n    .uri(URI.create(\"https://api.leap.energy/alpha/applications?application_id=123\"))\n    .header(\"x-api-key\", \"YOUR_API_KEY\")\n    .header(\"Content-Type\", \"application/json\")\n    .method(\"PATCH\", HttpRequest.BodyPublishers.ofString(json))\n    .build();\n\nHttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());\nSystem.out.println(response.body());"
           },
           {
             "lang": "ruby",
             "label": "Ruby",
-            "source": "require 'net/http'\nrequire 'json'\n\nuri = URI('https://api.leap.energy/alpha/applications?application_id=123')\n\npayload = {\n  status: 'approved',\n  approval_date: '2025-01-25',\n  customer: {\n    email: 'newemail@example.com'\n  }\n}\n\nhttp = Net::HTTP.new(uri.host, uri.port)\nhttp.use_ssl = true\n\nrequest = Net::HTTP::Patch.new(uri)\nrequest['Authorization'] = 'Bearer YOUR_API_KEY'\nrequest['Content-Type'] = 'application/json'\nrequest.body = payload.to_json\n\nresponse = http.request(request)\nputs JSON.parse(response.body)"
+            "source": "require 'net/http'\nrequire 'json'\n\nuri = URI('https://api.leap.energy/alpha/applications?application_id=123')\n\npayload = {\n  status: 'approved',\n  approval_date: '2025-01-25',\n  customer: {\n    email: 'newemail@example.com'\n  }\n}\n\nhttp = Net::HTTP.new(uri.host, uri.port)\nhttp.use_ssl = true\n\nrequest = Net::HTTP::Patch.new(uri)\nrequest['x-api-key'] = 'YOUR_API_KEY'\nrequest['Content-Type'] = 'application/json'\nrequest.body = payload.to_json\n\nresponse = http.request(request)\nputs JSON.parse(response.body)"
           },
           {
             "lang": "go",
             "label": "Go",
-            "source": "package main\n\nimport (\n\t\"bytes\"\n\t\"encoding/json\"\n\t\"fmt\"\n\t\"net/http\"\n)\n\nfunc main() {\n\turl := \"https://api.leap.energy/alpha/applications?application_id=123\"\n\n\tpayload := map[string]interface{}{\n\t\t\"status\":         \"approved\",\n\t\t\"approval_date\": \"2025-01-25\",\n\t\t\"customer\": map[string]interface{}{\n\t\t\t\"email\": \"newemail@example.com\",\n\t\t},\n\t}\n\n\tjsonData, _ := json.Marshal(payload)\n\treq, _ := http.NewRequest(\"PATCH\", url, bytes.NewBuffer(jsonData))\n\treq.Header.Set(\"Authorization\", \"Bearer YOUR_API_KEY\")\n\treq.Header.Set(\"Content-Type\", \"application/json\")\n\n\tclient := &http.Client{}\n\tresp, _ := client.Do(req)\n\tdefer resp.Body.Close()\n\n\tvar result map[string]interface{}\n\tjson.NewDecoder(resp.Body).Decode(&result)\n\tfmt.Println(result)\n}"
+            "source": "package main\n\nimport (\n\t\"bytes\"\n\t\"encoding/json\"\n\t\"fmt\"\n\t\"net/http\"\n)\n\nfunc main() {\n\turl := \"https://api.leap.energy/alpha/applications?application_id=123\"\n\n\tpayload := map[string]interface{}{\n\t\t\"status\":         \"approved\",\n\t\t\"approval_date\": \"2025-01-25\",\n\t\t\"customer\": map[string]interface{}{\n\t\t\t\"email\": \"newemail@example.com\",\n\t\t},\n\t}\n\n\tjsonData, _ := json.Marshal(payload)\n\treq, _ := http.NewRequest(\"PATCH\", url, bytes.NewBuffer(jsonData))\n\treq.Header.Set(\"x-api-key\", \"YOUR_API_KEY\")\n\treq.Header.Set(\"Content-Type\", \"application/json\")\n\n\tclient := &http.Client{}\n\tresp, _ := client.Do(req)\n\tdefer resp.Body.Close()\n\n\tvar result map[string]interface{}\n\tjson.NewDecoder(resp.Body).Decode(&result)\n\tfmt.Println(result)\n}"
           },
           {
             "lang": "csharp",
             "label": "C#",
-            "source": "using System;\nusing System.Net.Http;\nusing System.Text;\nusing System.Text.Json;\nusing System.Threading.Tasks;\n\nvar client = new HttpClient();\nvar url = \"https://api.leap.energy/alpha/applications?application_id=123\";\n\nvar payload = new {\n    status = \"approved\",\n    approval_date = \"2025-01-25\",\n    customer = new {\n        email = \"newemail@example.com\"\n    }\n};\n\nvar content = new StringContent(\n    JsonSerializer.Serialize(payload),\n    Encoding.UTF8,\n    \"application/json\"\n);\n\nvar request = new HttpRequestMessage(new HttpMethod(\"PATCH\"), url) {\n    Content = content\n};\nrequest.Headers.Add(\"Authorization\", \"Bearer YOUR_API_KEY\");\n\nvar response = await client.SendAsync(request);\nvar result = await response.Content.ReadAsStringAsync();\nConsole.WriteLine(result);"
+            "source": "using System;\nusing System.Net.Http;\nusing System.Text;\nusing System.Text.Json;\nusing System.Threading.Tasks;\n\nvar client = new HttpClient();\nvar url = \"https://api.leap.energy/alpha/applications?application_id=123\";\n\nvar payload = new {\n    status = \"approved\",\n    approval_date = \"2025-01-25\",\n    customer = new {\n        email = \"newemail@example.com\"\n    }\n};\n\nvar content = new StringContent(\n    JsonSerializer.Serialize(payload),\n    Encoding.UTF8,\n    \"application/json\"\n);\n\nvar request = new HttpRequestMessage(new HttpMethod(\"PATCH\"), url) {\n    Content = content\n};\nrequest.Headers.Add(\"x-api-key\", \"YOUR_API_KEY\");\n\nvar response = await client.SendAsync(request);\nvar result = await response.Content.ReadAsStringAsync();\nConsole.WriteLine(result);"
           }
         ],
         "parameters": [
@@ -453,7 +485,7 @@
     "/incentives": {
       "post": {
         "summary": "Get aggregated incentives for a customer",
-        "description": "Retrieves and aggregates incentive calculations from multiple utility programs\nbased on the customer's address and building type.\n\nThe API automatically:\n1. Creates or finds the customer based on address components\n2. Links the customer to your organization using the `reference_id`\n3. Associates the device with the customer if not already linked\n4. Identifies the utility serving the address\n5. Finds all active programs for that utility and building type\n6. Calls each program's incentive calculation function\n7. Optionally creates application records (if `create_application=true`)\n8. Aggregates and returns the results\n\n**Authentication:** Requires API key via `x-api-key` header.\n\n**Reference ID:** The `reference_id` is required and must be unique per organization. It's used to link customers to your organization and enables the PATCH endpoint to update applications later.\n",
+        "description": "Retrieves and aggregates incentive calculations from multiple utility programs\nbased on the customer's address and building type.\n\nThe API automatically:\n1. Creates or finds the customer based on address components\n2. Links the customer to your organization using the `reference_id`\n3. Associates the device with the customer if not already linked\n4. Identifies the utility serving the address\n5. Finds all active programs for that utility and building type\n6. Calls each program's incentive calculation function\n7. Optionally creates application records (if `create_application=true`)\n8. Aggregates and returns the results\n\n**Authentication:** Requires API key via `x-api-key` header.\n\n**Reference ID:** The `reference_id` is required and must be unique per organization. It's used to link customers to your organization and is returned in the response for your records. To update applications later, use the PATCH endpoint with `application_id` (requires API key authentication).\n",
         "operationId": "getAggregatedIncentives",
         "tags": [
           "Incentives"
@@ -726,7 +758,7 @@
     "/applications/{application_id}": {
       "get": {
         "summary": "Get an application by ID",
-        "description": "Retrieves a complete application including customer information and all associated\ncustomer devices. The response includes nested customer and device data.\n",
+        "description": "Retrieves a complete application including customer information and all associated\ncustomer devices. The response includes nested customer and device data.\n\n**Authentication:**\nRequires API key authentication via `x-api-key` header.\n\n**Organization Verification:**\nThe application must belong to your organization. Returns 403 Forbidden if the application belongs to a different organization.\n",
         "operationId": "getApplication",
         "tags": [
           "Applications"
@@ -741,6 +773,23 @@
               "type": "integer",
               "example": 123
             }
+          }
+        ],
+        "x-codeSamples": [
+          {
+            "lang": "curl",
+            "label": "cURL",
+            "source": "curl -X GET \\\n  \"https://api.leap.energy/alpha/applications/123\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -H \"Content-Type: application/json\""
+          },
+          {
+            "lang": "python",
+            "label": "Python",
+            "source": "import requests\n\nurl = \"https://api.leap.energy/alpha/applications/123\"\nheaders = {\n    \"x-api-key\": \"YOUR_API_KEY\",\n    \"Content-Type\": \"application/json\"\n}\n\nresponse = requests.get(url, headers=headers)\nprint(response.json())"
+          },
+          {
+            "lang": "javascript",
+            "label": "JavaScript",
+            "source": "const response = await fetch(\n  'https://api.leap.energy/alpha/applications/123',\n  {\n    method: 'GET',\n    headers: {\n      'x-api-key': 'YOUR_API_KEY',\n      'Content-Type': 'application/json'\n    }\n  }\n);\n\nconst data = await response.json();\nconsole.log(data);"
           }
         ],
         "responses": {
@@ -809,6 +858,24 @@
               }
             }
           },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "description": "Application not in your organization",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "code": "forbidden",
+                  "message": "Application not in your organization",
+                  "requestId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Application not found",
             "content": {
@@ -819,19 +886,16 @@
               }
             }
           },
-          "401": {
-            "$ref": "#/components/responses/UnauthorizedError"
-          },
           "500": {
             "$ref": "#/components/responses/InternalServerError"
           }
         }
-      }
-    },
+        }
+      },
     "/applications/attachments": {
       "post": {
         "summary": "Create signed upload URL for attachment",
-        "description": "Creates a signed upload URL for uploading an attachment to the application. After receiving the signed URL, upload the file using a PUT request, then commit using the commit endpoint.\n\n**Authentication:**\nRequires API key authentication via `Authorization: Bearer <API_KEY>` or `x-api-key` header. The application must belong to your organization.\n\n**Application ID:**\nUse the `application_id` query parameter to identify which application to attach the file to. The API verifies the application belongs to your organization.",
+        "description": "Creates a signed upload URL for uploading an attachment to the application. After receiving the signed URL, upload the file using a PUT request, then commit using the commit endpoint.\n\n**Authentication:**\nRequires API key authentication via `x-api-key` header. The application must belong to your organization.\n\n**Application ID:**\nUse the `application_id` query parameter to identify which application to attach the file to. The API verifies the application belongs to your organization.",
         "operationId": "createAttachmentUploadUrl",
         "tags": [
           "Applications"
@@ -840,37 +904,37 @@
           {
             "lang": "curl",
             "label": "cURL",
-            "source": "curl -X POST \\\n  \"https://api.leap.energy/alpha/applications/attachments?application_id=123\" \\\n  -H \"Authorization: Bearer YOUR_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"attachment_type\": \"INVOICE_EQUIPMENT\",\n    \"filename\": \"invoice.pdf\",\n    \"contentType\": \"application/pdf\"\n  }'"
+            "source": "curl -X POST \\\n  \"https://api.leap.energy/alpha/applications/attachments?application_id=123\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"attachment_type\": \"INVOICE_EQUIPMENT\",\n    \"filename\": \"invoice.pdf\",\n    \"contentType\": \"application/pdf\"\n  }'"
           },
           {
             "lang": "python",
             "label": "Python",
-            "source": "import requests\n\nurl = \"https://api.leap.energy/alpha/applications/attachments?application_id=123\"\n\npayload = {\n    \"attachment_type\": \"INVOICE_EQUIPMENT\",\n    \"filename\": \"invoice.pdf\",\n    \"contentType\": \"application/pdf\"\n}\n\nheaders = {\n    \"Authorization\": \"Bearer YOUR_API_KEY\",\n    \"Content-Type\": \"application/json\"\n}\n\nresponse = requests.post(url, json=payload, headers=headers)\nprint(response.json())"
+            "source": "import requests\n\nurl = \"https://api.leap.energy/alpha/applications/attachments?application_id=123\"\n\npayload = {\n    \"attachment_type\": \"INVOICE_EQUIPMENT\",\n    \"filename\": \"invoice.pdf\",\n    \"contentType\": \"application/pdf\"\n}\n\nheaders = {\n    \"x-api-key\": \"YOUR_API_KEY\",\n    \"Content-Type\": \"application/json\"\n}\n\nresponse = requests.post(url, json=payload, headers=headers)\nprint(response.json())"
           },
           {
             "lang": "javascript",
             "label": "JavaScript",
-            "source": "const response = await fetch(\n  'https://api.leap.energy/alpha/applications/attachments?application_id=123',\n  {\n    method: 'POST',\n    headers: {\n      'Authorization': 'Bearer YOUR_API_KEY',\n      'Content-Type': 'application/json'\n    },\n    body: JSON.stringify({\n      attachment_type: 'INVOICE_EQUIPMENT',\n      filename: 'invoice.pdf',\n      contentType: 'application/pdf'\n    })\n  }\n);\n\nconst data = await response.json();\nconsole.log(data);"
+            "source": "const response = await fetch(\n  'https://api.leap.energy/alpha/applications/attachments?application_id=123',\n  {\n    method: 'POST',\n    headers: {\n      'x-api-key': 'YOUR_API_KEY',\n      'Content-Type': 'application/json'\n    },\n    body: JSON.stringify({\n      attachment_type: 'INVOICE_EQUIPMENT',\n      filename: 'invoice.pdf',\n      contentType: 'application/pdf'\n    })\n  }\n);\n\nconst data = await response.json();\nconsole.log(data);"
           },
           {
             "lang": "php",
             "label": "PHP",
-            "source": "<?php\n\n$url = 'https://api.leap.energy/alpha/applications/attachments?application_id=123';\n\n$payload = [\n    'attachment_type' => 'INVOICE_EQUIPMENT',\n    'filename' => 'invoice.pdf',\n    'contentType' => 'application/pdf'\n];\n\n$ch = curl_init($url);\ncurl_setopt($ch, CURLOPT_POST, true);\ncurl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));\ncurl_setopt($ch, CURLOPT_HTTPHEADER, [\n    'Authorization: Bearer YOUR_API_KEY',\n    'Content-Type: application/json'\n]);\ncurl_setopt($ch, CURLOPT_RETURNTRANSFER, true);\n\n$response = curl_exec($ch);\ncurl_close($ch);\n\nprint_r(json_decode($response, true));"
+            "source": "<?php\n\n$url = 'https://api.leap.energy/alpha/applications/attachments?application_id=123';\n\n$payload = [\n    'attachment_type' => 'INVOICE_EQUIPMENT',\n    'filename' => 'invoice.pdf',\n    'contentType' => 'application/pdf'\n];\n\n$ch = curl_init($url);\ncurl_setopt($ch, CURLOPT_POST, true);\ncurl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));\ncurl_setopt($ch, CURLOPT_HTTPHEADER, [\n    'x-api-key: YOUR_API_KEY',\n    'Content-Type: application/json'\n]);\ncurl_setopt($ch, CURLOPT_RETURNTRANSFER, true);\n\n$response = curl_exec($ch);\ncurl_close($ch);\n\nprint_r(json_decode($response, true));"
           },
           {
             "lang": "java",
             "label": "Java",
-            "source": "import java.net.http.*;\nimport java.net.URI;\n\nHttpClient client = HttpClient.newHttpClient();\n\nString json = \"\"\"{\n  \"attachment_type\": \"INVOICE_EQUIPMENT\",\n  \"filename\": \"invoice.pdf\",\n  \"contentType\": \"application/pdf\"\n}\"\"\";\n\nHttpRequest request = HttpRequest.newBuilder()\n    .uri(URI.create(\"https://api.leap.energy/alpha/applications/attachments?application_id=123\"))\n    .header(\"Authorization\", \"Bearer YOUR_API_KEY\")\n    .header(\"Content-Type\", \"application/json\")\n    .POST(HttpRequest.BodyPublishers.ofString(json))\n    .build();\n\nHttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());\nSystem.out.println(response.body());"
+            "source": "import java.net.http.*;\nimport java.net.URI;\n\nHttpClient client = HttpClient.newHttpClient();\n\nString json = \"\"\"{\n  \"attachment_type\": \"INVOICE_EQUIPMENT\",\n  \"filename\": \"invoice.pdf\",\n  \"contentType\": \"application/pdf\"\n}\"\"\";\n\nHttpRequest request = HttpRequest.newBuilder()\n    .uri(URI.create(\"https://api.leap.energy/alpha/applications/attachments?application_id=123\"))\n    .header(\"x-api-key\", \"YOUR_API_KEY\")\n    .header(\"Content-Type\", \"application/json\")\n    .POST(HttpRequest.BodyPublishers.ofString(json))\n    .build();\n\nHttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());\nSystem.out.println(response.body());"
           },
           {
             "lang": "ruby",
             "label": "Ruby",
-            "source": "require 'net/http'\nrequire 'json'\n\nuri = URI('https://api.leap.energy/alpha/applications/attachments?application_id=123')\n\npayload = {\n  attachment_type: 'INVOICE_EQUIPMENT',\n  filename: 'invoice.pdf',\n  contentType: 'application/pdf'\n}\n\nhttp = Net::HTTP.new(uri.host, uri.port)\nhttp.use_ssl = true\n\nrequest = Net::HTTP::Post.new(uri)\nrequest['Authorization'] = 'Bearer YOUR_API_KEY'\nrequest['Content-Type'] = 'application/json'\nrequest.body = payload.to_json\n\nresponse = http.request(request)\nputs JSON.parse(response.body)"
+            "source": "require 'net/http'\nrequire 'json'\n\nuri = URI('https://api.leap.energy/alpha/applications/attachments?application_id=123')\n\npayload = {\n  attachment_type: 'INVOICE_EQUIPMENT',\n  filename: 'invoice.pdf',\n  contentType: 'application/pdf'\n}\n\nhttp = Net::HTTP.new(uri.host, uri.port)\nhttp.use_ssl = true\n\nrequest = Net::HTTP::Post.new(uri)\nrequest['x-api-key'] = 'YOUR_API_KEY'\nrequest['Content-Type'] = 'application/json'\nrequest.body = payload.to_json\n\nresponse = http.request(request)\nputs JSON.parse(response.body)"
           },
           {
             "lang": "go",
             "label": "Go",
-            "source": "package main\n\nimport (\n\t\"bytes\"\n\t\"encoding/json\"\n\t\"fmt\"\n\t\"net/http\"\n)\n\nfunc main() {\n\turl := \"https://api.leap.energy/alpha/applications/attachments?application_id=123\"\n\n\tpayload := map[string]interface{}{\n\t\t\"attachment_type\": \"INVOICE_EQUIPMENT\",\n\t\t\"filename\":        \"invoice.pdf\",\n\t\t\"contentType\":     \"application/pdf\",\n\t}\n\n\tjsonData, _ := json.Marshal(payload)\n\treq, _ := http.NewRequest(\"POST\", url, bytes.NewBuffer(jsonData))\n\treq.Header.Set(\"Authorization\", \"Bearer YOUR_API_KEY\")\n\treq.Header.Set(\"Content-Type\", \"application/json\")\n\n\tclient := &http.Client{}\n\tresp, _ := client.Do(req)\n\tdefer resp.Body.Close()\n\n\tvar result map[string]interface{}\n\tjson.NewDecoder(resp.Body).Decode(&result)\n\tfmt.Println(result)\n}"
+            "source": "package main\n\nimport (\n\t\"bytes\"\n\t\"encoding/json\"\n\t\"fmt\"\n\t\"net/http\"\n)\n\nfunc main() {\n\turl := \"https://api.leap.energy/alpha/applications/attachments?application_id=123\"\n\n\tpayload := map[string]interface{}{\n\t\t\"attachment_type\": \"INVOICE_EQUIPMENT\",\n\t\t\"filename\":        \"invoice.pdf\",\n\t\t\"contentType\":     \"application/pdf\",\n\t}\n\n\tjsonData, _ := json.Marshal(payload)\n\treq, _ := http.NewRequest(\"POST\", url, bytes.NewBuffer(jsonData))\n\treq.Header.Set(\"x-api-key\", \"YOUR_API_KEY\")\n\treq.Header.Set(\"Content-Type\", \"application/json\")\n\n\tclient := &http.Client{}\n\tresp, _ := client.Do(req)\n\tdefer resp.Body.Close()\n\n\tvar result map[string]interface{}\n\tjson.NewDecoder(resp.Body).Decode(&result)\n\tfmt.Println(result)\n}"
           }
         ],
         "parameters": [
@@ -882,7 +946,7 @@
             "schema": {
               "type": "integer"
             },
-            "example": 123
+              "example": 123
           }
         ],
         "requestBody": {
@@ -990,7 +1054,7 @@
     "/applications/attachments/commit": {
       "post": {
         "summary": "Commit uploaded attachment",
-        "description": "Commits an attachment after the file has been successfully uploaded to the signed URL from the create endpoint.\n\n**Authentication:**\nRequires API key authentication via `Authorization: Bearer <API_KEY>` or `x-api-key` header. The application must belong to your organization.\n\n**Application ID:**\nUse the `application_id` query parameter to identify which application the attachment belongs to. The API verifies the application belongs to your organization.\n\n**Path Format:**\nFor organization authentication, the path should use the `app-{application_id}/` prefix format (e.g., `app-123/uuid-filename.pdf`).",
+        "description": "Commits an attachment after the file has been successfully uploaded to the signed URL from the create endpoint.\n\n**Authentication:**\nRequires API key authentication via `x-api-key` header. The application must belong to your organization.\n\n**Application ID:**\nUse the `application_id` query parameter to identify which application the attachment belongs to. The API verifies the application belongs to your organization.\n\n**Path Format:**\nFor organization authentication, the path should use the `app-{application_id}/` prefix format (e.g., `app-123/uuid-filename.pdf`).",
         "operationId": "commitAttachment",
         "tags": [
           "Applications"
@@ -999,37 +1063,37 @@
           {
             "lang": "curl",
             "label": "cURL",
-            "source": "curl -X POST \\\n  \"https://api.leap.energy/alpha/applications/attachments/commit?application_id=123\" \\\n  -H \"Authorization: Bearer YOUR_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"attachment_type\": \"INVOICE_EQUIPMENT\",\n    \"path\": \"app-123/a1b2c3d4-e5f6-7890-abcd-ef1234567890-invoice.pdf\",\n    \"makePublic\": true\n  }'"
+            "source": "curl -X POST \\\n  \"https://api.leap.energy/alpha/applications/attachments/commit?application_id=123\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"attachment_type\": \"INVOICE_EQUIPMENT\",\n    \"path\": \"app-123/a1b2c3d4-e5f6-7890-abcd-ef1234567890-invoice.pdf\",\n    \"makePublic\": true\n  }'"
           },
           {
             "lang": "python",
             "label": "Python",
-            "source": "import requests\n\nurl = \"https://api.leap.energy/alpha/applications/attachments/commit?application_id=123\"\n\npayload = {\n    \"attachment_type\": \"INVOICE_EQUIPMENT\",\n    \"path\": \"app-123/a1b2c3d4-e5f6-7890-abcd-ef1234567890-invoice.pdf\",\n    \"makePublic\": True\n}\n\nheaders = {\n    \"Authorization\": \"Bearer YOUR_API_KEY\",\n    \"Content-Type\": \"application/json\"\n}\n\nresponse = requests.post(url, json=payload, headers=headers)\nprint(response.json())"
+            "source": "import requests\n\nurl = \"https://api.leap.energy/alpha/applications/attachments/commit?application_id=123\"\n\npayload = {\n    \"attachment_type\": \"INVOICE_EQUIPMENT\",\n    \"path\": \"app-123/a1b2c3d4-e5f6-7890-abcd-ef1234567890-invoice.pdf\",\n    \"makePublic\": True\n}\n\nheaders = {\n    \"x-api-key\": \"YOUR_API_KEY\",\n    \"Content-Type\": \"application/json\"\n}\n\nresponse = requests.post(url, json=payload, headers=headers)\nprint(response.json())"
           },
           {
             "lang": "javascript",
             "label": "JavaScript",
-            "source": "const response = await fetch(\n  'https://api.leap.energy/alpha/applications/attachments/commit?application_id=123',\n  {\n    method: 'POST',\n    headers: {\n      'Authorization': 'Bearer YOUR_API_KEY',\n      'Content-Type': 'application/json'\n    },\n    body: JSON.stringify({\n      attachment_type: 'INVOICE_EQUIPMENT',\n      path: 'app-123/a1b2c3d4-e5f6-7890-abcd-ef1234567890-invoice.pdf',\n      makePublic: true\n    })\n  }\n);\n\nconst data = await response.json();\nconsole.log(data);"
+            "source": "const response = await fetch(\n  'https://api.leap.energy/alpha/applications/attachments/commit?application_id=123',\n  {\n    method: 'POST',\n    headers: {\n      'x-api-key': 'YOUR_API_KEY',\n      'Content-Type': 'application/json'\n    },\n    body: JSON.stringify({\n      attachment_type: 'INVOICE_EQUIPMENT',\n      path: 'app-123/a1b2c3d4-e5f6-7890-abcd-ef1234567890-invoice.pdf',\n      makePublic: true\n    })\n  }\n);\n\nconst data = await response.json();\nconsole.log(data);"
           },
           {
             "lang": "php",
             "label": "PHP",
-            "source": "<?php\n\n$url = 'https://api.leap.energy/alpha/applications/attachments/commit?application_id=123';\n\n$payload = [\n    'attachment_type' => 'INVOICE_EQUIPMENT',\n    'path' => 'app-123/a1b2c3d4-e5f6-7890-abcd-ef1234567890-invoice.pdf',\n    'makePublic' => true\n];\n\n$ch = curl_init($url);\ncurl_setopt($ch, CURLOPT_POST, true);\ncurl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));\ncurl_setopt($ch, CURLOPT_HTTPHEADER, [\n    'Authorization: Bearer YOUR_API_KEY',\n    'Content-Type: application/json'\n]);\ncurl_setopt($ch, CURLOPT_RETURNTRANSFER, true);\n\n$response = curl_exec($ch);\ncurl_close($ch);\n\nprint_r(json_decode($response, true));"
+            "source": "<?php\n\n$url = 'https://api.leap.energy/alpha/applications/attachments/commit?application_id=123';\n\n$payload = [\n    'attachment_type' => 'INVOICE_EQUIPMENT',\n    'path' => 'app-123/a1b2c3d4-e5f6-7890-abcd-ef1234567890-invoice.pdf',\n    'makePublic' => true\n];\n\n$ch = curl_init($url);\ncurl_setopt($ch, CURLOPT_POST, true);\ncurl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));\ncurl_setopt($ch, CURLOPT_HTTPHEADER, [\n    'x-api-key: YOUR_API_KEY',\n    'Content-Type: application/json'\n]);\ncurl_setopt($ch, CURLOPT_RETURNTRANSFER, true);\n\n$response = curl_exec($ch);\ncurl_close($ch);\n\nprint_r(json_decode($response, true));"
           },
           {
             "lang": "java",
             "label": "Java",
-            "source": "import java.net.http.*;\nimport java.net.URI;\n\nHttpClient client = HttpClient.newHttpClient();\n\nString json = \"\"\"{\n  \"attachment_type\": \"INVOICE_EQUIPMENT\",\n  \"path\": \"app-123/a1b2c3d4-e5f6-7890-abcd-ef1234567890-invoice.pdf\",\n  \"makePublic\": true\n}\"\"\";\n\nHttpRequest request = HttpRequest.newBuilder()\n    .uri(URI.create(\"https://api.leap.energy/alpha/applications/attachments/commit?application_id=123\"))\n    .header(\"Authorization\", \"Bearer YOUR_API_KEY\")\n    .header(\"Content-Type\", \"application/json\")\n    .POST(HttpRequest.BodyPublishers.ofString(json))\n    .build();\n\nHttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());\nSystem.out.println(response.body());"
+            "source": "import java.net.http.*;\nimport java.net.URI;\n\nHttpClient client = HttpClient.newHttpClient();\n\nString json = \"\"\"{\n  \"attachment_type\": \"INVOICE_EQUIPMENT\",\n  \"path\": \"app-123/a1b2c3d4-e5f6-7890-abcd-ef1234567890-invoice.pdf\",\n  \"makePublic\": true\n}\"\"\";\n\nHttpRequest request = HttpRequest.newBuilder()\n    .uri(URI.create(\"https://api.leap.energy/alpha/applications/attachments/commit?application_id=123\"))\n    .header(\"x-api-key\", \"YOUR_API_KEY\")\n    .header(\"Content-Type\", \"application/json\")\n    .POST(HttpRequest.BodyPublishers.ofString(json))\n    .build();\n\nHttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());\nSystem.out.println(response.body());"
           },
           {
             "lang": "ruby",
             "label": "Ruby",
-            "source": "require 'net/http'\nrequire 'json'\n\nuri = URI('https://api.leap.energy/alpha/applications/attachments/commit?application_id=123')\n\npayload = {\n  attachment_type: 'INVOICE_EQUIPMENT',\n  path: 'app-123/a1b2c3d4-e5f6-7890-abcd-ef1234567890-invoice.pdf',\n  makePublic: true\n}\n\nhttp = Net::HTTP.new(uri.host, uri.port)\nhttp.use_ssl = true\n\nrequest = Net::HTTP::Post.new(uri)\nrequest['Authorization'] = 'Bearer YOUR_API_KEY'\nrequest['Content-Type'] = 'application/json'\nrequest.body = payload.to_json\n\nresponse = http.request(request)\nputs JSON.parse(response.body)"
+            "source": "require 'net/http'\nrequire 'json'\n\nuri = URI('https://api.leap.energy/alpha/applications/attachments/commit?application_id=123')\n\npayload = {\n  attachment_type: 'INVOICE_EQUIPMENT',\n  path: 'app-123/a1b2c3d4-e5f6-7890-abcd-ef1234567890-invoice.pdf',\n  makePublic: true\n}\n\nhttp = Net::HTTP.new(uri.host, uri.port)\nhttp.use_ssl = true\n\nrequest = Net::HTTP::Post.new(uri)\nrequest['x-api-key'] = 'YOUR_API_KEY'\nrequest['Content-Type'] = 'application/json'\nrequest.body = payload.to_json\n\nresponse = http.request(request)\nputs JSON.parse(response.body)"
           },
           {
             "lang": "go",
             "label": "Go",
-            "source": "package main\n\nimport (\n\t\"bytes\"\n\t\"encoding/json\"\n\t\"fmt\"\n\t\"net/http\"\n)\n\nfunc main() {\n\turl := \"https://api.leap.energy/alpha/applications/attachments/commit?application_id=123\"\n\n\tpayload := map[string]interface{}{\n\t\t\"attachment_type\": \"INVOICE_EQUIPMENT\",\n\t\t\"path\":            \"app-123/a1b2c3d4-e5f6-7890-abcd-ef1234567890-invoice.pdf\",\n\t\t\"makePublic\":      true,\n\t}\n\n\tjsonData, _ := json.Marshal(payload)\n\treq, _ := http.NewRequest(\"POST\", url, bytes.NewBuffer(jsonData))\n\treq.Header.Set(\"Authorization\", \"Bearer YOUR_API_KEY\")\n\treq.Header.Set(\"Content-Type\", \"application/json\")\n\n\tclient := &http.Client{}\n\tresp, _ := client.Do(req)\n\tdefer resp.Body.Close()\n\n\tvar result map[string]interface{}\n\tjson.NewDecoder(resp.Body).Decode(&result)\n\tfmt.Println(result)\n}"
+            "source": "package main\n\nimport (\n\t\"bytes\"\n\t\"encoding/json\"\n\t\"fmt\"\n\t\"net/http\"\n)\n\nfunc main() {\n\turl := \"https://api.leap.energy/alpha/applications/attachments/commit?application_id=123\"\n\n\tpayload := map[string]interface{}{\n\t\t\"attachment_type\": \"INVOICE_EQUIPMENT\",\n\t\t\"path\":            \"app-123/a1b2c3d4-e5f6-7890-abcd-ef1234567890-invoice.pdf\",\n\t\t\"makePublic\":      true,\n\t}\n\n\tjsonData, _ := json.Marshal(payload)\n\treq, _ := http.NewRequest(\"POST\", url, bytes.NewBuffer(jsonData))\n\treq.Header.Set(\"x-api-key\", \"YOUR_API_KEY\")\n\treq.Header.Set(\"Content-Type\", \"application/json\")\n\n\tclient := &http.Client{}\n\tresp, _ := client.Do(req)\n\tdefer resp.Body.Close()\n\n\tvar result map[string]interface{}\n\tjson.NewDecoder(resp.Body).Decode(&result)\n\tfmt.Println(result)\n}"
           }
         ],
         "parameters": [
@@ -1175,8 +1239,8 @@
       "ApiKeyAuth": {
         "type": "apiKey",
         "in": "header",
-        "name": "Authorization",
-        "description": "API key for authentication. Include your Leap API key in the Authorization header\nas a Bearer token: `Authorization: Bearer YOUR_API_KEY`\n"
+        "name": "x-api-key",
+        "description": "API key for authentication. Include your Leap API key in the `x-api-key` header: `x-api-key: YOUR_API_KEY`\n"
       }
     },
     "schemas": {
@@ -1323,15 +1387,15 @@
             "type": "array",
             "description": "List of possible utilities that could serve this address",
             "items": {
-              "type": "object",
-              "properties": {
+            "type": "object",
+            "properties": {
                 "eiaid": {
-                  "type": "string",
+                "type": "string",
                   "description": "EIA utility identification number",
                   "example": "14354"
-                },
+              },
                 "name": {
-                  "type": "string",
+                "type": "string",
                   "description": "Name of the utility company",
                   "example": "PacifiCorp (Oregon)"
                 }

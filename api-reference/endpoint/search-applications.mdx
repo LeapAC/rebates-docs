@@ -1,11 +1,11 @@
 ---
 title: 'Search Applications'
-description: 'Search and filter applications with pagination. Returns a list of applications matching the specified criteria.'
+description: 'Search and filter applications with pagination. Returns a list of applications matching the specified criteria. Applications are automatically filtered to your organization.'
 openapi: 'GET /applications'
 ---
 
 <Note>
-This endpoint requires API key authentication via the `x-api-key` header or `Authorization: Bearer <API key>`.
+This endpoint requires API key authentication via the `x-api-key` header. All results are automatically filtered to applications belonging to your organization.
 </Note>
 
 ## Query Parameters
@@ -20,7 +20,7 @@ This endpoint requires API key authentication via the `x-api-key` header or `Aut
 ```bash
 curl -X GET \
   "https://your-project.supabase.co/functions/v1/applications?limit=25&application_status=submitted" \
-  -H "Authorization: Bearer leap_live_your_api_key_here" \
+  -H "x-api-key: YOUR_API_KEY" \
   -H "Content-Type: application/json"
 ```
 

@@ -1,11 +1,11 @@
 ---
 title: 'Get Application'
-description: 'Retrieve complete application details including customer and device information'
+description: 'Retrieve complete application details including customer and device information. The application must belong to your organization.'
 openapi: 'GET /applications/{application_id}'
 ---
 
 <Note>
-This endpoint requires API key authentication via the `x-api-key` header or `Authorization: Bearer <API key>`.
+This endpoint requires API key authentication via the `x-api-key` header. The application must belong to your organization.
 </Note>
 
 ## Example Request
@@ -13,7 +13,7 @@ This endpoint requires API key authentication via the `x-api-key` header or `Aut
 ```bash
 curl -X GET \
   "https://your-project.supabase.co/functions/v1/applications/123" \
-  -H "Authorization: Bearer leap_live_your_api_key_here" \
+  -H "x-api-key: YOUR_API_KEY" \
   -H "Content-Type: application/json"
 ```
 

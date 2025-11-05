@@ -7,7 +7,7 @@ openapi: 'POST /incentives'
 <Note>
 This endpoint requires API key authentication via the `x-api-key` header.
 
-The `reference_id` is **required** and must be unique per organization. It's used to link customers to your organization and enables the PATCH endpoint to update applications later using the same reference ID.
+The `reference_id` is **required** and must be unique per organization. It's used to link customers to your organization and is returned in the response for your records.
 </Note>
 
 ## Overview
@@ -161,5 +161,5 @@ curl -X POST \
 ```
 
 <Tip>
-Use the same `reference_id` when calling the PATCH endpoint to update applications later. The reference ID links the customer to your organization and enables you to update their data without API key authentication.
+The `reference_id` links the customer to your organization. To update applications later, use the PATCH endpoint with the `application_id` from the search results. PATCH requires API key authentication.
 </Tip>

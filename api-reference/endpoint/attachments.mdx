@@ -5,7 +5,7 @@ openapi: 'POST /applications/attachments'
 ---
 
 <Note>
-These endpoints require API key authentication via `Authorization: Bearer <API_KEY>` or `x-api-key` header. The application must belong to your organization.
+These endpoints require API key authentication via `x-api-key` header. The application must belong to your organization.
 
 Use the `application_id` query parameter to identify which application to attach files to. The API verifies the application belongs to your organization.
 </Note>
@@ -30,7 +30,7 @@ Request a signed upload URL for uploading an attachment.
 ```bash
 curl -X POST \
   "https://api.leap.energy/alpha/applications/attachments?application_id=123" \
-  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "x-api-key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "attachment_type": "INVOICE_EQUIPMENT",
@@ -89,7 +89,7 @@ After successfully uploading the file, commit the attachment to finalize the pro
 ```bash
 curl -X POST \
   "https://api.leap.energy/alpha/applications/attachments/commit?application_id=123" \
-  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "x-api-key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "attachment_type": "INVOICE_EQUIPMENT",
@@ -122,7 +122,7 @@ When `makePublic=true`, `file_url` is a public HTTP URL. Otherwise, it returns `
 ```json
 {
   "code": "missing_auth",
-  "message": "x-api-key header or Authorization: Bearer <API key> required",
+  "message": "x-api-key header required",
   "requestId": "..."
 }
 ```

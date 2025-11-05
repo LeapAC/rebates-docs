@@ -5,7 +5,7 @@ openapi: 'PATCH /applications'
 ---
 
 <Note>
-This endpoint requires API key authentication via `Authorization: Bearer <API_KEY>` or `x-api-key` header. The application must belong to your organization.
+This endpoint requires API key authentication via `x-api-key` header. The application must belong to your organization.
 
 Use the `application_id` query parameter or path parameter (`PATCH /applications/{application_id}`) to identify which application to update. The API verifies the application belongs to your organization.
 
@@ -41,7 +41,7 @@ The request body matches the GET `/applications/{id}` response structure (withou
 ```bash
 curl -X PATCH \
   "https://api.leap.energy/alpha/applications?application_id=123&dryRun=true" \
-  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "x-api-key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "status": "approved",
@@ -99,7 +99,7 @@ curl -X PATCH \
 ```bash
 curl -X PATCH \
   "https://api.leap.energy/alpha/applications?application_id=123" \
-  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "x-api-key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "status": "approved",
@@ -166,7 +166,7 @@ To override this restriction (e.g., move backward), include the `X-Force-Status:
 ```bash
 curl -X PATCH \
   "https://api.leap.energy/alpha/applications?application_id=123" \
-  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "x-api-key: YOUR_API_KEY" \
   -H "X-Force-Status: true" \
   -H "Content-Type: application/json" \
   -d '{"status": "in_progress"}'
@@ -178,7 +178,7 @@ curl -X PATCH \
 ```json
 {
   "code": "missing_auth",
-  "message": "x-api-key header or Authorization: Bearer <API key> required",
+  "message": "x-api-key header required",
   "requestId": "..."
 }
 ```

@@ -176,310 +176,6 @@
             "$ref": "#/components/responses/InternalServerError"
           }
         }
-      },
-      "patch": {
-        "summary": "Update application by application ID",
-        "description": "Updates an application identified by application ID. Supports updating application fields, customer information, and customer devices.\n\n**Authentication:**\nRequires API key authentication via `x-api-key` header. The application must belong to your organization.\n\n**Application ID:**\nUse the `application_id` query parameter or path parameter to identify which application to update. The API verifies the application belongs to your organization.\n\n**Request Structure:**\nMatches the GET `/applications/{id}` response structure (without protected fields):\n- Application fields at top level (e.g., `status`, `rebate_type`, `approval_date`)\n- `customer` (optional): Customer fields to update\n- `customer_devices` (optional): Array of devices to update (must include `id` - UPDATE ONLY)\n\n**Protected Fields:**\nThe following fields cannot be updated: `id`, `customer_id`, `organization_id`, `program_id`, `created_at`, `updated_at`\n\n**Dry Run:**\nSet `dryRun=true` to validate the request without applying changes.\n\n**Partial Update Behavior:**\n- Only include fields you want to change\n- Omitted fields will keep their current values\n- Set a field to `null` to clear its value (where nullable)\n\n**Customer Devices:**\n- Must include `id` (required) to identify the device\n- The `customer_device_id` alias is no longer supported - use `id` only\n- UPDATE ONLY - no inserts allowed\n- Missing `id` will return 400 Bad Request with error code `invalid_body`\n\n**Status Transitions:**\nBy default, status transitions are restricted to forward progress only. Use `X-Force-Status: true` header to override.\n\nAll updates are transactional - if any part fails, the entire operation is rolled back.\n",
-        "operationId": "patchApplicationById",
-        "tags": [
-          "Applications"
-        ],
-        "x-codeSamples": [
-          {
-            "lang": "curl",
-            "label": "cURL",
-            "source": "curl -X PATCH \\\n  \"https://api.leap.energy/alpha/applications?application_id=123\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"status\": \"approved\",\n    \"approval_date\": \"2025-01-25\",\n    \"customer\": {\n      \"email\": \"newemail@example.com\"\n    }\n  }'"
-          },
-          {
-            "lang": "python",
-            "label": "Python",
-            "source": "import requests\n\nurl = \"https://api.leap.energy/alpha/applications?application_id=123\"\n\npayload = {\n    \"status\": \"approved\",\n    \"approval_date\": \"2025-01-25\",\n    \"customer\": {\n        \"email\": \"newemail@example.com\"\n    }\n}\n\nheaders = {\n    \"x-api-key\": \"YOUR_API_KEY\",\n    \"Content-Type\": \"application/json\"\n}\n\nresponse = requests.patch(url, json=payload, headers=headers)\nprint(response.json())"
-          },
-          {
-            "lang": "javascript",
-            "label": "JavaScript",
-            "source": "const response = await fetch(\n  'https://api.leap.energy/alpha/applications?application_id=123',\n  {\n    method: 'PATCH',\n    headers: {\n      'x-api-key': 'YOUR_API_KEY',\n      'Content-Type': 'application/json'\n    },\n    body: JSON.stringify({\n      status: 'approved',\n      approval_date: '2025-01-25',\n      customer: {\n        email: 'newemail@example.com'\n      }\n    })\n  }\n);\n\nconst data = await response.json();\nconsole.log(data);"
-          },
-          {
-            "lang": "node",
-            "label": "Node.js",
-            "source": "const axios = require('axios');\n\nconst url = 'https://api.leap.energy/alpha/applications?application_id=123';\n\nconst payload = {\n  status: 'approved',\n  approval_date: '2025-01-25',\n  customer: {\n    email: 'newemail@example.com'\n  }\n};\n\nconst response = await axios.patch(url, payload, {\n  headers: {\n    'x-api-key': 'YOUR_API_KEY',\n    'Content-Type': 'application/json'\n  }\n});\n\nconsole.log(response.data);"
-          },
-          {
-            "lang": "php",
-            "label": "PHP",
-            "source": "<?php\n\n$url = 'https://api.leap.energy/alpha/applications?application_id=123';\n\n$payload = [\n    'status' => 'approved',\n    'approval_date' => '2025-01-25',\n    'customer' => [\n        'email' => 'newemail@example.com'\n    ]\n];\n\n$ch = curl_init($url);\ncurl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PATCH');\ncurl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));\ncurl_setopt($ch, CURLOPT_HTTPHEADER, [\n    'x-api-key: YOUR_API_KEY',\n    'Content-Type: application/json'\n]);\ncurl_setopt($ch, CURLOPT_RETURNTRANSFER, true);\n\n$response = curl_exec($ch);\ncurl_close($ch);\n\nprint_r(json_decode($response, true));"
-          },
-          {
-            "lang": "java",
-            "label": "Java",
-            "source": "import java.net.http.*;\nimport java.net.URI;\n\nHttpClient client = HttpClient.newHttpClient();\n\nString json = \"\"\"{\n  \"status\": \"approved\",\n  \"approval_date\": \"2025-01-25\",\n  \"customer\": {\n    \"email\": \"newemail@example.com\"\n  }\n}\"\"\";\n\nHttpRequest request = HttpRequest.newBuilder()\n    .uri(URI.create(\"https://api.leap.energy/alpha/applications?application_id=123\"))\n    .header(\"x-api-key\", \"YOUR_API_KEY\")\n    .header(\"Content-Type\", \"application/json\")\n    .method(\"PATCH\", HttpRequest.BodyPublishers.ofString(json))\n    .build();\n\nHttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());\nSystem.out.println(response.body());"
-          },
-          {
-            "lang": "ruby",
-            "label": "Ruby",
-            "source": "require 'net/http'\nrequire 'json'\n\nuri = URI('https://api.leap.energy/alpha/applications?application_id=123')\n\npayload = {\n  status: 'approved',\n  approval_date: '2025-01-25',\n  customer: {\n    email: 'newemail@example.com'\n  }\n}\n\nhttp = Net::HTTP.new(uri.host, uri.port)\nhttp.use_ssl = true\n\nrequest = Net::HTTP::Patch.new(uri)\nrequest['x-api-key'] = 'YOUR_API_KEY'\nrequest['Content-Type'] = 'application/json'\nrequest.body = payload.to_json\n\nresponse = http.request(request)\nputs JSON.parse(response.body)"
-          },
-          {
-            "lang": "go",
-            "label": "Go",
-            "source": "package main\n\nimport (\n\t\"bytes\"\n\t\"encoding/json\"\n\t\"fmt\"\n\t\"net/http\"\n)\n\nfunc main() {\n\turl := \"https://api.leap.energy/alpha/applications?application_id=123\"\n\n\tpayload := map[string]interface{}{\n\t\t\"status\":         \"approved\",\n\t\t\"approval_date\": \"2025-01-25\",\n\t\t\"customer\": map[string]interface{}{\n\t\t\t\"email\": \"newemail@example.com\",\n\t\t},\n\t}\n\n\tjsonData, _ := json.Marshal(payload)\n\treq, _ := http.NewRequest(\"PATCH\", url, bytes.NewBuffer(jsonData))\n\treq.Header.Set(\"x-api-key\", \"YOUR_API_KEY\")\n\treq.Header.Set(\"Content-Type\", \"application/json\")\n\n\tclient := &http.Client{}\n\tresp, _ := client.Do(req)\n\tdefer resp.Body.Close()\n\n\tvar result map[string]interface{}\n\tjson.NewDecoder(resp.Body).Decode(&result)\n\tfmt.Println(result)\n}"
-          },
-          {
-            "lang": "csharp",
-            "label": "C#",
-            "source": "using System;\nusing System.Net.Http;\nusing System.Text;\nusing System.Text.Json;\nusing System.Threading.Tasks;\n\nvar client = new HttpClient();\nvar url = \"https://api.leap.energy/alpha/applications?application_id=123\";\n\nvar payload = new {\n    status = \"approved\",\n    approval_date = \"2025-01-25\",\n    customer = new {\n        email = \"newemail@example.com\"\n    }\n};\n\nvar content = new StringContent(\n    JsonSerializer.Serialize(payload),\n    Encoding.UTF8,\n    \"application/json\"\n);\n\nvar request = new HttpRequestMessage(new HttpMethod(\"PATCH\"), url) {\n    Content = content\n};\nrequest.Headers.Add(\"x-api-key\", \"YOUR_API_KEY\");\n\nvar response = await client.SendAsync(request);\nvar result = await response.Content.ReadAsStringAsync();\nConsole.WriteLine(result);"
-          }
-        ],
-        "parameters": [
-          {
-            "name": "application_id",
-            "in": "query",
-            "description": "Application ID to update. The application must belong to your organization.",
-            "required": true,
-            "schema": {
-              "type": "integer"
-            },
-            "example": 123
-          },
-          {
-            "name": "dryRun",
-            "in": "query",
-            "description": "If true, validates the request without applying changes",
-            "required": false,
-            "schema": {
-              "type": "boolean",
-              "default": false,
-              "example": false
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "description": "Update request matching GET `/applications/{id}` response structure (without protected fields).\nProvide any combination of application fields, customer, and customer_devices.\nAll sections are optional - only include sections you want to modify.\n\n**Protected fields** (cannot be updated): `id`, `customer_id`, `organization_id`, `program_id`, `created_at`, `updated_at`\n",
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/OrgApplicationPatchRequest"
-              },
-              "examples": {
-                "application_and_customer": {
-                  "summary": "Update application status and customer",
-                  "value": {
-                    "status": "approved",
-                    "approval_date": "2025-01-25",
-                    "customer": {
-                      "email": "newemail@example.com",
-                      "phone": "+15559876543"
-                    }
-                  }
-                },
-                "application_only": {
-                  "summary": "Update application only",
-                  "value": {
-                    "status": "submitted",
-                    "submission_date": "2025-01-20"
-                  }
-                },
-                "customer_and_devices": {
-                  "summary": "Update customer and devices",
-                  "value": {
-                    "customer": {
-                      "email": "updated@example.com"
-                    },
-                    "customer_devices": [
-                      {
-                        "id": 78,
-                        "inspection_passed": true,
-                        "permit_number": "PERMIT-2025-001"
-                      }
-                    ]
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successfully updated application(s)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "ok": {
-                      "type": "boolean",
-                      "example": true
-                    },
-                    "requestId": {
-                      "type": "string",
-                      "example": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
-                    },
-                    "application_id": {
-                      "type": "integer",
-                      "example": 123
-                    },
-                    "customer_id": {
-                      "type": "integer",
-                      "example": 456
-                    },
-                    "mutations": {
-                      "type": "object",
-                      "description": "Details about what was updated",
-                      "properties": {
-                        "application": {
-                          "type": "object",
-                          "properties": {
-                            "updated": {
-                              "type": "boolean"
-                            },
-                            "fields": {
-                              "type": "array",
-                              "items": {
-                                "type": "string"
-                              }
-                            }
-                          }
-                        },
-                        "customer": {
-                          "type": "object",
-                          "properties": {
-                            "updated": {
-                              "type": "boolean"
-                            },
-                            "fields": {
-                              "type": "array",
-                              "items": {
-                                "type": "string"
-                              }
-                            }
-                          }
-                        },
-                        "customer_devices": {
-                          "type": "array",
-                          "items": {
-                            "type": "object",
-                            "properties": {
-                              "id": {
-                                "type": "integer"
-                              },
-                              "action": {
-                                "type": "string"
-                              },
-                              "fields": {
-                                "type": "array",
-                                "items": {
-                                  "type": "string"
-                                }
-                              }
-                            }
-                          }
-                        }
-                      }
-                    },
-                    "data": {
-                      "type": "object",
-                      "description": "Complete snapshot matching GET `/applications/{id}` response structure",
-                      "allOf": [
-                        {
-                          "$ref": "#/components/schemas/Application"
-                        },
-                        {
-                          "type": "object",
-                          "properties": {
-                            "customer": {
-                              "$ref": "#/components/schemas/Customer"
-                            }
-                          }
-                        }
-                      ]
-                    }
-                  }
-                },
-                "examples": {
-                  "successful_update": {
-                    "summary": "Successful update",
-                    "value": {
-                      "ok": true,
-                      "requestId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-                      "application_id": 123,
-                      "customer_id": 456,
-                      "mutations": {
-                        "application": {
-                          "updated": true,
-                          "fields": ["status", "approval_date"]
-                        },
-                        "customer": {
-                          "updated": true,
-                          "fields": ["email"]
-                        }
-                      },
-                      "data": {
-                        "id": 123,
-                        "program_id": 45,
-                        "customer_id": 456,
-                        "organization_id": "550e8400-e29b-41d4-a716-446655440000",
-                        "status": "approved",
-                        "approval_date": "2025-01-25",
-                        "submission_date": "2025-01-15",
-                        "created_at": "2025-01-10T10:00:00Z",
-                        "updated_at": "2025-01-25T16:45:00Z",
-                        "customer": {
-                          "id": 456,
-                          "first_name": "Jane",
-                          "last_name": "Doe",
-                          "email": "newemail@example.com",
-                          "customer_devices": [
-                            {
-                              "id": 10,
-                              "customer_id": 456,
-                              "device_id": 5,
-                              "quantity": 1
-                            }
-                          ]
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request body",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Application not in your organization",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Application not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "$ref": "#/components/responses/InternalServerError"
-          }
-        }
       }
     },
     "/incentives": {
@@ -890,8 +586,312 @@
             "$ref": "#/components/responses/InternalServerError"
           }
         }
-        }
       },
+      "patch": {
+        "summary": "Update application by application ID",
+        "description": "Updates an application identified by application ID. Supports updating application fields, customer information, and customer devices.\n\n**Authentication:**\nRequires API key authentication via `x-api-key` header. The application must belong to your organization.\n\n**Application ID:**\nUse the `application_id` path parameter to identify which application to update. The API verifies the application belongs to your organization.\n\n**Request Structure:**\nMatches the GET `/applications/{id}` response structure (without protected fields):\n- Application fields at top level (e.g., `status`, `rebate_type`, `approval_date`)\n- `customer` (optional): Customer fields to update\n- `customer_devices` (optional): Array of devices to update (must include `id`)\n\n**Protected Fields:**\nThe following fields cannot be updated: `id`, `customer_id`, `organization_id`, `program_id`, `created_at`, `updated_at`\n\n**Dry Run:**\nSet `dryRun=true` as a query parameter to validate the request without applying changes.\n\n**Partial Update Behavior:**\n- Only include fields you want to change\n- Omitted fields will keep their current values\n- Set a field to `null` to clear its value (where nullable)\n\n**Customer Devices:**\n- Must include `id` (required) to identify the device\n- Missing `id` will return 400 Bad Request with error code `invalid_body`\n\n**Status Transitions:**\nBy default, status transitions are restricted to forward progress only. Use `X-Force-Status: true` header to override.\n\nAll updates are transactional - if any part fails, the entire operation is rolled back.\n",
+        "operationId": "patchApplicationById",
+        "tags": [
+          "Applications"
+        ],
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "path",
+            "description": "Application ID to update. The application must belong to your organization.",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "example": 123
+          },
+          {
+            "name": "dryRun",
+            "in": "query",
+            "description": "If true, validates the request without applying changes",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "example": false
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "Update request matching GET `/applications/{id}` response structure (without protected fields).\nProvide any combination of application fields, customer, and customer_devices.\nAll sections are optional - only include sections you want to modify.\n\n**Protected fields** (cannot be updated): `id`, `customer_id`, `organization_id`, `program_id`, `created_at`, `updated_at`\n",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrgApplicationPatchRequest"
+              },
+              "examples": {
+                "application_and_customer": {
+                  "summary": "Update application status and customer",
+                  "value": {
+                    "status": "approved",
+                    "approval_date": "2025-01-25",
+                    "customer": {
+                      "email": "newemail@example.com",
+                      "phone": "+15559876543"
+                    }
+                  }
+                },
+                "application_only": {
+                  "summary": "Update application only",
+                  "value": {
+                    "status": "submitted",
+                    "submission_date": "2025-01-20"
+                  }
+                },
+                "customer_and_devices": {
+                  "summary": "Update customer and devices",
+                  "value": {
+                    "customer": {
+                      "email": "updated@example.com"
+                    },
+                    "customer_devices": [
+                      {
+                        "id": 78,
+                        "inspection_passed": true,
+                        "permit_number": "PERMIT-2025-001"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successfully updated application(s)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "example": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                    },
+                    "application_id": {
+                      "type": "integer",
+                      "example": 123
+                    },
+                    "customer_id": {
+                      "type": "integer",
+                      "example": 456
+                    },
+                    "mutations": {
+                      "type": "object",
+                      "description": "Details about what was updated",
+                      "properties": {
+                        "application": {
+                          "type": "object",
+                          "properties": {
+                            "updated": {
+                              "type": "boolean"
+                            },
+                            "fields": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        },
+                        "customer": {
+                          "type": "object",
+                          "properties": {
+                            "updated": {
+                              "type": "boolean"
+                            },
+                            "fields": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        },
+                        "customer_devices": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "integer"
+                              },
+                              "action": {
+                                "type": "string"
+                              },
+                              "fields": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "data": {
+                      "type": "object",
+                      "description": "Complete snapshot matching GET `/applications/{id}` response structure",
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/Application"
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "customer": {
+                              "$ref": "#/components/schemas/Customer"
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                },
+                "examples": {
+                  "successful_update": {
+                    "summary": "Successful update",
+                    "value": {
+                      "ok": true,
+                      "requestId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+                      "application_id": 123,
+                      "customer_id": 456,
+                      "mutations": {
+                        "application": {
+                          "updated": true,
+                          "fields": ["status", "approval_date"]
+                        },
+                        "customer": {
+                          "updated": true,
+                          "fields": ["email"]
+                        }
+                      },
+                      "data": {
+                        "id": 123,
+                        "program_id": 45,
+                        "customer_id": 456,
+                        "organization_id": "550e8400-e29b-41d4-a716-446655440000",
+                        "status": "approved",
+                        "approval_date": "2025-01-25",
+                        "submission_date": "2025-01-15",
+                        "created_at": "2025-01-10T10:00:00Z",
+                        "updated_at": "2025-01-25T16:45:00Z",
+                        "customer": {
+                          "id": 456,
+                          "first_name": "Jane",
+                          "last_name": "Doe",
+                          "email": "newemail@example.com",
+                          "customer_devices": [
+                            {
+                              "id": 10,
+                              "customer_id": 456,
+                              "device_id": 5,
+                              "quantity": 1
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Application not in your organization",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Application not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "curl",
+            "label": "cURL",
+            "source": "curl -X PATCH \\\n  \"https://api.leap.energy/alpha/applications/123\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"status\": \"approved\",\n    \"approval_date\": \"2025-01-25\",\n    \"customer\": {\n      \"email\": \"newemail@example.com\"\n    }\n  }'"
+          },
+          {
+            "lang": "python",
+            "label": "Python",
+            "source": "import requests\n\nurl = \"https://api.leap.energy/alpha/applications/123\"\n\npayload = {\n    \"status\": \"approved\",\n    \"approval_date\": \"2025-01-25\",\n    \"customer\": {\n        \"email\": \"newemail@example.com\"\n    }\n}\n\nheaders = {\n    \"x-api-key\": \"YOUR_API_KEY\",\n    \"Content-Type\": \"application/json\"\n}\n\nresponse = requests.patch(url, json=payload, headers=headers)\nprint(response.json())"
+          },
+          {
+            "lang": "javascript",
+            "label": "JavaScript",
+            "source": "const response = await fetch(\n  'https://api.leap.energy/alpha/applications/123',\n  {\n    method: 'PATCH',\n    headers: {\n      'x-api-key': 'YOUR_API_KEY',\n      'Content-Type': 'application/json'\n    },\n    body: JSON.stringify({\n      status: 'approved',\n      approval_date: '2025-01-25',\n      customer: {\n        email: 'newemail@example.com'\n      }\n    })\n  }\n);\n\nconst data = await response.json();\nconsole.log(data);"
+          },
+          {
+            "lang": "node",
+            "label": "Node.js",
+            "source": "const axios = require('axios');\n\nconst url = 'https://api.leap.energy/alpha/applications/123';\n\nconst payload = {\n  status: 'approved',\n  approval_date: '2025-01-25',\n  customer: {\n    email: 'newemail@example.com'\n  }\n};\n\nconst response = await axios.patch(url, payload, {\n  headers: {\n    'x-api-key': 'YOUR_API_KEY',\n    'Content-Type': 'application/json'\n  }\n});\n\nconsole.log(response.data);"
+          },
+          {
+            "lang": "php",
+            "label": "PHP",
+            "source": "<?php\n\n$url = 'https://api.leap.energy/alpha/applications/123';\n\n$payload = [\n    'status' => 'approved',\n    'approval_date' => '2025-01-25',\n    'customer' => [\n        'email' => 'newemail@example.com'\n    ]\n];\n\n$ch = curl_init($url);\ncurl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PATCH');\ncurl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));\ncurl_setopt($ch, CURLOPT_HTTPHEADER, [\n    'x-api-key: YOUR_API_KEY',\n    'Content-Type: application/json'\n]);\ncurl_setopt($ch, CURLOPT_RETURNTRANSFER, true);\n\n$response = curl_exec($ch);\ncurl_close($ch);\n\nprint_r(json_decode($response, true));"
+          },
+          {
+            "lang": "java",
+            "label": "Java",
+            "source": "import java.net.http.*;\nimport java.net.URI;\n\nHttpClient client = HttpClient.newHttpClient();\n\nString json = \"\"\"{\n  \"status\": \"approved\",\n  \"approval_date\": \"2025-01-25\",\n  \"customer\": {\n    \"email\": \"newemail@example.com\"\n  }\n}\"\"\";\n\nHttpRequest request = HttpRequest.newBuilder()\n    .uri(URI.create(\"https://api.leap.energy/alpha/applications/123\"))\n    .header(\"x-api-key\", \"YOUR_API_KEY\")\n    .header(\"Content-Type\", \"application/json\")\n    .method(\"PATCH\", HttpRequest.BodyPublishers.ofString(json))\n    .build();\n\nHttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());\nSystem.out.println(response.body());"
+          },
+          {
+            "lang": "ruby",
+            "label": "Ruby",
+            "source": "require 'net/http'\nrequire 'json'\n\nuri = URI('https://api.leap.energy/alpha/applications/123')\n\npayload = {\n  status: 'approved',\n  approval_date: '2025-01-25',\n  customer: {\n    email: 'newemail@example.com'\n  }\n}\n\nhttp = Net::HTTP.new(uri.host, uri.port)\nhttp.use_ssl = true\n\nrequest = Net::HTTP::Patch.new(uri)\nrequest['x-api-key'] = 'YOUR_API_KEY'\nrequest['Content-Type'] = 'application/json'\nrequest.body = payload.to_json\n\nresponse = http.request(request)\nputs JSON.parse(response.body)"
+          },
+          {
+            "lang": "go",
+            "label": "Go",
+            "source": "package main\n\nimport (\n\t\"bytes\"\n\t\"encoding/json\"\n\t\"fmt\"\n\t\"net/http\"\n)\n\nfunc main() {\n\turl := \"https://api.leap.energy/alpha/applications/123\"\n\n\tpayload := map[string]interface{}{\n\t\t\"status\":         \"approved\",\n\t\t\"approval_date\": \"2025-01-25\",\n\t\t\"customer\": map[string]interface{}{\n\t\t\t\"email\": \"newemail@example.com\",\n\t\t},\n\t}\n\n\tjsonData, _ := json.Marshal(payload)\n\treq, _ := http.NewRequest(\"PATCH\", url, bytes.NewBuffer(jsonData))\n\treq.Header.Set(\"x-api-key\", \"YOUR_API_KEY\")\n\treq.Header.Set(\"Content-Type\", \"application/json\")\n\n\tclient := &http.Client{}\n\tresp, _ := client.Do(req)\n\tdefer resp.Body.Close()\n\n\tvar result map[string]interface{}\n\tjson.NewDecoder(resp.Body).Decode(&result)\n\tfmt.Println(result)\n}"
+          },
+          {
+            "lang": "csharp",
+            "label": "C#",
+            "source": "using System;\nusing System.Net.Http;\nusing System.Text;\nusing System.Text.Json;\nusing System.Threading.Tasks;\n\nvar client = new HttpClient();\nvar url = \"https://api.leap.energy/alpha/applications/123\";\n\nvar payload = new {\n    status = \"approved\",\n    approval_date = \"2025-01-25\",\n    customer = new {\n        email = \"newemail@example.com\"\n    }\n};\n\nvar content = new StringContent(\n    JsonSerializer.Serialize(payload),\n    Encoding.UTF8,\n    \"application/json\"\n);\n\nvar request = new HttpRequestMessage(new HttpMethod(\"PATCH\"), url) {\n    Content = content\n};\nrequest.Headers.Add(\"x-api-key\", \"YOUR_API_KEY\");\n\nvar response = await client.SendAsync(request);\nvar result = await response.Content.ReadAsStringAsync();\nConsole.WriteLine(result);"
+          }
+        ]
+      }
+    },
     "/applications/attachments": {
       "post": {
         "summary": "Create signed upload URL for attachment",
@@ -2365,7 +2365,7 @@
           },
           "customer_devices": {
             "type": "array",
-            "description": "Array of customer devices to update. Each device must include 'id' to identify the device. Updates only - no inserts.",
+            "description": "Array of customer devices to update. Each device must include 'id' to identify the device.",
             "items": {
               "$ref": "#/components/schemas/CustomerDevicePatchRequest"
             }
@@ -2448,7 +2448,7 @@
           },
           "customer_devices": {
             "type": "array",
-            "description": "Array of customer devices to update. Each device must include 'id' to identify the device. Updates only - no inserts.",
+            "description": "Array of customer devices to update. Each device must include 'id' to identify the device.",
             "items": {
               "$ref": "#/components/schemas/CustomerDevicePatchRequest"
             }
@@ -2785,7 +2785,7 @@
       },
       "CustomerDevicePatchRequest": {
         "type": "object",
-        "description": "Customer device information to update.\n- Must include 'id' (required) to identify the device\n- UPDATE ONLY - no inserts allowed\n- All other fields are optional\n",
+        "description": "Customer device information to update.\n- Must include 'id' (required) to identify the device\n- All other fields are optional\n",
         "required": ["id"],
         "properties": {
           "id": {

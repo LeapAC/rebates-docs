@@ -1,27 +1,24 @@
 ---
 title: 'Update Application'
 description: 'Update an application by application ID. Supports updating application fields, customer information, and customer devices.'
-openapi: 'PATCH /applications'
+openapi: 'PATCH /applications/{application_id}'
 ---
 
 <Note>
 This endpoint requires API key authentication via `x-api-key` header. The application must belong to your organization.
 
-Use the `application_id` query parameter or path parameter (`PATCH /applications/{application_id}`) to identify which application to update. The API verifies the application belongs to your organization.
+Use the `application_id` path parameter to identify which application to update. The API verifies the application belongs to your organization.
 
-Set `dryRun=true` to validate the request without applying changes.
+Set `dryRun=true` as a query parameter to validate the request without applying changes.
 </Note>
+
+## Path Parameters
+
+- `application_id` (required): Application ID to update. The application must belong to your organization.
 
 ## Query Parameters
 
-- `application_id` (required): Application ID to update. The application must belong to your organization.
 - `dryRun` (optional): true/false - if true, validates without making changes
-
-## Alternative: Path Parameter
-
-You can also use the path parameter instead of the query parameter:
-
-- `PATCH /applications/{application_id}` - Same as using `?application_id={id}` in the query
 
 ## Request Body Structure
 
@@ -32,7 +29,7 @@ The request body matches the GET `/applications/{id}` response structure (withou
 
 **Optional nested objects:**
 - `customer`: Customer fields to update
-- `customer_devices`: Array of devices to update (must include `id` - UPDATE ONLY)
+- `customer_devices`: Array of devices to update (must include `id`)
 
 **Protected fields** (cannot be updated): `id`, `customer_id`, `organization_id`, `program_id`, `created_at`, `updated_at`
 
@@ -40,7 +37,7 @@ The request body matches the GET `/applications/{id}` response structure (withou
 
 ```bash
 curl -X PATCH \
-  "https://api.leap.energy/alpha/applications?application_id=123&dryRun=true" \
+  "https://api.leap.energy/alpha/applications/123?dryRun=true" \
   -H "x-api-key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -98,7 +95,7 @@ curl -X PATCH \
 
 ```bash
 curl -X PATCH \
-  "https://api.leap.energy/alpha/applications?application_id=123" \
+  "https://api.leap.energy/alpha/applications/123" \
   -H "x-api-key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -165,7 +162,7 @@ To override this restriction (e.g., move backward), include the `X-Force-Status:
 
 ```bash
 curl -X PATCH \
-  "https://api.leap.energy/alpha/applications?application_id=123" \
+  "https://api.leap.energy/alpha/applications/123" \
   -H "x-api-key: YOUR_API_KEY" \
   -H "X-Force-Status: true" \
   -H "Content-Type: application/json" \
@@ -213,9 +210,5 @@ curl -X PATCH \
 <Tip>
 **Customer Devices:** 
 - Each device in `customer_devices` must include `id` (required, not optional)
-- The `customer_device_id` alias is no longer supported - use `id` only
-- Devices are **update-only** - no inserts allowed
 - Missing `id` will return a 400 Bad Request error
-
-If you need to add a new device, use the appropriate creation endpoint.
 </Tip>

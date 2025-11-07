@@ -1,4 +1,165 @@
 ---
 title: 'Check Incentives'
+description: 'Get aggregated incentive calculations from multiple utility programs based on customer address and building type'
 openapi: 'POST /incentives'
 ---
+
+<Note>
+This endpoint requires API key authentication via the `x-api-key` header.
+
+The `reference_id` is **required** and must be unique per organization. It's used to link customers to your organization and is returned in the response for your records.
+</Note>
+
+## Overview
+
+This endpoint automatically:
+1. Creates or finds the customer based on address components
+2. Links the customer to your organization using the `reference_id`
+3. Associates the device with the customer if not already linked
+4. Identifies the utility serving the address
+5. Finds all active programs for that utility and building type
+6. Calls each program's incentive calculation function
+7. Optionally creates application records (if `create_application=true`)
+8. Aggregates and returns the results
+
+## Request Body
+
+- `address` (required): Customer address object with:
+  - `street_1` (required): Primary street address
+  - `street_2` (optional): Apartment, suite, unit, etc.
+  - `city` (required): City name
+  - `state_or_province_code` (required): 2-letter state/province code
+  - `postal_code` (required): ZIP/postal code
+  - `country_code` (required): 2-letter ISO country code
+- `building_type` (required): One of `RESIDENTIAL`, `MULTIFAMILY`, `MANUFACTURED_HOME`, `COMMERCIAL`
+- `device_id` (required): ID of the device for which to calculate incentives
+- `reference_id` (required): Your internal reference ID (must be unique per organization)
+- `create_application` (optional): If `true`, creates application records and returns `connect_url`
+
+## Example Request
+
+```bash
+curl -X POST \
+  "https://api.leap.energy/alpha/incentives" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "address": {
+      "street_1": "456 Main St",
+      "street_2": "Apt 2B",
+      "city": "Bend",
+      "state_or_province_code": "OR",
+      "postal_code": "97701",
+      "country_code": "US"
+    },
+    "building_type": "RESIDENTIAL",
+    "device_id": 123,
+    "reference_id": "ref-abc123",
+    "create_application": true
+  }'
+```
+
+## Example Response
+
+```json
+{
+  "utility": {
+    "eiaid": 14354,
+    "name": "PacifiCorp (Oregon)"
+  },
+  "possible_utilities": [
+    {
+      "eiaid": "14354",
+      "name": "PacifiCorp (Oregon)"
+    }
+  ],
+  "address": "456 Main St, Apt 2B, Bend, OR 97701, US",
+  "building_type": "RESIDENTIAL",
+  "customer_id": 453,
+  "reference_id": "ref-abc123",
+  "programs_evaluated": 2,
+  "incentives": {
+    "total_incentive_amount": 2250,
+    "total_eligible_combinations": 4,
+    "by_program": [
+      {
+        "program_id": 838,
+        "program_name": "Pacific Power – Oregon \"Charge at Home\" EV Charger Rebate",
+        "total_incentive": 2250,
+        "eligible_combinations": 4,
+        "device_tier_results": [
+          {
+            "device_id": 123,
+            "device_name": "Level 2 EV Charger",
+            "tier_id": 456,
+            "tier_name": "Standard Rebate",
+            "eligible": true,
+            "incentive_amount": 750,
+            "calculation_details": "Fixed rebate per device: $750",
+            "failed_requirements": [],
+            "ignored_requirements": []
+          }
+        ]
+      }
+    ]
+  },
+  "connect_url": "https://connect.leap.energy?refId=ref-abc123"
+}
+```
+
+## Response Fields
+
+- `utility`: Primary utility serving the address (eiaid, name)
+- `possible_utilities`: List of all possible utilities for this address
+- `address`: Formatted address string
+- `building_type`: Building type that was queried
+- `customer_id`: Customer ID (created or found)
+- `reference_id`: Your reference ID from the request
+- `programs_evaluated`: Number of programs that were evaluated
+- `incentives`: Aggregated incentive data
+  - `total_incentive_amount`: Sum of all eligible incentives
+  - `total_eligible_combinations`: Total number of eligible device/tier combinations
+  - `by_program`: Array of program results with device/tier details
+- `connect_url`: URL to connect/apply (only if `create_application=true`)
+
+## Error Responses
+
+**400 Bad Request** - Missing required fields:
+```json
+{
+  "error": "Missing required fields: address (street_1, city, state_or_province_code, postal_code, country_code), building_type, and device_id"
+}
+```
+
+**400 Bad Request** - Missing reference_id:
+```json
+{
+  "error": "Missing required field: reference_id"
+}
+```
+
+**401 Unauthorized** - Missing API key:
+```json
+{
+  "error": "Missing x-api-key header"
+}
+```
+
+**403 Forbidden** - Invalid/expired API key:
+```json
+{
+  "error": "Invalid API key"
+}
+```
+
+**409 Conflict** - Reference ID already exists for different customer:
+```json
+{
+  "error": "Reference ID already exists for this organization with a different customer",
+  "code": "REFERENCE_CONFLICT"
+}
+```
+
+<Tip>
+The `reference_id` links the customer to your organization. To update applications later, use the PATCH endpoint with the `application_id` from the search results. PATCH requires API key authentication.
+</Tip>

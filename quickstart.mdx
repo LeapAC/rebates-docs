@@ -261,10 +261,11 @@ Provide information to complete the customer's application.
 
 ### Step 1: Search for Applications
 
-Search for applications in `awaiting_partner` status.
+Search for applications in `awaiting_partner` status. Applications are automatically filtered to your organization.
 
 ```http
 GET /applications?application_status=awaiting_partner
+x-api-key: YOUR_API_KEY
 ```
 
 **Response:**
@@ -295,11 +296,13 @@ Upload partner data using the application ID from the search results.
 
 ```http
 PATCH /applications/123
+x-api-key: YOUR_API_KEY
 ```
 
 **Request:**
 ```json
 {
+  "status": "completed",
   "customer": {
     "first_name": "John",
     "last_name": "Doe",
@@ -318,6 +321,10 @@ PATCH /applications/123
 }
 ```
 
+<Note>
+This endpoint requires API key authentication via `x-api-key` header. The application must belong to your organization.
+</Note>
+
 <Tip>
-  The PATCH endpoint supports partial updates - only include fields you want to modify.
+  The PATCH endpoint supports partial updates - only include fields you want to modify. Application fields can be updated at the top level (e.g., `status`, `approval_date`), and customer/devices can be updated in nested objects.
 </Tip>

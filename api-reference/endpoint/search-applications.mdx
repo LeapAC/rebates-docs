@@ -10,6 +10,7 @@ This endpoint requires API key authentication via the `x-api-key` header. All re
 
 ## Query Parameters
 
+- `refId` (optional): Reference ID to filter applications for a specific customer within your organization
 - `customer_id` (optional): Filter by customer ID
 - `application_status` (optional): Filter by status (one of: not_started, in_progress, awaiting_partner, completed, submitted, approved, rejected)
 - `limit` (optional): Results per page (1-100, default 50)
@@ -19,8 +20,17 @@ This endpoint requires API key authentication via the `x-api-key` header. All re
 
 ```bash
 curl -X GET \
-  "https://your-project.supabase.co/functions/v1/applications?limit=25&application_status=submitted" \
-  -H "x-api-key: YOUR_API_KEY" \
+  "https://api.incentives.leap.energy/alpha/applications?limit=25&application_status=submitted" \
+  -H "x-api-key: leap_live_..." \
+  -H "Content-Type: application/json"
+```
+
+## Example Request (Filtered by refId)
+
+```bash
+curl -X GET \
+  "https://api.incentives.leap.energy/alpha/applications?refId=982734ihksjhfwoe8u&limit=50" \
+  -H "x-api-key: leap_live_..." \
   -H "Content-Type: application/json"
 ```
 

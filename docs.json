@@ -24,7 +24,15 @@
           "api-reference/endpoint/search-applications",
           "api-reference/endpoint/get-application",
           "api-reference/endpoint/update-application",
-          "api-reference/endpoint/attachments"
+          {
+            "group": "Attachments",
+            "pages": [
+              "api-reference/endpoint/attachments",
+              "api-reference/endpoint/list-attachments",
+              "api-reference/endpoint/download-attachment",
+              "api-reference/endpoint/delete-attachment"
+            ]
+          }
         ]
       },
       {

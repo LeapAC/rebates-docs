@@ -1,0 +1,137 @@
+---
+title: 'List Attachments'
+description: 'List attachments for one or more applications. Organization keys must use application_id or application_ids query parameter.'
+openapi: 'GET /applications/attachments'
+---
+
+<Note>
+This endpoint requires API key authentication via `x-api-key` header. The application(s) must belong to your organization.
+
+Organization keys must use `application_id` or `application_ids` query parameter. All specified applications must belong to your organization.
+</Note>
+
+## Query Parameters
+
+- `application_id` (required*): Application ID (must belong to your organization)
+- `application_ids` (required*): Comma-separated list of application IDs (e.g., "1,2,3") for bulk listing (all must belong to your organization)
+- `attachment_type` (required**): Attachment type. Required when using single `application_id`, optional when using `application_ids`
+
+*Either `application_id` or `application_ids` is required.
+
+**`attachment_type` is required when using single `application_id`, but optional when using `application_ids` (bulk mode). When omitted in bulk mode, all attachment types are returned.
+
+## Valid Attachment Types
+
+- `INVOICE_EQUIPMENT` - Equipment purchase invoice
+- `INVOICE_INSTALL` - Installation invoice
+- `PERMIT` - Building/electrical permit
+- `PHOTO_NAMEPLATE` - Equipment nameplate photo
+- `PHOTO_INSTALL` - Installation photo
+- `PHOTO_METER` - Utility meter photo
+- `AHRI_CERT` - AHRI certification document
+- `NEAT_REPORT` - NEAT/SIR report
+- `INCOME_FORM` - Income verification form
+- `W9` - W-9 tax form
+- `OTHER` - Other documentation
+
+## Example Request (single application)
+
+```bash
+curl -X GET \
+  "https://api.incentives.leap.energy/alpha/applications/attachments?application_id=27&attachment_type=INVOICE_EQUIPMENT" \
+  -H "x-api-key: leap_live_..."
+```
+
+## Example Request (bulk mode with application_ids)
+
+```bash
+curl -X GET \
+  "https://api.incentives.leap.energy/alpha/applications/attachments?application_ids=27,28,29" \
+  -H "x-api-key: leap_live_..."
+```
+
+## Example Request (bulk mode with attachment_type filter)
+
+```bash
+curl -X GET \
+  "https://api.incentives.leap.energy/alpha/applications/attachments?application_ids=27,28,29&attachment_type=INVOICE_EQUIPMENT" \
+  -H "x-api-key: leap_live_..."
+```
+
+## Example Response (200 OK)
+
+```json
+{
+  "ok": true,
+  "requestId": "req_1234567890",
+  "attachments": [
+    {
+      "id": 456,
+      "application_id": 27,
+      "attachment_type": "INVOICE_EQUIPMENT",
+      "file_url": "storage://attachments/app-27/uuid-invoice.pdf",
+      "filename": "invoice.pdf",
+      "created_at": "2024-01-15T10:30:00Z",
+      "updated_at": "2024-01-15T10:30:00Z"
+    },
+    {
+      "id": 457,
+      "application_id": 28,
+      "attachment_type": "PERMIT",
+      "file_url": "storage://attachments/app-28/uuid-permit.pdf",
+      "filename": "permit.pdf",
+      "created_at": "2024-01-15T11:00:00Z",
+      "updated_at": "2024-01-15T11:00:00Z"
+    }
+  ]
+}
+```
+
+## Empty Response (No Attachments Found)
+
+```json
+{
+  "ok": true,
+  "requestId": "req_1234567890",
+  "attachments": []
+}
+```
+
+## Error Responses
+
+**400 Bad Request** - Missing or invalid parameters:
+```json
+{
+  "code": "bad_request",
+  "message": "Missing attachment_type parameter",
+  "requestId": "..."
+}
+```
+
+**401 Unauthorized** - Missing or invalid API key:
+```json
+{
+  "code": "unauthorized",
+  "message": "x-api-key header required",
+  "requestId": "..."
+}
+```
+
+**403 Forbidden** - Application(s) not in your organization:
+```json
+{
+  "code": "forbidden",
+  "message": "Application(s) not in your organization",
+  "requestId": "..."
+}
+```
+
+**404 Not Found** - Application(s) not found:
+```json
+{
+  "code": "not_found",
+  "message": "Application(s) not found",
+  "requestId": "..."
+}
+```
+

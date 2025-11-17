@@ -1,6 +1,6 @@
 ---
 title: 'Upload Attachments'
-description: 'Upload documentation attachments for applications (invoices, permits, photos, etc.)'
+description: 'Upload documentation attachments for applications (invoices, permits, photos, etc.). This covers the two-step upload process: creating an upload URL and committing the upload.'
 openapi: 'POST /applications/attachments'
 ---
 
@@ -44,7 +44,7 @@ curl -X POST \
 {
   "ok": true,
   "requestId": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
-  "uploadUrl": "https://your-project.supabase.co/storage/v1/object/sign/attachments/app-123/uuid-invoice.pdf?token=...",
+  "uploadUrl": "https://...supabase.co/storage/v1/object/sign/attachments/app-123/uuid-invoice.pdf?token=...",
   "path": "app-123/a1b2c3d4-e5f6-7890-abcd-ef1234567890-invoice.pdf",
   "bucket": "attachments",
   "instructions": "PUT bytes to uploadUrl with the file content-type, then call POST /applications/attachments/commit to finalize."
@@ -104,11 +104,15 @@ curl -X POST \
   "ok": true,
   "requestId": "c3d4e5f6-a7b8-9012-cdef-123456789012",
   "id": 789,
-  "file_url": "https://your-project.supabase.co/storage/v1/object/public/attachments/app-123/a1b2c3d4-e5f6-7890-abcd-ef1234567890-invoice.pdf",
+  "file_url": "storage://attachments/app-123/a1b2c3d4-e5f6-7890-abcd-ef1234567890-invoice.pdf",
   "bucket": "attachments",
   "path": "app-123/a1b2c3d4-e5f6-7890-abcd-ef1234567890-invoice.pdf"
 }
 ```
+
+<Note>
+When `makePublic=true`, `file_url` will be a public HTTP URL. When `makePublic=false` (or omitted), it returns `storage://attachments/{path}` format.
+</Note>
 
 ## Storage Path Format
 

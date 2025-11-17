@@ -287,53 +287,50 @@
                     "summary": "Successful incentive calculation",
                     "value": {
                       "utility": {
-                        "eiaid": 14354,
-                        "name": "PacifiCorp (Oregon)"
+                        "eiaid": 12345,
+                        "name": "Pacific Gas & Electric"
                       },
-                      "address": "456 Main St, Apt 2B, Bend, OR 97701, US",
+                      "address": "123 Main St, Apt 4B, San Francisco, CA 94102",
                       "possible_utilities": [
                         {
-                          "eiaid": "14354",
-                          "name": "PacifiCorp (Oregon)"
+                          "eiaid": "12345",
+                          "name": "Pacific Gas & Electric"
                         }
                       ],
                       "building_type": "RESIDENTIAL",
-                      "customer_id": 453,
-                      "programs_evaluated": 2,
+                      "customer_id": 789,
+                      "programs_evaluated": 3,
                       "incentives": {
-                        "total_incentive_amount": 2250,
-                        "total_eligible_combinations": 4,
+                        "total_incentive_amount": 5500,
+                        "total_eligible_combinations": 2,
                         "by_program": [
                           {
-                            "program_id": 838,
-                            "program_name": "Pacific Power \u2013 Oregon \"Charge at Home\" EV Charger Rebate",
-                            "total_incentive": 2250,
-                            "eligible_combinations": 4,
+                            "program_id": 101,
+                            "program_name": "Home Upgrade Program",
+                            "total_incentive": 3000,
+                            "eligible_combinations": 1,
                             "device_tier_results": [
                               {
-                                "device_id": 123,
-                                "device_name": "Level 2 EV Charger",
-                                "tier_id": 456,
-                                "tier_name": "Standard Rebate",
+                                "device_id": 42,
+                                "device_name": "Heat Pump",
+                                "tier_id": 1,
+                                "tier_name": "Standard",
                                 "eligible": true,
-                                "incentive_amount": 750,
-                                "calculation_details": "Fixed rebate per device: $750",
+                                "incentive_amount": 3000,
+                                "calculation_details": "Base incentive for heat pump installation",
                                 "failed_requirements": [],
-                                "ignored_requirements": []
+                                "ignored_requirements": [],
+                                "completed_requirements": [
+                                  "Income verification",
+                                  "Building type check"
+                                ]
                               }
                             ]
-                          },
-                          {
-                            "program_id": 1597,
-                            "program_name": "Pacific Power Water Heater Rebates - Washington",
-                            "total_incentive": 0,
-                            "eligible_combinations": 0,
-                            "device_tier_results": []
                           }
                         ]
                       },
-                      "reference_id": "ref-abc123",
-                      "connect_url": "https://connect.leap.energy?refId=ref-abc123"
+                      "reference_id": "external-ref-123",
+                      "connect_url": "https://connect.incentives.leap.energy/your-company/refId/external-ref-123"
                     }
                   },
                   "no_eligible_programs": {
@@ -352,7 +349,7 @@
                         "country_code": "US"
                       },
                       "building_type": "RESIDENTIAL",
-                      "customer_id": 453,
+                      "customer_id": 789,
                       "programs_evaluated": 0,
                       "incentives": {
                         "total_incentive_amount": 0,

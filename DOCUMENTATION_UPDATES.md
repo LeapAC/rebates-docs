@@ -2,7 +2,7 @@
 
 ## Summary
 
-Updated the Leap Incentives API documentation to reflect the complete organization API key functionality. All documentation is now consistent with the actual API implementation.
+Updated the Leap Incentives API documentation to reflect the complete organization API key functionality and incentive aggregator endpoint. All documentation is now consistent with the actual API implementation.
 
 ## Files Added
 
@@ -16,17 +16,17 @@ Updated the Leap Incentives API documentation to reflect the complete organizati
   - Error responses and status codes
   - Usage notes and best practices
 
-### 2. `api-reference/overview.mdx`
-- **Location**: `api-reference/` directory
-- **Purpose**: API overview and introduction for Mintlify documentation
-- **Contents**:
-  - Base URL and authentication
-  - Organization API key explanation
-  - Reference ID (refId) usage
-  - Response format standards
-  - Common error codes
-  - Pagination and dry run mode
-  - Quick reference to all endpoints
+### 2. `incentive-aggregator-api.md`
+- **Location**: Root directory
+- **Purpose**: Complete reference documentation for the incentive aggregator endpoint
+- **Contents**: Comprehensive specification including:
+  - Two operation types (lookup vs refresh)
+  - Customer creation and linking behavior
+  - Security features and organization isolation
+  - Application creation workflow
+  - API call logging
+  - Database tables and RLS policies
+  - Usage examples for both operation types
 
 ### 3. `api-reference/endpoint/list-attachments.mdx`
 - **Endpoint**: `GET /applications/attachments`
@@ -48,34 +48,48 @@ Updated the Leap Incentives API documentation to reflect the complete organizati
 
 ## Files Updated
 
-### 1. `api-reference/endpoint/search-applications.mdx`
+### 1. `api-reference/endpoint/check-incentives.mdx`
+**Changes:**
+- Added operation_type parameter (lookup vs refresh)
+- Documented two operation modes with different behaviors
+- Updated request examples for both lookup and refresh operations
+- Updated base URL to production URL
+- Updated API key examples to use `leap_live_...` format
+- Added comprehensive error responses for all scenarios
+- Added Security & Organization Isolation section
+- Added performance tips for using refresh operation
+- Updated response examples with more detail
+- Documented customer creation and linking behavior
+- Added conditional requirements based on operation type
+
+### 2. `api-reference/endpoint/search-applications.mdx`
 **Changes:**
 - Added `refId` query parameter documentation
 - Updated base URL to production URL (`api.incentives.leap.energy/alpha`)
 - Updated API key examples to use `leap_live_...` format
 - Added example request with refId filtering
 
-### 2. `api-reference/endpoint/get-application.mdx`
+### 3. `api-reference/endpoint/get-application.mdx`
 **Changes:**
 - Added Query Parameters section with `refId` parameter
 - Updated base URL to production URL
 - Updated API key examples to use `leap_live_...` format
 - Added example request with refId verification
 
-### 3. `api-reference/endpoint/update-application.mdx`
+### 4. `api-reference/endpoint/update-application.mdx`
 **Changes:**
 - Added important note about organization key restrictions
 - Clarified that org keys must use path-based endpoints (`/applications/{application_id}`)
 - Documented that query parameter-based endpoints are for admin keys only
 
-### 4. `api-reference/endpoint/attachments.mdx`
+### 5. `api-reference/endpoint/attachments.mdx`
 **Changes:**
 - Updated description to clarify it covers the upload process (create URL + commit)
 - Clarified `makePublic` parameter behavior in response
 - Updated example URLs to mask full hostnames
 - Added note about file_url format differences
 
-### 5. `docs.json`
+### 6. `docs.json`
 **Changes:**
 - Added `api-reference/overview` to navigation (first item in API Reference)
 - Reorganized attachments endpoints into a nested "Attachments" group

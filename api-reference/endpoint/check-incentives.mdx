@@ -12,72 +12,32 @@ The `reference_id` is **required** and must be unique within your organization. 
 
 ## Overview
 
-This endpoint automatically:
-1. Validates the API key and verifies organization access
-2. Finds or creates a customer record based on operation type
-3. Links the customer to your organization using the `reference_id`
-4. Looks up utility programs (via address lookup or cached utilities)
-5. Calculates incentives across all applicable programs
-6. Optionally creates/updates application records
-7. Logs API calls for auditing
-8. Returns aggregated incentive data with Connect URL (if `create_application=true`)
+This endpoint calculates incentives across multiple utility programs for a customer address and device. It automatically handles customer creation, utility lookup, and incentive aggregation.
 
 ## Operation Types
 
-The endpoint supports two operation modes:
-
-### Lookup Operation
-**Use when**: First-time customer, new address, or when you need fresh utility data
-
-- Requires full address information
-- Geocodes the address and finds utilities
-- Creates new customer if none exists with matching address
-- Caches utility information for faster subsequent calls
-
-### Refresh Operation
-**Use when**: Returning customer, faster performance needed
-
-- Uses cached utility data (no geocoding required)
-- Much faster than lookup operation
-- Address is optional (uses stored address if not provided)
-- Can update customer address while using cached utilities
+- **`lookup`**: For first-time customers or when you need fresh utility data. Requires full address and geocodes to find utilities.
+- **`refresh`**: For returning customers using cached utility data. Much faster; address is optional.
 
 ## Request Body
 
-### Always Required Fields
+**Required fields:**
+- `operation_type`: `"lookup"` or `"refresh"`
+- `reference_id`: Your internal reference ID (unique within your organization)
+- `building_type`: `single_family`, `multifamily`, or `commercial`
+- `device_id`: ID of the device for incentive calculation
 
-- `operation_type` (required): Either `"lookup"` or `"refresh"`
-- `reference_id` (required): Your internal reference ID (unique within your organization)
-- `building_type` (required): One of `single_family`, `multifamily`, `commercial`
-- `device_id` (required): ID of the device for which to calculate incentives
+**Conditionally required:**
+- `address`: Required for `lookup` operations. Must include `street_1`, `city`, `state_or_province_code`, `postal_code`, and `country_code`. Optional for `refresh` operations.
 
-### Conditionally Required Fields
+**Optional:**
+- `create_application`: If `true`, creates application records and returns `connect_url`
 
-**When `operation_type="lookup"`:**
+## Example Requests
 
-- `address` (required): Customer address object with:
-  - `street_1` (required): Primary street address
-  - `street_2` (optional): Apartment, suite, unit, etc.
-  - `city` (required): City name
-  - `state_or_province_code` (required): 2-letter state/province code
-  - `postal_code` (required): ZIP/postal code
-  - `country_code` (required): 2-letter ISO country code
-
-**When `operation_type="refresh"`:**
-
-- `address` (optional): If provided and differs from stored address, the customer's address will be updated
-
-### Optional Fields
-
-- `create_application` (optional): If `true`, creates application records and returns `connect_url`
-
-## Example Request (Lookup Operation)
-
-Use lookup for first-time customers or when you need fresh utility data:
-
+**Lookup operation:**
 ```bash
-curl -X POST \
-  "https://api.incentives.leap.energy/alpha/incentives" \
+curl -X POST "https://api.incentives.leap.energy/alpha/incentives" \
   -H "x-api-key: leap_live_..." \
   -H "Content-Type: application/json" \
   -d '{
@@ -85,7 +45,6 @@ curl -X POST \
     "reference_id": "external-ref-123",
     "address": {
       "street_1": "123 Main St",
-      "street_2": "Apt 4B",
       "city": "San Francisco",
       "state_or_province_code": "CA",
       "postal_code": "94102",
@@ -97,21 +56,16 @@ curl -X POST \
   }'
 ```
 
-## Example Request (Refresh Operation)
-
-Use refresh for returning customers - much faster using cached utilities:
-
+**Refresh operation:**
 ```bash
-curl -X POST \
-  "https://api.incentives.leap.energy/alpha/incentives" \
+curl -X POST "https://api.incentives.leap.energy/alpha/incentives" \
   -H "x-api-key: leap_live_..." \
   -H "Content-Type: application/json" \
   -d '{
     "operation_type": "refresh",
     "reference_id": "external-ref-123",
     "building_type": "single_family",
-    "device_id": 42,
-    "create_application": true
+    "device_id": 42
   }'
 ```
 
@@ -167,113 +121,24 @@ curl -X POST \
 }
 ```
 
-## Response Fields
+## Response
 
-- `utility`: Primary utility serving the address (eiaid, name)
-- `possible_utilities`: List of all possible utilities for this address
-- `address`: Formatted address string
-- `building_type`: Building type that was queried
-- `customer_id`: Customer ID (created or found)
-- `reference_id`: Your reference ID from the request
-- `programs_evaluated`: Number of programs that were evaluated
-- `incentives`: Aggregated incentive data
-  - `total_incentive_amount`: Sum of all eligible incentives
-  - `total_eligible_combinations`: Total number of eligible device/tier combinations
-  - `by_program`: Array of program results with device/tier details
-- `connect_url`: URL to connect/apply (only if `create_application=true`)
+The response includes utility information, customer details, and aggregated incentive calculations. Key fields:
+- `utility`: Primary utility (eiaid, name)
+- `incentives`: Aggregated incentive data with `total_incentive_amount`, `total_eligible_combinations`, and `by_program` array
+- `connect_url`: Application URL (only if `create_application=true`)
 
 ## Error Responses
 
-**400 Bad Request** - Invalid or empty JSON:
-```json
-{
-  "error": "Invalid or empty JSON body"
-}
-```
+Common error responses:
 
-**400 Bad Request** - Missing required fields:
-```json
-{
-  "error": "Missing required field: operation_type or reference_id"
-}
-```
+- **400 Bad Request**: Missing required fields, invalid `operation_type`, missing address for lookup operations, invalid `building_type`, or reference ID mismatch
+- **401 Unauthorized**: Missing `x-api-key` header
+- **403 Forbidden**: Invalid, expired, or IP-restricted API key
+- **404 Not Found**: No utility found for the address
+- **500 Internal Server Error**: Server-side error
 
-**400 Bad Request** - Invalid operation_type:
-```json
-{
-  "error": "Invalid operation_type. Must be either \"lookup\" or \"refresh\""
-}
-```
-
-**400 Bad Request** - Missing address for lookup operation:
-```json
-{
-  "error": "For lookup operation, address fields are required: street_1, city, state_or_province_code, postal_code, country_code, building_type, device_id"
-}
-```
-
-**400 Bad Request** - Organization company not configured:
-```json
-{
-  "error": "Organization company should be set for your organization. Please contact Leap to set this up"
-}
-```
-
-**400 Bad Request** - Invalid building type:
-```json
-{
-  "error": "Invalid building_type: single_family. Must be one of: RESIDENTIAL, MULTIFAMILY, MANUFACTURED_HOME, COMMERCIAL"
-}
-```
-
-**400 Bad Request** - Reference ID mismatch:
-```json
-{
-  "error": "Reference ID mismatch. The customer is linked to this organization with a different reference_id. Expected: old-ref-123, Received: new-ref-456"
-}
-```
-
-**401 Unauthorized** - Missing API key:
-```json
-{
-  "error": "Missing x-api-key header"
-}
-```
-
-**403 Forbidden** - Invalid API key:
-```json
-{
-  "error": "Invalid API key"
-}
-```
-
-**403 Forbidden** - Expired API key:
-```json
-{
-  "error": "API key has expired"
-}
-```
-
-**403 Forbidden** - IP not allowed:
-```json
-{
-  "error": "IP address not allowed"
-}
-```
-
-**404 Not Found** - No utility found:
-```json
-{
-  "error": "Program lookup failed - no utility found"
-}
-```
-
-**500 Internal Server Error**:
-```json
-{
-  "error": "Internal server error"
-}
-```
+All errors return a JSON object with an `error` field describing the issue.
 
 ## Security & Organization Isolation
 

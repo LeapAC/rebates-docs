@@ -8,24 +8,11 @@ openapi: 'GET /applications/{application_id}'
 This endpoint requires API key authentication via the `x-api-key` header. The application must belong to your organization.
 </Note>
 
-## Query Parameters
-
-- `refId` (optional): Reference ID to verify the application belongs to a specific customer within your organization
-
 ## Example Request
 
 ```bash
 curl -X GET \
   "https://api.incentives.leap.energy/alpha/applications/123" \
-  -H "x-api-key: leap_live_..." \
-  -H "Content-Type: application/json"
-```
-
-## Example Request (with refId verification)
-
-```bash
-curl -X GET \
-  "https://api.incentives.leap.energy/alpha/applications/27?refId=982734ihksjhfwoe8u" \
   -H "x-api-key: leap_live_..." \
   -H "Content-Type: application/json"
 ```

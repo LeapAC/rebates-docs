@@ -1262,6 +1262,197 @@
       }
     },
     "schemas": {
+      "CustomerSearchResult": {
+        "type": "object",
+        "description": "Truncated customer information returned in search results",
+        "required": [
+          "id",
+          "address_line1",
+          "city",
+          "state",
+          "zip_code"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Unique identifier for the customer",
+            "example": 456
+          },
+          "first_name": {
+            "type": "string",
+            "nullable": true,
+            "description": "Customer's first name",
+            "example": "Jane"
+          },
+          "last_name": {
+            "type": "string",
+            "nullable": true,
+            "description": "Customer's last name",
+            "example": "Doe"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "nullable": true,
+            "description": "Customer's email address",
+            "example": "jane.doe@example.com"
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true,
+            "description": "Customer's phone number",
+            "example": "+15551234567"
+          },
+          "address_line1": {
+            "type": "string",
+            "description": "Street address line 1",
+            "example": "123 Main St"
+          },
+          "city": {
+            "type": "string",
+            "description": "City",
+            "example": "San Francisco"
+          },
+          "state": {
+            "type": "string",
+            "description": "State code (2 letters)",
+            "example": "CA"
+          },
+          "zip_code": {
+            "type": "string",
+            "description": "ZIP code",
+            "example": "94102"
+          }
+        }
+      },
+      "ApplicationSearchResult": {
+        "type": "object",
+        "description": "Truncated application information returned in search results",
+        "required": [
+          "id",
+          "program_id",
+          "customer_id",
+          "status"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Unique identifier for the application",
+            "example": 123
+          },
+          "program_id": {
+            "type": "integer",
+            "description": "ID of the rebate program this application is for",
+            "example": 45
+          },
+          "customer_id": {
+            "type": "integer",
+            "description": "ID of the customer who owns this application",
+            "example": 456
+          },
+          "organization_id": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "Organization ID",
+            "example": "550e8400-e29b-41d4-a716-446655440000"
+          },
+          "customer_device_id": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Array of customer device IDs associated with this application",
+            "example": [
+              10,
+              11
+            ]
+          },
+          "rebate_type": {
+            "type": "string",
+            "nullable": true,
+            "description": "Type of rebate being requested",
+            "example": "point_of_sale"
+          },
+          "payee_type": {
+            "type": "string",
+            "enum": [
+              "customer",
+              "contractor",
+              "instant"
+            ],
+            "nullable": true,
+            "description": "Who will receive the rebate payment",
+            "example": "customer"
+          },
+          "submission_date": {
+            "type": "string",
+            "format": "date",
+            "nullable": true,
+            "description": "Date the application was submitted",
+            "example": "2025-01-15"
+          },
+          "approval_date": {
+            "type": "string",
+            "format": "date",
+            "nullable": true,
+            "description": "Date the application was approved",
+            "example": "2025-01-20"
+          },
+          "total_requested_amount": {
+            "type": "number",
+            "format": "decimal",
+            "nullable": true,
+            "description": "Total rebate amount being requested",
+            "example": 1500.0
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "not_started",
+              "in_progress",
+              "awaiting_partner",
+              "completed",
+              "submitted",
+              "approved",
+              "rejected"
+            ],
+            "default": "not_started",
+            "description": "Current status of the application",
+            "example": "submitted"
+          },
+          "equipment_complete": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "Whether all equipment documentation is complete"
+          },
+          "permit_complete": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "Whether all permit documentation is complete"
+          },
+          "utility_complete": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "Whether all utility documentation is complete"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when application was created",
+            "example": "2025-01-10T10:00:00Z"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when application was last updated",
+            "example": "2025-01-15T14:30:00Z"
+          },
+          "customer": {
+            "$ref": "#/components/schemas/CustomerSearchResult"
+          }
+        }
+      },
       "ApplicationSearchResponse": {
         "type": "object",
         "required": [
@@ -1278,7 +1469,7 @@
             "type": "array",
             "description": "Array of applications matching the search criteria",
             "items": {
-              "$ref": "#/components/schemas/Application"
+              "$ref": "#/components/schemas/ApplicationSearchResult"
             }
           }
         }

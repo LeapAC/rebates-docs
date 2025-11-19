@@ -9,8 +9,6 @@ This endpoint requires API key authentication via `x-api-key` header. The applic
 
 Use the `application_id` path parameter to identify which application to update. The API verifies the application belongs to your organization.
 
-**Important**: Organization keys **must** use the path-based `/applications/{application_id}` endpoint. They **cannot** use the query parameter-based `/applications?refId=...` endpoint (that's for admin keys only).
-
 Set `dryRun=true` as a query parameter to validate the request without applying changes.
 </Note>
 

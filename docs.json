@@ -20,6 +20,7 @@
       {
         "group": "API Reference",
         "pages": [
+          "api-reference/guides/api-guide",
           "api-reference/endpoint/check-incentives",
           "api-reference/endpoint/search-applications",
           "api-reference/endpoint/get-application",

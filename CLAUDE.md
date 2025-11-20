@@ -110,6 +110,20 @@ When creating or editing documentation:
 - Alt text on all images
 - Relative paths for internal links
 
+## API Documentation Standards
+
+### OpenAPI Integration
+- **DO NOT duplicate** information that's already defined in the OpenAPI spec (`/api-reference/openapi.json`)
+- OpenAPI automatically generates: request/response schemas, parameters, code examples, error responses
+- API reference MDX files should only contain: frontmatter with `openapi` reference, brief overview, unique tips/warnings, links to guides
+- Keep API reference pages minimal (15-30 lines) - let Mintlify auto-generate the technical details
+
+### Organization Scoping
+- **DO NOT repeatedly mention** organization scoping in API documentation
+- For external API users, organization scoping is implicit and assumed
+- Avoid phrases like "must belong to your organization" or "automatically scoped to your organization"
+- Exception: Include organization scoping details in the comprehensive API guide for context, but not on individual endpoint pages
+
 ## Git workflow
 - Ask how to handle uncommitted changes before starting
 - Create a new branch when no clear branch exists for changes

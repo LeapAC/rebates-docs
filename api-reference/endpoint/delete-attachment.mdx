@@ -4,80 +4,12 @@ description: 'Delete an attachment from storage and remove the database record. 
 openapi: 'DELETE /applications/attachments/{id}'
 ---
 
-<Note>
-This endpoint requires API key authentication via `x-api-key` header. The attachment must belong to an application in your organization.
+## Overview
 
-Organization keys must use `application_id` query parameter to verify the attachment belongs to your organization.
-</Note>
-
-## Path Parameters
-
-- `id` (required): Attachment ID
-
-## Query Parameters
-
-- `application_id` (required): Application ID (must belong to your organization)
-
-## Example Request
-
-```bash
-curl -X DELETE \
-  "https://api.incentives.leap.energy/alpha/applications/attachments/456?application_id=27" \
-  -H "x-api-key: leap_live_..."
-```
-
-## Example Response (204 No Content)
-
-Empty response body with status `204 No Content`.
-
-## Error Responses
-
-**400 Bad Request** - Missing required parameters:
-```json
-{
-  "code": "bad_request",
-  "message": "Missing application_id parameter",
-  "requestId": "..."
-}
-```
-
-**401 Unauthorized** - Missing or invalid API key:
-```json
-{
-  "code": "unauthorized",
-  "message": "x-api-key header required",
-  "requestId": "..."
-}
-```
-
-**403 Forbidden** - Attachment not in your organization:
-```json
-{
-  "code": "forbidden",
-  "message": "Attachment not in your organization",
-  "requestId": "..."
-}
-```
-
-**404 Not Found** - Attachment or application not found:
-```json
-{
-  "code": "not_found",
-  "message": "Attachment not found",
-  "requestId": "..."
-}
-```
-
-**500 Internal Server Error** - Invalid file URL format or storage error:
-```json
-{
-  "code": "internal_error",
-  "message": "Invalid file URL format",
-  "requestId": "..."
-}
-```
+Delete an attachment from storage and remove the database record.
 
 <Warning>
 This operation is **permanent** and cannot be undone. The file will be deleted from storage and the database record will be removed.
 </Warning>
 
+For more information, see the [Attachments Workflow section](/api-reference/guides/api-guide#attachments-workflow) in the API Guide.

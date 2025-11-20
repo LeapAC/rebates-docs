@@ -4,88 +4,12 @@ description: 'Get a signed download URL for an attachment. The URL is valid for 
 openapi: 'GET /applications/attachments/{id}/download'
 ---
 
-<Note>
-This endpoint requires API key authentication via `x-api-key` header. The attachment must belong to an application in your organization.
+## Overview
 
-Organization keys must use `application_id` query parameter to verify the attachment belongs to your organization.
-</Note>
-
-## Path Parameters
-
-- `id` (required): Attachment ID
-
-## Query Parameters
-
-- `application_id` (required): Application ID (must belong to your organization)
-
-## Example Request
-
-```bash
-curl -X GET \
-  "https://api.incentives.leap.energy/alpha/applications/attachments/456/download?application_id=27" \
-  -H "x-api-key: leap_live_..."
-```
-
-## Example Response (200 OK)
-
-```json
-{
-  "ok": true,
-  "requestId": "req_1234567890",
-  "downloadUrl": "https://...supabase.co/storage/v1/object/sign/attachments/...?token=...",
-  "url": "https://...supabase.co/storage/v1/object/sign/attachments/...?token=...",
-  "file_url": "https://...supabase.co/storage/v1/object/sign/attachments/...?token=..."
-}
-```
+Get a signed download URL for an attachment.
 
 <Tip>
-The response includes three fields (`downloadUrl`, `url`, `file_url`) all containing the same signed URL for compatibility. The signed URL is valid for 1 hour.
+The signed URL is valid for 1 hour. The response includes three fields (`downloadUrl`, `url`, `file_url`) all containing the same URL for compatibility.
 </Tip>
 
-## Error Responses
-
-**400 Bad Request** - Missing required parameters:
-```json
-{
-  "code": "bad_request",
-  "message": "Missing application_id parameter",
-  "requestId": "..."
-}
-```
-
-**401 Unauthorized** - Missing or invalid API key:
-```json
-{
-  "code": "unauthorized",
-  "message": "x-api-key header required",
-  "requestId": "..."
-}
-```
-
-**403 Forbidden** - Attachment not in your organization:
-```json
-{
-  "code": "forbidden",
-  "message": "Attachment not in your organization",
-  "requestId": "..."
-}
-```
-
-**404 Not Found** - Attachment or application not found:
-```json
-{
-  "code": "not_found",
-  "message": "Attachment not found",
-  "requestId": "..."
-}
-```
-
-**500 Internal Server Error** - Invalid file URL format:
-```json
-{
-  "code": "internal_error",
-  "message": "Invalid file URL format",
-  "requestId": "..."
-}
-```
-
+For more information, see the [Attachments Workflow section](/api-reference/guides/api-guide#attachments-workflow) in the API Guide.

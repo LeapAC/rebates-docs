@@ -4,154 +4,18 @@ description: 'Get aggregated incentive calculations from multiple utility progra
 openapi: 'POST /incentives'
 ---
 
-<Note>
-This endpoint requires API key authentication via the `x-api-key` header.
-
-The `reference_id` is **required** and must be unique within your organization. It's used to link customers to your organization and enables faster lookups on subsequent calls.
-</Note>
-
 ## Overview
 
-This endpoint calculates incentives across multiple utility programs for a customer address and device. It automatically handles customer creation, utility lookup, and incentive aggregation.
+Calculate incentives across multiple utility programs for a customer address and device. This endpoint automatically handles customer creation, utility lookup, and incentive aggregation.
 
-## Operation Types
+Use **lookup** for first-time customers (requires full address) or **refresh** for returning customers (faster, uses cached data).
 
-- **`lookup`**: For first-time customers or when you need fresh utility data. Requires full address and geocodes to find utilities.
-- **`refresh`**: For returning customers using cached utility data. Much faster; address is optional.
-
-## Request Body
-
-**Required fields:**
-- `operation_type`: `"lookup"` or `"refresh"`
-- `reference_id`: Your internal reference ID (unique within your organization)
-- `building_type`: `single_family`, `multifamily`, or `commercial`
-- `device_id`: ID of the device for incentive calculation
-
-**Conditionally required:**
-- `address`: Required for `lookup` operations. Must include `street_1`, `city`, `state_or_province_code`, `postal_code`, and `country_code`. Optional for `refresh` operations.
-
-**Optional:**
-- `create_application`: If `true`, creates application records and returns `connect_url`
-
-## Example Requests
-
-**Lookup operation:**
-```bash
-curl -X POST "https://api.incentives.leap.energy/alpha/incentives" \
-  -H "x-api-key: leap_live_..." \
-  -H "Content-Type: application/json" \
-  -d '{
-    "operation_type": "lookup",
-    "reference_id": "external-ref-123",
-    "address": {
-      "street_1": "123 Main St",
-      "city": "San Francisco",
-      "state_or_province_code": "CA",
-      "postal_code": "94102",
-      "country_code": "US"
-    },
-    "building_type": "single_family",
-    "device_id": 42,
-    "create_application": true
-  }'
-```
-
-**Refresh operation:**
-```bash
-curl -X POST "https://api.incentives.leap.energy/alpha/incentives" \
-  -H "x-api-key: leap_live_..." \
-  -H "Content-Type: application/json" \
-  -d '{
-    "operation_type": "refresh",
-    "reference_id": "external-ref-123",
-    "building_type": "single_family",
-    "device_id": 42
-  }'
-```
-
-## Example Response
-
-```json
-{
-  "utility": {
-    "eiaid": 12345,
-    "name": "Pacific Gas & Electric"
-  },
-  "possible_utilities": [
-    {
-      "eiaid": "12345",
-      "name": "Pacific Gas & Electric"
-    }
-  ],
-  "address": "123 Main St, San Francisco, CA 94102",
-  "building_type": "single_family",
-  "customer_id": 789,
-  "reference_id": "external-ref-123",
-  "programs_evaluated": 3,
-  "incentives": {
-    "total_incentive_amount": 5500,
-    "total_eligible_combinations": 2,
-    "by_program": [
-      {
-        "program_id": 101,
-        "program_name": "Home Upgrade Program",
-        "total_incentive": 3000,
-        "eligible_combinations": 1,
-        "device_tier_results": [
-          {
-            "device_id": 42,
-            "device_name": "Heat Pump",
-            "tier_id": 1,
-            "tier_name": "Standard",
-            "eligible": true,
-            "incentive_amount": 3000,
-            "calculation_details": "Base incentive for heat pump installation",
-            "failed_requirements": [],
-            "ignored_requirements": [],
-            "completed_requirements": [
-              "Income verification",
-              "Building type check"
-            ]
-          }
-        ]
-      }
-    ]
-  },
-  "connect_url": "https://connect.incentives.leap.energy/your-company/refId/external-ref-123"
-}
-```
-
-## Response
-
-The response includes utility information, customer details, and aggregated incentive calculations. Key fields:
-- `utility`: Primary utility (eiaid, name)
-- `incentives`: Aggregated incentive data with `total_incentive_amount`, `total_eligible_combinations`, and `by_program` array
-- `connect_url`: Application URL (only if `create_application=true`)
-
-## Error Responses
-
-Common error responses:
-
-- **400 Bad Request**: Missing required fields, invalid `operation_type`, missing address for lookup operations, invalid `building_type`, or reference ID mismatch
-- **401 Unauthorized**: Missing `x-api-key` header
-- **403 Forbidden**: Invalid, expired, or IP-restricted API key
-- **404 Not Found**: No utility found for the address
-- **500 Internal Server Error**: Server-side error
-
-All errors return a JSON object with an `error` field describing the issue.
-
-## Security & Organization Isolation
-
-<Warning>
-All API operations are automatically scoped to your organization:
-- Customers are linked to your organization via `customer_organizations` table
-- Reference IDs are unique within your organization (same reference_id can exist in different organizations)
-- Cross-organization access is prevented by Row Level Security (RLS) policies
-- API calls are logged for auditing in the `incentive_api_logs` table
-</Warning>
+<Note>
+The `reference_id` is **required** and must be unique. It enables faster lookups on subsequent calls.
+</Note>
 
 <Tip>
 **Performance Tip**: Use `operation_type="refresh"` for returning customers to skip geocoding and use cached utility data. This is significantly faster than lookup operations.
-
-The `reference_id` links the customer to your organization and enables fast lookups. To manage applications later, use the application endpoints with the `application_id`.
 </Tip>
+
+For more details on operation types, organization scoping, and best practices, see the [API Guide](/api-reference/guides/api-guide).

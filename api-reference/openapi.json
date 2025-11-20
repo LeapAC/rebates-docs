@@ -911,6 +911,93 @@
       }
     },
     "/applications/attachments": {
+      "get": {
+        "summary": "List attachments",
+        "description": "List attachments for one or more applications.\n\n**Authentication:**\nRequires API key authentication via `x-api-key` header. The application must belong to your organization.\n\n**Query Parameters:**\n- Use `application_id` for a single application (requires `attachment_type`)\n- Use `application_ids` for bulk listing (comma-separated, `attachment_type` is optional)",
+        "operationId": "listAttachments",
+        "tags": [
+          "Applications"
+        ],
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "query",
+            "description": "Application ID to list attachments for. Requires attachment_type parameter.",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "example": 123
+          },
+          {
+            "name": "application_ids",
+            "in": "query",
+            "description": "Comma-separated list of application IDs for bulk listing. attachment_type is optional.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "example": "123,456,789"
+          },
+          {
+            "name": "attachment_type",
+            "in": "query",
+            "description": "Filter by attachment type. Required when using application_id.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "INVOICE_EQUIPMENT",
+                "INVOICE_INSTALL",
+                "PERMIT",
+                "PHOTO_NAMEPLATE",
+                "PHOTO_INSTALL",
+                "PHOTO_METER",
+                "AHRI_CERT",
+                "NEAT_REPORT",
+                "INCOME_FORM",
+                "W9",
+                "OTHER"
+              ]
+            },
+            "example": "INVOICE_EQUIPMENT"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved attachments",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Attachment"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      },
       "post": {
         "summary": "Create signed upload URL for attachment",
         "description": "Creates a signed upload URL for uploading an attachment to the application. After receiving the signed URL, upload the file using a PUT request, then commit using the commit endpoint.\n\n**Authentication:**\nRequires API key authentication via `x-api-key` header. The application must belong to your organization.\n\n**Application ID:**\nUse the `application_id` query parameter to identify which application to attach the file to. The API verifies the application belongs to your organization.",
@@ -1055,6 +1142,182 @@
           },
           "400": {
             "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/applications/attachments/{id}/download": {
+      "get": {
+        "summary": "Download attachment",
+        "description": "Get a signed download URL for an attachment. The URL is valid for 1 hour.\n\n**Authentication:**\nRequires API key authentication via `x-api-key` header. The application must belong to your organization.\n\nThe signed URL is valid for 1 hour. The response includes three fields (`downloadUrl`, `url`, `file_url`) all containing the same URL for compatibility.",
+        "operationId": "downloadAttachment",
+        "tags": [
+          "Applications"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Attachment ID",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "example": 456
+          },
+          {
+            "name": "application_id",
+            "in": "query",
+            "description": "Application ID that the attachment belongs to.",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "example": 123
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved download URL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "downloadUrl": {
+                      "type": "string",
+                      "format": "uri",
+                      "description": "Signed download URL (valid for 1 hour)",
+                      "example": "https://your-project.supabase.co/storage/v1/object/sign/attachments/app-123/uuid-invoice.pdf?token=..."
+                    },
+                    "url": {
+                      "type": "string",
+                      "format": "uri",
+                      "description": "Signed download URL (same as downloadUrl, for compatibility)",
+                      "example": "https://your-project.supabase.co/storage/v1/object/sign/attachments/app-123/uuid-invoice.pdf?token=..."
+                    },
+                    "file_url": {
+                      "type": "string",
+                      "format": "uri",
+                      "description": "Signed download URL (same as downloadUrl, for compatibility)",
+                      "example": "https://your-project.supabase.co/storage/v1/object/sign/attachments/app-123/uuid-invoice.pdf?token=..."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "404": {
+            "description": "Attachment not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/applications/attachments/{id}": {
+      "delete": {
+        "summary": "Delete attachment",
+        "description": "Delete an attachment from storage and remove the database record.\n\n**Authentication:**\nRequires API key authentication via `x-api-key` header. The application must belong to your organization.\n\n**Warning:**\nThis operation is **permanent** and cannot be undone. The file will be deleted from storage and the database record will be removed.",
+        "operationId": "deleteAttachment",
+        "tags": [
+          "Applications"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Attachment ID to delete",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "example": 456
+          },
+          {
+            "name": "application_id",
+            "in": "query",
+            "description": "Application ID that the attachment belongs to.",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "example": 123
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully deleted attachment",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Attachment deleted successfully"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "404": {
+            "description": "Attachment not found",
             "content": {
               "application/json": {
                 "schema": {
@@ -2315,6 +2578,77 @@
           }
         }
       },
+      "Attachment": {
+        "type": "object",
+        "description": "Attachment/document associated with an application",
+        "required": [
+          "id",
+          "application_id"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Unique identifier for the attachment",
+            "example": 456
+          },
+          "application_id": {
+            "type": "integer",
+            "description": "ID of the application this attachment belongs to",
+            "example": 123
+          },
+          "attachment_type": {
+            "type": "string",
+            "enum": [
+              "INVOICE_EQUIPMENT",
+              "INVOICE_INSTALL",
+              "PERMIT",
+              "PHOTO_NAMEPLATE",
+              "PHOTO_INSTALL",
+              "PHOTO_METER",
+              "AHRI_CERT",
+              "NEAT_REPORT",
+              "INCOME_FORM",
+              "W9",
+              "OTHER"
+            ],
+            "description": "Type of attachment",
+            "example": "INVOICE_EQUIPMENT"
+          },
+          "filename": {
+            "type": "string",
+            "description": "Original filename",
+            "example": "invoice.pdf"
+          },
+          "path": {
+            "type": "string",
+            "description": "Storage path of the file",
+            "example": "app-123/a1b2c3d4-e5f6-7890-abcd-ef1234567890-invoice.pdf"
+          },
+          "content_type": {
+            "type": "string",
+            "description": "MIME type of the file",
+            "example": "application/pdf"
+          },
+          "size": {
+            "type": "integer",
+            "nullable": true,
+            "description": "File size in bytes",
+            "example": 245760
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when attachment was created",
+            "example": "2025-01-10T10:00:00Z"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when attachment was last updated",
+            "example": "2025-01-15T14:30:00Z"
+          }
+        }
+      },
       "CustomerDevice": {
         "type": "object",
         "description": "Device purchased and installed by customer",
@@ -3215,6 +3549,16 @@
     "responses": {
       "UnauthorizedError": {
         "description": "API key is missing or invalid",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "ForbiddenError": {
+        "description": "Access forbidden - resource does not belong to your organization or insufficient permissions",
         "content": {
           "application/json": {
             "schema": {

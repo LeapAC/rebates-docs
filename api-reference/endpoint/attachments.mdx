@@ -1,160 +1,24 @@
 ---
 title: 'Upload Attachments'
-description: 'Upload documentation attachments for applications (invoices, permits, photos, etc.)'
+description: 'Upload documentation attachments for applications (invoices, permits, photos, etc.). This covers the two-step upload process: creating an upload URL and committing the upload.'
 openapi: 'POST /applications/attachments'
 ---
 
-<Note>
-These endpoints require API key authentication via `x-api-key` header. The application must belong to your organization.
+## Overview
 
-Use the `application_id` query parameter to identify which application to attach files to. The API verifies the application belongs to your organization.
+Upload documentation attachments for applications using a three-step process:
+1. **Create Upload URL**: Request a signed URL
+2. **Upload File**: PUT file to the signed URL
+3. **Commit Upload**: Finalize the attachment
+
+<Note>
+- `application_id` comes from the **query parameter**, not the request body
+- The signed upload URL expires quickly (typically 60 seconds)
+- The `path` in commit must match the path from create upload URL response
 </Note>
 
-## Upload Process
+<Warning>
+Make sure to upload and commit the file before the signed URL expires, or request a new upload URL.
+</Warning>
 
-The attachment upload process is a two-step flow:
-
-1. **Create Upload URL**: Request a signed upload URL for a specific attachment type
-2. **Upload File**: PUT the file bytes to the signed URL
-3. **Commit Upload**: After uploading the file to the signed URL, commit the attachment to finalize the process
-
-## Step 1: Create Upload URL
-
-Request a signed upload URL for uploading an attachment.
-
-**Endpoint:** `POST /applications/attachments?application_id={application_id}`
-
-**Note:** `application_id` comes from the query parameter, **not** the request body.
-
-**Example Request:**
-```bash
-curl -X POST \
-  "https://api.leap.energy/alpha/applications/attachments?application_id=123" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "attachment_type": "INVOICE_EQUIPMENT",
-    "filename": "invoice.pdf",
-    "contentType": "application/pdf"
-  }'
-```
-
-**Example Response:**
-```json
-{
-  "ok": true,
-  "requestId": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
-  "uploadUrl": "https://your-project.supabase.co/storage/v1/object/sign/attachments/app-123/uuid-invoice.pdf?token=...",
-  "path": "app-123/a1b2c3d4-e5f6-7890-abcd-ef1234567890-invoice.pdf",
-  "bucket": "attachments",
-  "instructions": "PUT bytes to uploadUrl with the file content-type, then call POST /applications/attachments/commit to finalize."
-}
-```
-
-**Attachment Types:**
-- `INVOICE_EQUIPMENT` - Equipment purchase invoice
-- `INVOICE_INSTALL` - Installation invoice
-- `PERMIT` - Building/electrical permit
-- `PHOTO_NAMEPLATE` - Equipment nameplate photo
-- `PHOTO_INSTALL` - Installation photo
-- `PHOTO_METER` - Utility meter photo
-- `AHRI_CERT` - AHRI certification document
-- `NEAT_REPORT` - NEAT/SIR report
-- `INCOME_FORM` - Income verification form
-- `W9` - W-9 tax form
-- `OTHER` - Other documentation
-
-## Step 2: Upload File
-
-Upload the file directly to the signed URL returned in step 1 using a PUT request with the file content.
-
-```bash
-curl -X PUT \
-  "<uploadUrl_from_response>" \
-  -H "Content-Type: application/pdf" \
-  --data-binary @invoice.pdf
-```
-
-## Step 3: Commit Upload
-
-After successfully uploading the file, commit the attachment to finalize the process.
-
-**Endpoint:** `POST /applications/attachments/commit?application_id={application_id}`
-
-**Note:** 
-- `application_id` comes from the query parameter, **not** the request body
-- The `path` should use the `app-{application_id}/` prefix format (returned from step 1)
-
-**Example Request:**
-```bash
-curl -X POST \
-  "https://api.leap.energy/alpha/applications/attachments/commit?application_id=123" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "attachment_type": "INVOICE_EQUIPMENT",
-    "path": "app-123/a1b2c3d4-e5f6-7890-abcd-ef1234567890-invoice.pdf",
-    "makePublic": true
-  }'
-```
-
-**Example Response:**
-```json
-{
-  "ok": true,
-  "requestId": "c3d4e5f6-a7b8-9012-cdef-123456789012",
-  "id": 789,
-  "file_url": "https://your-project.supabase.co/storage/v1/object/public/attachments/app-123/a1b2c3d4-e5f6-7890-abcd-ef1234567890-invoice.pdf",
-  "bucket": "attachments",
-  "path": "app-123/a1b2c3d4-e5f6-7890-abcd-ef1234567890-invoice.pdf"
-}
-```
-
-## Storage Path Format
-
-Files are stored at: `app-{application_id}/{uuid}-{safeFilename}`
-
-When `makePublic=true`, `file_url` is a public HTTP URL. Otherwise, it returns `storage://attachments/{path}`.
-
-## Error Responses
-
-**401 Unauthorized** - Missing or invalid API key:
-```json
-{
-  "code": "missing_auth",
-  "message": "x-api-key header required",
-  "requestId": "..."
-}
-```
-
-**403 Forbidden** - Application not in your organization:
-```json
-{
-  "code": "forbidden",
-  "message": "Application not in your organization",
-  "requestId": "..."
-}
-```
-
-**404 Not Found** - Application not found or object not found:
-```json
-{
-  "code": "not_found",
-  "message": "Application 123 not found",
-  "requestId": "..."
-}
-```
-
-or
-
-```json
-{
-  "code": "not_found",
-  "message": "Object not found. Upload may have failed.",
-  "requestId": "..."
-}
-```
-
-<Tip>
-The signed upload URL has an expiration time. Make sure to upload and commit the file before it expires.
-</Tip>
+For detailed workflow explanation, storage paths, attachment types, and best practices, see the [Attachments Workflow section](/api-reference/guides/api-guide#attachments-workflow) in the API Guide.

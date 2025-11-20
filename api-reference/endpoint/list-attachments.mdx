@@ -1,0 +1,16 @@
+---
+title: 'List Attachments'
+description: 'List attachments for one or more applications.'
+openapi: 'GET /applications/attachments'
+---
+
+## Overview
+
+List attachments for one or more applications.
+
+<Note>
+- Use `application_id` for a single application (requires `attachment_type`)
+- Use `application_ids` for bulk listing (comma-separated, `attachment_type` is optional)
+</Note>
+
+For attachment types and workflow details, see the [Attachments Workflow section](/api-reference/guides/api-guide#attachments-workflow) in the API Guide.

@@ -1,0 +1,164 @@
+---
+title: 'Applications API Guide'
+description: 'Guide to querying and monitoring rebate applications'
+---
+
+## Overview
+
+The Applications API allows you to query and monitor rebate applications throughout their lifecycle. You can search and retrieve application data to track progress and integrate with your systems.
+
+For detailed endpoint specifications, see the Applications API reference pages:
+- [Search Applications](/api-reference/endpoint/search-applications)
+- [Get Application](/api-reference/endpoint/get-application)
+
+## Application Status Workflow
+
+Applications follow a defined status progression:
+
+```
+not_started → in_progress → awaiting_partner → completed → submitted → approved/rejected
+```
+
+### Status Definitions
+
+- **`not_started`**: Application created but work hasn't begun
+- **`in_progress`**: Application is being actively worked on
+- **`awaiting_partner`**: Waiting on external partner (installer, utility, etc.)
+- **`completed`**: All work finished, ready for submission
+- **`submitted`**: Application submitted to utility/program administrator
+- **`approved`**: Application approved, rebate processing
+- **`rejected`**: Application rejected (see rejection details in application data)
+
+## Search vs Get Application
+
+The API provides two ways to retrieve application data, optimized for different use cases:
+
+### Search Applications (`GET /applications`)
+
+- Returns simplified application data
+- Optimized for listing and filtering
+- Faster response times
+- Supports pagination
+- Filter by `refId`, `customer_id`, or `application_status`
+
+**Use when**: You need to list applications, filter by criteria, or build application lists in your UI.
+
+### Get Application (`GET /applications/{id}`)
+
+- Returns complete application data
+- Includes all customer fields and customer device details
+- Slower but more comprehensive
+
+**Use when**: You need complete details for a specific application, including all nested data.
+
+<Note>
+**Recommended pattern**: Use Search Applications for listing and filtering, then use Get Application to retrieve full details when a user selects a specific application.
+</Note>
+
+## Attachments
+
+Applications may have associated attachments such as invoices, permits, photos, and other documentation. You can list and download attachments for applications.
+
+For detailed endpoint specifications, see:
+- [Upload Attachments](/api-reference/endpoint/attachments)
+- [List Attachments](/api-reference/endpoint/list-attachments)
+- [Download Attachment](/api-reference/endpoint/download-attachment)
+
+### Attachment Types
+
+Applications support the following attachment types:
+
+- `INVOICE_EQUIPMENT` - Equipment purchase invoice
+- `INVOICE_INSTALL` - Installation invoice
+- `PERMIT` - Building/electrical permit
+- `PHOTO_NAMEPLATE` - Equipment nameplate photo
+- `PHOTO_INSTALL` - Installation photo
+- `PHOTO_METER` - Utility meter photo
+- `AHRI_CERT` - AHRI certification document
+- `NEAT_REPORT` - NEAT/SIR report
+- `INCOME_FORM` - Income verification form
+- `W9` - W-9 tax form
+- `OTHER` - Other documentation
+
+### Listing Attachments
+
+List all attachments for one or more applications:
+
+```bash
+# List attachments for a single application
+curl -X GET "https://api.incentives.leap.energy/alpha/applications/attachments?application_id=123&attachment_type=INVOICE_EQUIPMENT" \
+  -H "x-api-key: leap_live_..."
+
+# List all attachments for multiple applications
+curl -X GET "https://api.incentives.leap.energy/alpha/applications/attachments?application_ids=123,124,125" \
+  -H "x-api-key: leap_live_..."
+```
+
+### Downloading Attachments
+
+Get a signed download URL for an attachment (valid for 1 hour):
+
+```bash
+curl -X GET "https://api.incentives.leap.energy/alpha/applications/attachments/456/download?application_id=123" \
+  -H "x-api-key: leap_live_..."
+```
+
+The response includes a `downloadUrl` field with a temporary signed URL for downloading the file.
+
+## Common Workflows
+
+### Creating and Tracking Applications
+
+1. **Create via Incentives API**: Use `create_application: true` in the Incentives request
+2. **Get the `connect_url`**: Share with customer to complete their application
+3. **Monitor progress**: Poll using `GET /applications?refId=customer-123` to track status changes
+4. **Retrieve details**: Use `GET /applications/{id}` when you need complete application data
+
+### Monitoring Application Status
+
+Applications are updated internally as they progress through the workflow. You can monitor status changes by:
+
+1. **Polling periodically**: Check application status at regular intervals
+2. **Filtering by status**: Use `application_status` parameter to find applications in specific states
+3. **Tracking by customer**: Use `refId` or `customer_id` to monitor specific customers' applications
+
+### Example: Finding Applications by Status
+
+```bash
+# Find all submitted applications
+curl -X GET "https://api.incentives.leap.energy/alpha/applications?application_status=submitted" \
+  -H "x-api-key: leap_live_..."
+
+# Find applications for a specific customer
+curl -X GET "https://api.incentives.leap.energy/alpha/applications?refId=customer-123" \
+  -H "x-api-key: leap_live_..."
+```
+
+## Best Practices
+
+### Efficient Querying
+
+- Use Search Applications for lists (faster, paginated)
+- Cache application lists and refresh periodically
+- Only fetch full details (Get Application) when you need complete data
+- Use appropriate `limit` values for pagination (default: 50, max: 100)
+
+### Status Monitoring
+
+- Poll at reasonable intervals (avoid excessive API calls)
+- Filter by `application_status` to find applications requiring attention
+- Track the `updated_at` timestamp to identify recent changes
+
+### Integration Patterns
+
+- Store the mapping between your system IDs and application IDs
+- Use `refId` consistently to link applications to your customers
+- Cache application data locally to reduce API calls
+- Refresh cached data when you detect status changes
+
+## Related Resources
+
+- [Search Applications API Reference](/api-reference/endpoint/search-applications)
+- [Get Application API Reference](/api-reference/endpoint/get-application)
+- [Incentives API Guide](/incentives-guide) - Create applications
+- [API Authentication](/api-reference/guides/api-guide#authentication--security)

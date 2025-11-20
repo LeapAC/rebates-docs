@@ -1,0 +1,118 @@
+---
+title: 'Incentives API Guide'
+description: 'Guide to using the Incentives API for calculating rebates and creating applications'
+---
+
+## Overview
+
+The Incentives API calculates incentives across multiple utility programs for a customer address and device. It automatically handles customer creation, utility lookup, and incentive aggregation.
+
+For detailed endpoint specifications, see the [Check Incentives](/api-reference/endpoint/check-incentives) API reference.
+
+## Operation Types
+
+The Incentives API supports two operation modes:
+
+### `lookup` Operation
+
+Use for first-time customers or when you need fresh utility data:
+
+- Requires full address including `street_1`, `city`, `state_or_province_code`, `postal_code`, and `country_code`
+- Geocodes the address to find applicable utilities
+- Slower due to address processing and utility lookup
+
+### `refresh` Operation
+
+Use for returning customers with cached utility data:
+
+- Address is optional (uses cached data)
+- Significantly faster—no geocoding or utility lookup required
+- Requires that the customer already exists
+
+<Tip>
+**Performance Tip**: Always use `operation_type="refresh"` for returning customers. This skips geocoding and uses cached utility data, providing much faster responses.
+</Tip>
+
+## Reference IDs
+
+The `reference_id` field is **required** and serves multiple purposes:
+
+- Must be unique within your account
+- Enables fast lookups on subsequent API calls
+- Use your internal customer/account ID for easy correlation
+
+<Note>
+Reference IDs are scoped to your account. The same `reference_id` can exist in different customer accounts without conflict.
+</Note>
+
+## Creating Applications
+
+Set `create_application: true` in the Incentives request to automatically create application records. When enabled, the response includes a `connect_url` field with a link to the customer application portal.
+
+This streamlines the workflow by combining incentive calculation and application creation in a single API call.
+
+## Example Workflow
+
+### First-Time Customer (Lookup)
+
+```bash
+curl -X POST "https://api.incentives.leap.energy/alpha/incentives" \
+  -H "x-api-key: leap_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "operation_type": "lookup",
+    "reference_id": "customer-123",
+    "address": {
+      "street_1": "123 Main St",
+      "city": "San Francisco",
+      "state_or_province_code": "CA",
+      "postal_code": "94102",
+      "country_code": "US"
+    },
+    "building_type": "single_family",
+    "device_id": 42,
+    "create_application": true
+  }'
+```
+
+### Returning Customer (Refresh)
+
+```bash
+curl -X POST "https://api.incentives.leap.energy/alpha/incentives" \
+  -H "x-api-key: leap_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "operation_type": "refresh",
+    "reference_id": "customer-123",
+    "building_type": "single_family",
+    "device_id": 42
+  }'
+```
+
+## Best Practices
+
+### Choose the Right Operation Type
+
+- **First interaction**: Use `lookup` with full address
+- **Subsequent calls**: Use `refresh` with just the `reference_id`
+- **Address changes**: Use `lookup` to update utility information
+
+### Reference ID Strategy
+
+- Use your internal customer/account ID as the `reference_id`
+- Maintain consistency across all API calls for the same customer
+- Store the mapping between your IDs and Leap's `customer_id` for reference
+
+### Error Handling
+
+Common scenarios to handle:
+
+- **No utility found**: Address may be in an unsupported area
+- **Reference ID mismatch**: Ensure the `reference_id` matches the customer's existing record when using refresh
+- **Missing address**: Lookup operations require complete address information
+
+## Related Resources
+
+- [Check Incentives API Reference](/api-reference/endpoint/check-incentives)
+- [Applications API Guide](/api-reference/guides/api-guide#applications-api)
+- [API Authentication](/api-reference/guides/api-guide#authentication--security)

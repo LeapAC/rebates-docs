@@ -1,0 +1,15 @@
+---
+title: 'Download Attachment'
+description: 'Get a signed download URL for an attachment. The URL is valid for 1 hour.'
+openapi: 'GET /applications/attachments/{id}/download'
+---
+
+## Overview
+
+Get a signed download URL for an attachment.
+
+<Tip>
+The signed URL is valid for 1 hour. The response includes three fields (`downloadUrl`, `url`, `file_url`) all containing the same URL for compatibility.
+</Tip>
+
+For more information, see the [Attachments Workflow section](/api-reference/guides/api-guide#attachments-workflow) in the API Guide.

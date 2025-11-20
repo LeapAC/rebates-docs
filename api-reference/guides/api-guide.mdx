@@ -1,0 +1,66 @@
+---
+title: 'API Guide'
+description: 'Comprehensive guide to using the Leap Incentives & Applications API'
+---
+
+## Overview
+
+This guide covers key concepts, workflows, and best practices for working with the Leap API. For detailed endpoint specifications, see the individual [API reference pages](/api-reference).
+
+## Authentication
+
+All API requests require authentication via the `x-api-key` header:
+
+```bash
+curl -X GET "https://api.incentives.leap.energy/alpha/applications" \
+  -H "x-api-key: leap_live_..."
+```
+
+<Warning>
+Never expose API keys in client-side code or public repositories. Always use environment variables and keep keys secure.
+</Warning>
+
+## Best Practices
+
+### Performance Optimization
+
+1. **Pagination**: Use appropriate `limit` values for search endpoints (default: 50, max: 100)
+2. **Cache reference data**: Store customer IDs and reference IDs locally to avoid repeated lookups
+3. **Poll efficiently**: Use reasonable intervals when monitoring application status changes
+
+### Error Handling
+
+Common HTTP status codes:
+
+- **400 Bad Request**: Missing required fields, invalid parameters, or validation errors
+- **401 Unauthorized**: Missing or invalid `x-api-key` header
+- **403 Forbidden**: API key valid but lacks permission (e.g., IP restrictions)
+- **404 Not Found**: Resource doesn't exist
+- **500 Internal Server Error**: Server-side error (contact support if persistent)
+
+All errors return JSON with an `error` or `message` field describing the issue, plus a `requestId` for support inquiries.
+
+### Testing & Validation
+
+1. **Test with test keys**: Always develop against test environment first
+2. **Validate data**: Test your integration with various scenarios before going live
+
+### Security Considerations
+
+1. **Never commit API keys**: Use environment variables and secret management
+2. **Rotate keys regularly**: Generate new keys periodically and revoke old ones
+3. **Use HTTPS only**: All API requests must use HTTPS
+4. **Validate input**: Always validate user input before sending to the API
+
+## API Guides
+
+For detailed information on working with specific APIs, see:
+
+- [Incentives API Guide](/incentives-guide) - Calculate incentives and create applications
+- [Applications API Guide](/applications-guide) - Query and monitor applications
+
+## Support & Resources
+
+- **API Reference**: Detailed endpoint specifications in the [API Reference](/api-reference) section
+- **OpenAPI Spec**: Download the full OpenAPI specification for use with API tools
+- **Support**: Contact support@leap.energy with your `requestId` for troubleshooting

@@ -28,6 +28,8 @@ Check a customer's eligibility for incentives. Leap will return a Connect URL wh
 ```json
 POST /incentives
 {
+  "operation_type": "lookup",
+  "reference_id": "ref-12345",
   "address": {
     "street_1": "456 Main St",
     "street_2": "Apt 2B",
@@ -38,7 +40,6 @@ POST /incentives
   },
   "building_type": "RESIDENTIAL",
   "device_id": 123,
-  "reference_id": "ref-12345",
   "create_application": true
 }
 ```
@@ -275,11 +276,21 @@ x-api-key: YOUR_API_KEY
   "results": [
     {
       "id": 123,
-      "status": "awaiting_partner",
+      "program_id": 339,
       "customer_id": 609,
       "customer_device_id": [45],
+      "status": "awaiting_partner",
+      "rebate_type": "instant",
+      "payee_type": "customer",
+      "total_requested_amount": 1500.00,
+      "created_at": "2025-01-10T15:30:00Z",
+      "updated_at": "2025-01-15T10:45:00Z",
       "customer": {
         "id": 609,
+        "first_name": "John",
+        "last_name": "Doe",
+        "email": "john.doe@example.com",
+        "phone": "555-123-4567",
         "address_line1": "123 Main St",
         "city": "Atlanta",
         "state": "GA",

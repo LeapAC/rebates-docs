@@ -7,7 +7,7 @@ description: 'Comprehensive guide to using the Leap Incentives & Applications AP
 
 This guide covers key concepts, workflows, and best practices for working with the Leap API. For detailed endpoint specifications, see the individual [API reference pages](/api-reference).
 
-## Authentication & Security
+## Authentication
 
 All API requests require authentication via the `x-api-key` header:
 
@@ -16,229 +16,17 @@ curl -X GET "https://api.incentives.leap.energy/alpha/applications" \
   -H "x-api-key: leap_live_..."
 ```
 
-### API Key Types
-
-- **Test keys** (`leap_test_...`): For development and testing
-- **Live keys** (`leap_live_...`): For production use
-
 <Warning>
 Never expose API keys in client-side code or public repositories. Always use environment variables and keep keys secure.
 </Warning>
-
-## Security
-
-- **API key authentication**: All requests require an `x-api-key` header
-- **Row Level Security (RLS)**: Database policies ensure secure data access
-- **Audit logging**: All API calls are logged in the `incentive_api_logs` table for compliance and debugging
-
-## Incentives API
-
-### Operation Types
-
-The Incentives API supports two operation modes:
-
-**`lookup` Operation**
-- Use for first-time customers or when you need fresh utility data
-- Requires full address including `street_1`, `city`, `state_or_province_code`, `postal_code`, and `country_code`
-- Geocodes the address to find applicable utilities
-- Slower due to address processing and utility lookup
-
-**`refresh` Operation**
-- Use for returning customers with cached utility data
-- Address is optional (uses cached data)
-- Significantly faster—no geocoding or utility lookup required
-- Requires that the customer already exists
-
-<Tip>
-**Performance Tip**: Always use `operation_type="refresh"` for returning customers. This skips geocoding and uses cached utility data, providing much faster responses.
-</Tip>
-
-### Reference IDs
-
-The `reference_id` field is **required** and serves multiple purposes:
-
-- Must be unique within your account
-- Enables fast lookups on subsequent API calls
-- Use your internal customer/account ID for easy correlation
-
-### Creating Applications
-
-Set `create_application: true` in the Incentives request to automatically create application records. When enabled, the response includes a `connect_url` field with a link to the customer application portal.
-
-## Applications API
-
-### Application Status Workflow
-
-Applications follow a defined status progression:
-
-```
-not_started → in_progress → awaiting_partner → completed → submitted → approved/rejected
-```
-
-By default, status transitions are restricted to forward progress only. To override this (e.g., move backward from `submitted` to `in_progress`), include the `X-Force-Status: true` header:
-
-```bash
-curl -X PATCH "https://api.leap.energy/alpha/applications/123" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -H "X-Force-Status: true" \
-  -H "Content-Type: application/json" \
-  -d '{"status": "in_progress"}'
-```
-
-<Warning>
-Moving backwards in status workflow should be done carefully. Use `X-Force-Status: true` only when you have a legitimate reason to revert an application's progress.
-</Warning>
-
-### Dry Run Mode
-
-The Update Application endpoint supports dry run mode for validating changes without applying them:
-
-```bash
-curl -X PATCH "https://api.leap.energy/alpha/applications/123?dryRun=true" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "status": "approved",
-    "approval_date": "2025-01-25"
-  }'
-```
-
-Dry run responses include:
-- `validations`: What checks were performed
-- `wouldMutate`: Preview of changes that would be applied
-- `dryRun: true`: Confirmation that no data was modified
-
-<Tip>
-Use dry run mode to validate complex updates before applying them, especially when updating multiple fields or customer devices simultaneously.
-</Tip>
-
-### Customer Devices Requirements
-
-When updating `customer_devices` in an application:
-
-- Each device **must** include an `id` field (not optional)
-- Missing `id` will result in a 400 Bad Request error
-- The `id` refers to the `customer_devices.id`, not `device_id`
-
-**Example:**
-```json
-{
-  "customer_devices": [
-    {
-      "id": 78,
-      "inspection_passed": true,
-      "permit_number": "PERMIT-2025-001"
-    }
-  ]
-}
-```
-
-### Search vs Get Application
-
-The API provides two ways to retrieve application data:
-
-- **Search Applications** (`GET /applications`): Returns simplified application data for listing and filtering. Faster but excludes some details.
-- **Get Application** (`GET /applications/{id}`): Returns complete application data including all customer fields and customer device details.
-
-<Note>
-Use Search Applications for listing and filtering, then use Get Application to retrieve full details for a specific application.
-</Note>
-
-## Attachments Workflow
-
-### Three-Step Upload Process
-
-Uploading attachments requires three distinct steps:
-
-**Step 1: Create Upload URL**
-
-Request a signed URL from the API:
-
-```bash
-POST /applications/attachments?application_id=123
-{
-  "attachment_type": "INVOICE_EQUIPMENT",
-  "filename": "invoice.pdf",
-  "contentType": "application/pdf"
-}
-```
-
-Returns a signed `uploadUrl` and `path` for the file.
-
-**Step 2: Upload File**
-
-Upload the file directly to the signed URL using PUT:
-
-```bash
-curl -X PUT "<uploadUrl_from_step_1>" \
-  -H "Content-Type: application/pdf" \
-  --data-binary @invoice.pdf
-```
-
-**Step 3: Commit Upload**
-
-Finalize the attachment by committing it:
-
-```bash
-POST /applications/attachments/commit?application_id=123
-{
-  "attachment_type": "INVOICE_EQUIPMENT",
-  "path": "app-123/uuid-invoice.pdf",
-  "makePublic": true
-}
-```
-
-<Warning>
-The signed upload URL has an expiration time (typically 60 seconds). Upload and commit the file before the URL expires, or request a new upload URL.
-</Warning>
-
-### Storage Path Format
-
-Files are stored with the following path structure:
-
-```
-app-{application_id}/{uuid}-{safeFilename}
-```
-
-Example: `app-123/a1b2c3d4-e5f6-7890-abcd-ef1234567890-invoice.pdf`
-
-### Public vs Private Files
-
-Control file visibility with the `makePublic` parameter in the commit request:
-
-- `makePublic: true`: Returns a public HTTP URL for direct browser access
-- `makePublic: false` (or omitted): Returns `storage://attachments/{path}` format for internal use
-
-### Attachment Types
-
-The API supports these attachment types:
-
-- `INVOICE_EQUIPMENT` - Equipment purchase invoice
-- `INVOICE_INSTALL` - Installation invoice
-- `PERMIT` - Building/electrical permit
-- `PHOTO_NAMEPLATE` - Equipment nameplate photo
-- `PHOTO_INSTALL` - Installation photo
-- `PHOTO_METER` - Utility meter photo
-- `AHRI_CERT` - AHRI certification document
-- `NEAT_REPORT` - NEAT/SIR report
-- `INCOME_FORM` - Income verification form
-- `W9` - W-9 tax form
-- `OTHER` - Other documentation
-
-### Important Notes
-
-- `application_id` comes from the **query parameter**, not the request body
-- The `path` in the commit request must match the path returned from creating the upload URL
-- Use the correct `attachment_type` that matches what was specified when creating the upload URL
 
 ## Best Practices
 
 ### Performance Optimization
 
-1. **Use refresh operations**: Always use `operation_type="refresh"` for returning customers
-2. **Batch operations**: When possible, group related updates into a single request
-3. **Pagination**: Use appropriate `limit` values for search endpoints (default: 50, max: 100)
-4. **Cache reference data**: Store customer IDs and reference IDs locally to avoid repeated lookups
+1. **Pagination**: Use appropriate `limit` values for search endpoints (default: 50, max: 100)
+2. **Cache reference data**: Store customer IDs and reference IDs locally to avoid repeated lookups
+3. **Poll efficiently**: Use reasonable intervals when monitoring application status changes
 
 ### Error Handling
 
@@ -246,19 +34,16 @@ Common HTTP status codes:
 
 - **400 Bad Request**: Missing required fields, invalid parameters, or validation errors
 - **401 Unauthorized**: Missing or invalid `x-api-key` header
-- **403 Forbidden**: API key valid but lacks permission (wrong organization, IP restrictions)
-- **404 Not Found**: Resource doesn't exist or doesn't belong to your organization
-- **409 Conflict**: Invalid state transition (e.g., status workflow violation)
+- **403 Forbidden**: API key valid but lacks permission (e.g., IP restrictions)
+- **404 Not Found**: Resource doesn't exist
 - **500 Internal Server Error**: Server-side error (contact support if persistent)
 
 All errors return JSON with an `error` or `message` field describing the issue, plus a `requestId` for support inquiries.
 
 ### Testing & Validation
 
-1. **Start with dry runs**: Use `dryRun=true` to validate update requests before applying them
-2. **Test with test keys**: Always develop against test environment first
-3. **Verify organization scoping**: Confirm that API responses only include your organization's data
-4. **Check status transitions**: Understand the application workflow before updating statuses
+1. **Test with test keys**: Always develop against test environment first
+2. **Validate data**: Test your integration with various scenarios before going live
 
 ### Security Considerations
 
@@ -266,22 +51,13 @@ All errors return JSON with an `error` or `message` field describing the issue, 
 2. **Rotate keys regularly**: Generate new keys periodically and revoke old ones
 3. **Use HTTPS only**: All API requests must use HTTPS
 4. **Validate input**: Always validate user input before sending to the API
-5. **Monitor API logs**: Review `incentive_api_logs` for unusual activity
 
-## Cross-Endpoint Relationships
+## API Guides
 
-Understanding how endpoints relate to each other:
+For detailed information on working with specific APIs, see:
 
-1. **Incentives → Applications**: Use `create_application: true` in Incentives API to automatically create applications
-2. **Search → Get**: Use Search Applications for listing, then Get Application for details
-3. **Applications → Attachments**: Application must exist before uploading attachments
-4. **Reference IDs**: Use consistent reference IDs across Incentives and Applications APIs
-
-## Rate Limits & Quotas
-
-<Note>
-Contact your account manager for information about rate limits and API quotas for your organization.
-</Note>
+- [Incentives API Guide](/incentives-guide) - Calculate incentives and create applications
+- [Applications API Guide](/applications-guide) - Query and monitor applications
 
 ## Support & Resources
 

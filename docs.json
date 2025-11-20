@@ -24,7 +24,6 @@
           "api-reference/endpoint/check-incentives",
           "api-reference/endpoint/search-applications",
           "api-reference/endpoint/get-application",
-          "api-reference/endpoint/update-application",
           {
             "group": "Attachments",
             "pages": [
@@ -39,6 +38,8 @@
       {
         "group": "Guides",
         "pages": [
+          "incentives-guide",
+          "applications-guide",
           "setup-claimed-fields",
           "program-roadmap"
         ]

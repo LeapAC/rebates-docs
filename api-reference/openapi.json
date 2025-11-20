@@ -1544,11 +1544,11 @@
             "type": "string",
             "description": "Type of building for which to calculate incentives",
             "enum": [
-              "single_family",
-              "multifamily",
-              "commercial"
+              "RESIDENTIAL",
+              "MULTIFAMILY",
+              "COMMERCIAL"
             ],
-            "example": "single_family"
+            "example": "RESIDENTIAL"
           },
           "device_id": {
             "type": "integer",
@@ -1596,9 +1596,34 @@
             }
           },
           "address": {
-            "type": "string",
-            "description": "Formatted address string returned from the utility lookup",
-            "example": "456 Main St, Apt 2B, Bend, OR 97701, US"
+            "type": "object",
+            "description": "Address object returned from the utility lookup",
+            "properties": {
+              "street_1": {
+                "type": "string",
+                "example": "456 Main St"
+              },
+              "street_2": {
+                "type": "string",
+                "example": "Apt 2B"
+              },
+              "city": {
+                "type": "string",
+                "example": "Bend"
+              },
+              "state_or_province_code": {
+                "type": "string",
+                "example": "OR"
+              },
+              "postal_code": {
+                "type": "string",
+                "example": "97701"
+              },
+              "country_code": {
+                "type": "string",
+                "example": "US"
+              }
+            }
           },
           "possible_utilities": {
             "type": "array",

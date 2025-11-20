@@ -607,7 +607,7 @@
       },
       "patch": {
         "summary": "Update application by application ID",
-        "description": "Updates an application identified by application ID. Supports updating application fields, customer information, and customer devices.\n\n**Authentication:**\nRequires API key authentication via `x-api-key` header. The application must belong to your organization.\n\n**Application ID:**\nUse the `application_id` path parameter to identify which application to update. The API verifies the application belongs to your organization.\n\n**Request Structure:**\nMatches the GET `/applications/{id}` response structure (without protected fields):\n- Application fields at top level (e.g., `status`, `rebate_type`, `approval_date`)\n- `customer` (optional): Customer fields to update\n- `customer_devices` (optional): Array of devices to update (must include `id`)\n\n**Protected Fields:**\nThe following fields cannot be updated: `id`, `customer_id`, `organization_id`, `program_id`, `created_at`, `updated_at`\n\n**Dry Run:**\nSet `dryRun=true` as a query parameter to validate the request without applying changes.\n\n**Partial Update Behavior:**\n- Only include fields you want to change\n- Omitted fields will keep their current values\n- Set a field to `null` to clear its value (where nullable)\n\n**Customer Devices:**\n- Must include `id` (required) to identify the device\n- Missing `id` will return 400 Bad Request with error code `invalid_body`\n\n**Status Transitions:**\nBy default, status transitions are restricted to forward progress only. Use `X-Force-Status: true` header to override.\n\nAll updates are transactional - if any part fails, the entire operation is rolled back.\n",
+        "description": "Updates an application identified by application ID. Supports updating application fields, customer information, and customer devices.\n\n**Authentication:**\nRequires API key authentication via `x-api-key` header. The application must belong to your organization.\n\n**Application ID:**\nUse the `application_id` path parameter to identify which application to update. The API verifies the application belongs to your organization.\n\n**Request Structure:**\nMatches the GET `/applications/{id}` response structure (without protected fields):\n- Application fields at top level (e.g., `rebate_type`, `approval_date`)\n- `customer` (optional): Customer fields to update\n- `customer_devices` (optional): Array of devices to update (must include `id`)\n\n**Protected Fields:**\nThe following fields cannot be updated: `id`, `customer_id`, `organization_id`, `program_id`, `status`, `created_at`, `updated_at`\n\n**Dry Run:**\nSet `dryRun=true` as a query parameter to validate the request without applying changes.\n\n**Partial Update Behavior:**\n- Only include fields you want to change\n- Omitted fields will keep their current values\n- Set a field to `null` to clear its value (where nullable)\n\n**Customer Devices:**\n- Must include `id` (required) to identify the device\n- Missing `id` will return 400 Bad Request with error code `invalid_body`\n\n**Status Field:**\nThe `status` field is read-only for organizations and cannot be updated through this endpoint.\n\nAll updates are transactional - if any part fails, the entire operation is rolled back.\n",
         "operationId": "patchApplicationById",
         "tags": [
           "Applications"
@@ -637,7 +637,7 @@
         ],
         "requestBody": {
           "required": true,
-          "description": "Update request matching GET `/applications/{id}` response structure (without protected fields).\nProvide any combination of application fields, customer, and customer_devices.\nAll sections are optional - only include sections you want to modify.\n\n**Protected fields** (cannot be updated): `id`, `customer_id`, `organization_id`, `program_id`, `created_at`, `updated_at`\n",
+          "description": "Application update request. See schema for details.\n",
           "content": {
             "application/json": {
               "schema": {
@@ -645,9 +645,8 @@
               },
               "examples": {
                 "application_and_customer": {
-                  "summary": "Update application status and customer",
+                  "summary": "Update application and customer",
                   "value": {
-                    "status": "approved",
                     "approval_date": "2025-01-25",
                     "customer": {
                       "email": "newemail@example.com",
@@ -658,7 +657,6 @@
                 "application_only": {
                   "summary": "Update application only",
                   "value": {
-                    "status": "submitted",
                     "submission_date": "2025-01-20"
                   }
                 },
@@ -865,47 +863,47 @@
           {
             "lang": "curl",
             "label": "cURL",
-            "source": "curl -X PATCH \\\n  \"https://api.incentives.leap.energy/alpha/applications/123\" \\\n  -H \"x-api-key: leap_live_...\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"status\": \"approved\",\n    \"approval_date\": \"2025-01-25\",\n    \"customer\": {\n      \"email\": \"newemail@example.com\"\n    }\n  }'"
+            "source": "curl -X PATCH \\\n  \"https://api.incentives.leap.energy/alpha/applications/123\" \\\n  -H \"x-api-key: leap_live_...\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"approval_date\": \"2025-01-25\",\n    \"customer\": {\n      \"email\": \"newemail@example.com\"\n    }\n  }'"
           },
           {
             "lang": "python",
             "label": "Python",
-            "source": "import requests\n\nurl = \"https://api.incentives.leap.energy/alpha/applications/123\"\n\npayload = {\n    \"status\": \"approved\",\n    \"approval_date\": \"2025-01-25\",\n    \"customer\": {\n        \"email\": \"newemail@example.com\"\n    }\n}\n\nheaders = {\n    \"x-api-key\": \"leap_live_...\",\n    \"Content-Type\": \"application/json\"\n}\n\nresponse = requests.patch(url, json=payload, headers=headers)\nprint(response.json())"
+            "source": "import requests\n\nurl = \"https://api.incentives.leap.energy/alpha/applications/123\"\n\npayload = {\n    \"approval_date\": \"2025-01-25\",\n    \"customer\": {\n        \"email\": \"newemail@example.com\"\n    }\n}\n\nheaders = {\n    \"x-api-key\": \"leap_live_...\",\n    \"Content-Type\": \"application/json\"\n}\n\nresponse = requests.patch(url, json=payload, headers=headers)\nprint(response.json())"
           },
           {
             "lang": "javascript",
             "label": "JavaScript",
-            "source": "const response = await fetch(\n  'https://api.incentives.leap.energy/alpha/applications/123',\n  {\n    method: 'PATCH',\n    headers: {\n      'x-api-key': 'leap_live_...',\n      'Content-Type': 'application/json'\n    },\n    body: JSON.stringify({\n      status: 'approved',\n      approval_date: '2025-01-25',\n      customer: {\n        email: 'newemail@example.com'\n      }\n    })\n  }\n);\n\nconst data = await response.json();\nconsole.log(data);"
+            "source": "const response = await fetch(\n  'https://api.incentives.leap.energy/alpha/applications/123',\n  {\n    method: 'PATCH',\n    headers: {\n      'x-api-key': 'leap_live_...',\n      'Content-Type': 'application/json'\n    },\n    body: JSON.stringify({\n      approval_date: '2025-01-25',\n      customer: {\n        email: 'newemail@example.com'\n      }\n    })\n  }\n);\n\nconst data = await response.json();\nconsole.log(data);"
           },
           {
             "lang": "node",
             "label": "Node.js",
-            "source": "const axios = require('axios');\n\nconst url = 'https://api.incentives.leap.energy/alpha/applications/123';\n\nconst payload = {\n  status: 'approved',\n  approval_date: '2025-01-25',\n  customer: {\n    email: 'newemail@example.com'\n  }\n};\n\nconst response = await axios.patch(url, payload, {\n  headers: {\n    'x-api-key': 'leap_live_...',\n    'Content-Type': 'application/json'\n  }\n});\n\nconsole.log(response.data);"
+            "source": "const axios = require('axios');\n\nconst url = 'https://api.incentives.leap.energy/alpha/applications/123';\n\nconst payload = {\n  approval_date: '2025-01-25',\n  customer: {\n    email: 'newemail@example.com'\n  }\n};\n\nconst response = await axios.patch(url, payload, {\n  headers: {\n    'x-api-key': 'leap_live_...',\n    'Content-Type': 'application/json'\n  }\n});\n\nconsole.log(response.data);"
           },
           {
             "lang": "php",
             "label": "PHP",
-            "source": "<?php\n\n$url = 'https://api.incentives.leap.energy/alpha/applications/123';\n\n$payload = [\n    'status' => 'approved',\n    'approval_date' => '2025-01-25',\n    'customer' => [\n        'email' => 'newemail@example.com'\n    ]\n];\n\n$ch = curl_init($url);\ncurl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PATCH');\ncurl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));\ncurl_setopt($ch, CURLOPT_HTTPHEADER, [\n    'x-api-key: leap_live_...',\n    'Content-Type: application/json'\n]);\ncurl_setopt($ch, CURLOPT_RETURNTRANSFER, true);\n\n$response = curl_exec($ch);\ncurl_close($ch);\n\nprint_r(json_decode($response, true));"
+            "source": "<?php\n\n$url = 'https://api.incentives.leap.energy/alpha/applications/123';\n\n$payload = [\n    'approval_date' => '2025-01-25',\n    'customer' => [\n        'email' => 'newemail@example.com'\n    ]\n];\n\n$ch = curl_init($url);\ncurl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PATCH');\ncurl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));\ncurl_setopt($ch, CURLOPT_HTTPHEADER, [\n    'x-api-key: leap_live_...',\n    'Content-Type: application/json'\n]);\ncurl_setopt($ch, CURLOPT_RETURNTRANSFER, true);\n\n$response = curl_exec($ch);\ncurl_close($ch);\n\nprint_r(json_decode($response, true));"
           },
           {
             "lang": "java",
             "label": "Java",
-            "source": "import java.net.http.*;\nimport java.net.URI;\n\nHttpClient client = HttpClient.newHttpClient();\n\nString json = \"\"\"{\n  \"status\": \"approved\",\n  \"approval_date\": \"2025-01-25\",\n  \"customer\": {\n    \"email\": \"newemail@example.com\"\n  }\n}\"\"\";\n\nHttpRequest request = HttpRequest.newBuilder()\n    .uri(URI.create(\"https://api.incentives.leap.energy/alpha/applications/123\"))\n    .header(\"x-api-key\", \"leap_live_...\")\n    .header(\"Content-Type\", \"application/json\")\n    .method(\"PATCH\", HttpRequest.BodyPublishers.ofString(json))\n    .build();\n\nHttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());\nSystem.out.println(response.body());"
+            "source": "import java.net.http.*;\nimport java.net.URI;\n\nHttpClient client = HttpClient.newHttpClient();\n\nString json = \"\"\"{\n  \"approval_date\": \"2025-01-25\",\n  \"customer\": {\n    \"email\": \"newemail@example.com\"\n  }\n}\"\"\";\n\nHttpRequest request = HttpRequest.newBuilder()\n    .uri(URI.create(\"https://api.incentives.leap.energy/alpha/applications/123\"))\n    .header(\"x-api-key\", \"leap_live_...\")\n    .header(\"Content-Type\", \"application/json\")\n    .method(\"PATCH\", HttpRequest.BodyPublishers.ofString(json))\n    .build();\n\nHttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());\nSystem.out.println(response.body());"
           },
           {
             "lang": "ruby",
             "label": "Ruby",
-            "source": "require 'net/http'\nrequire 'json'\n\nuri = URI('https://api.incentives.leap.energy/alpha/applications/123')\n\npayload = {\n  status: 'approved',\n  approval_date: '2025-01-25',\n  customer: {\n    email: 'newemail@example.com'\n  }\n}\n\nhttp = Net::HTTP.new(uri.host, uri.port)\nhttp.use_ssl = true\n\nrequest = Net::HTTP::Patch.new(uri)\nrequest['x-api-key'] = 'leap_live_...'\nrequest['Content-Type'] = 'application/json'\nrequest.body = payload.to_json\n\nresponse = http.request(request)\nputs JSON.parse(response.body)"
+            "source": "require 'net/http'\nrequire 'json'\n\nuri = URI('https://api.incentives.leap.energy/alpha/applications/123')\n\npayload = {\n  approval_date: '2025-01-25',\n  customer: {\n    email: 'newemail@example.com'\n  }\n}\n\nhttp = Net::HTTP.new(uri.host, uri.port)\nhttp.use_ssl = true\n\nrequest = Net::HTTP::Patch.new(uri)\nrequest['x-api-key'] = 'leap_live_...'\nrequest['Content-Type'] = 'application/json'\nrequest.body = payload.to_json\n\nresponse = http.request(request)\nputs JSON.parse(response.body)"
           },
           {
             "lang": "go",
             "label": "Go",
-            "source": "package main\n\nimport (\n\t\"bytes\"\n\t\"encoding/json\"\n\t\"fmt\"\n\t\"net/http\"\n)\n\nfunc main() {\n\turl := \"https://api.incentives.leap.energy/alpha/applications/123\"\n\n\tpayload := map[string]interface{}{\n\t\t\"status\":         \"approved\",\n\t\t\"approval_date\": \"2025-01-25\",\n\t\t\"customer\": map[string]interface{}{\n\t\t\t\"email\": \"newemail@example.com\",\n\t\t},\n\t}\n\n\tjsonData, _ := json.Marshal(payload)\n\treq, _ := http.NewRequest(\"PATCH\", url, bytes.NewBuffer(jsonData))\n\treq.Header.Set(\"x-api-key\", \"leap_live_...\")\n\treq.Header.Set(\"Content-Type\", \"application/json\")\n\n\tclient := &http.Client{}\n\tresp, _ := client.Do(req)\n\tdefer resp.Body.Close()\n\n\tvar result map[string]interface{}\n\tjson.NewDecoder(resp.Body).Decode(&result)\n\tfmt.Println(result)\n}"
+            "source": "package main\n\nimport (\n\t\"bytes\"\n\t\"encoding/json\"\n\t\"fmt\"\n\t\"net/http\"\n)\n\nfunc main() {\n\turl := \"https://api.incentives.leap.energy/alpha/applications/123\"\n\n\tpayload := map[string]interface{}{\n\t\t\"approval_date\": \"2025-01-25\",\n\t\t\"customer\": map[string]interface{}{\n\t\t\t\"email\": \"newemail@example.com\",\n\t\t},\n\t}\n\n\tjsonData, _ := json.Marshal(payload)\n\treq, _ := http.NewRequest(\"PATCH\", url, bytes.NewBuffer(jsonData))\n\treq.Header.Set(\"x-api-key\", \"leap_live_...\")\n\treq.Header.Set(\"Content-Type\", \"application/json\")\n\n\tclient := &http.Client{}\n\tresp, _ := client.Do(req)\n\tdefer resp.Body.Close()\n\n\tvar result map[string]interface{}\n\tjson.NewDecoder(resp.Body).Decode(&result)\n\tfmt.Println(result)\n}"
           },
           {
             "lang": "csharp",
             "label": "C#",
-            "source": "using System;\nusing System.Net.Http;\nusing System.Text;\nusing System.Text.Json;\nusing System.Threading.Tasks;\n\nvar client = new HttpClient();\nvar url = \"https://api.incentives.leap.energy/alpha/applications/123\";\n\nvar payload = new {\n    status = \"approved\",\n    approval_date = \"2025-01-25\",\n    customer = new {\n        email = \"newemail@example.com\"\n    }\n};\n\nvar content = new StringContent(\n    JsonSerializer.Serialize(payload),\n    Encoding.UTF8,\n    \"application/json\"\n);\n\nvar request = new HttpRequestMessage(new HttpMethod(\"PATCH\"), url) {\n    Content = content\n};\nrequest.Headers.Add(\"x-api-key\", \"leap_live_...\");\n\nvar response = await client.SendAsync(request);\nvar result = await response.Content.ReadAsStringAsync();\nConsole.WriteLine(result);"
+            "source": "using System;\nusing System.Net.Http;\nusing System.Text;\nusing System.Text.Json;\nusing System.Threading.Tasks;\n\nvar client = new HttpClient();\nvar url = \"https://api.incentives.leap.energy/alpha/applications/123\";\n\nvar payload = new {\n    approval_date = \"2025-01-25\",\n    customer = new {\n        email = \"newemail@example.com\"\n    }\n};\n\nvar content = new StringContent(\n    JsonSerializer.Serialize(payload),\n    Encoding.UTF8,\n    \"application/json\"\n);\n\nvar request = new HttpRequestMessage(new HttpMethod(\"PATCH\"), url) {\n    Content = content\n};\nrequest.Headers.Add(\"x-api-key\", \"leap_live_...\");\n\nvar response = await client.SendAsync(request);\nvar result = await response.Content.ReadAsStringAsync();\nConsole.WriteLine(result);"
           }
         ]
       }
@@ -2957,7 +2955,7 @@
       },
       "OrgApplicationPatchRequest": {
         "type": "object",
-        "description": "Request body for updating an application by application ID (organization authentication).\nMatches GET `/applications/{id}` response structure without protected fields.\nAll fields are optional - only include fields you want to modify.\n\n**Protected fields** (cannot be updated): `id`, `customer_id`, `organization_id`, `program_id`, `created_at`, `updated_at`\n",
+        "description": "Request body for updating an application by application ID (organization authentication).\nMatches GET `/applications/{id}` response structure without protected fields.\nAll fields are optional - only include fields you want to modify.\n\n**Protected fields** (cannot be updated): `id`, `customer_id`, `organization_id`, `program_id`, `status`, `created_at`, `updated_at`\n",
         "properties": {
           "rebate_type": {
             "type": "string",
@@ -2989,11 +2987,6 @@
             "format": "decimal",
             "nullable": true,
             "description": "Total rebate amount being requested"
-          },
-          "status": {
-            "type": "string",
-            "enum": ["not_started", "in_progress", "awaiting_partner", "completed", "submitted", "approved", "rejected"],
-            "description": "Application status"
           },
           "equipment_complete": {
             "type": "boolean",

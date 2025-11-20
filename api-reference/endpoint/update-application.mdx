@@ -8,15 +8,8 @@ openapi: 'PATCH /applications/{application_id}'
 
 Update application fields, customer information, and customer devices. Use `dryRun=true` as a query parameter to validate the request without applying changes.
 
-<Note>
-**Status Transitions**: By default, status changes must follow forward progress:
-`not_started` → `in_progress` → `awaiting_partner` → `completed` → `submitted` → `approved` / `rejected`
-
-To override (e.g., move backward), include the `X-Force-Status: true` header.
-</Note>
-
 <Tip>
 **Customer Devices**: Each device in `customer_devices` must include `id` (required, not optional). Missing `id` will return a 400 Bad Request error.
 </Tip>
 
-For more details on status transitions, dry run mode, and best practices, see the [API Guide](/api-reference/guides/api-guide).
+For more details on dry run mode and best practices, see the [API Guide](/api-reference/guides/api-guide).

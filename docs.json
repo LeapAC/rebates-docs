@@ -24,6 +24,7 @@
           "api-reference/endpoint/check-incentives",
           "api-reference/endpoint/search-applications",
           "api-reference/endpoint/get-application",
+          "api-reference/endpoint/update-application",
           {
             "group": "Attachments",
             "pages": [

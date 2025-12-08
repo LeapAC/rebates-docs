@@ -8,4 +8,8 @@ openapi: 'GET /applications/{application_id}'
 
 Retrieve complete application details including all customer fields and customer devices.
 
+<Note>
+**Optional `refId` parameter**: You can optionally include a `refId` query parameter to verify the application belongs to a specific customer within your organization.
+</Note>
+
 For searching multiple applications, use the [Search Applications](/api-reference/endpoint/search-applications) endpoint. For more information, see the [Applications API Guide](/applications-guide).

@@ -41,16 +41,6 @@
             }
           },
           {
-            "name": "customer_id",
-            "in": "query",
-            "description": "Filter by customer ID",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "example": 609
-            }
-          },
-          {
             "name": "application_status",
             "in": "query",
             "description": "Filter by application status",
@@ -60,6 +50,7 @@
               "enum": [
                 "not_started",
                 "in_progress",
+                "awaiting_customer",
                 "awaiting_partner",
                 "completed",
                 "submitted",
@@ -486,6 +477,16 @@
             "schema": {
               "type": "integer",
               "example": 123
+            }
+          },
+          {
+            "name": "refId",
+            "in": "query",
+            "description": "Reference ID to verify the application belongs to a specific customer within your organization",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "example": "982734ihksjhfwoe8u"
             }
           }
         ],
@@ -1278,25 +1279,9 @@
           }
         ],
         "responses": {
-          "200": {
+          "204": {
             "description": "Successfully deleted attachment",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "ok": {
-                      "type": "boolean",
-                      "example": true
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Attachment deleted successfully"
-                    }
-                  }
-                }
-              }
-            }
+            "content": {}
           },
           "400": {
             "description": "Invalid request",
@@ -1672,6 +1657,7 @@
             "enum": [
               "not_started",
               "in_progress",
+              "awaiting_customer",
               "awaiting_partner",
               "completed",
               "submitted",
@@ -1807,6 +1793,7 @@
             "enum": [
               "RESIDENTIAL",
               "MULTIFAMILY",
+              "MANUFACTURED_HOME",
               "COMMERCIAL"
             ],
             "example": "RESIDENTIAL"
@@ -2284,6 +2271,7 @@
             "enum": [
               "not_started",
               "in_progress",
+              "awaiting_customer",
               "awaiting_partner",
               "completed",
               "submitted",
@@ -3158,6 +3146,7 @@
             "enum": [
               "not_started",
               "in_progress",
+              "awaiting_customer",
               "awaiting_partner",
               "completed",
               "submitted",

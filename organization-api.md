@@ -663,6 +663,6 @@ All error responses follow this format:
    - Maximum `limit` is 100
 
 7. **Status Values**: 
-   - Valid application statuses: `not_started`, `in_progress`, `awaiting_partner`, `completed`, `submitted`, `approved`, `rejected`
+   - Valid application statuses: `not_started`, `in_progress`, `awaiting_customer`, `awaiting_partner`, `completed`, `submitted`, `approved`, `rejected`
    - Status transitions may be restricted based on configuration
 

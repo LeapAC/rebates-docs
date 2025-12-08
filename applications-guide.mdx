@@ -16,13 +16,14 @@ For detailed endpoint specifications, see the Applications API reference pages:
 Applications follow a defined status progression:
 
 ```
-not_started → in_progress → awaiting_partner → completed → submitted → approved/rejected
+not_started → in_progress → awaiting_customer → awaiting_partner → completed → submitted → approved/rejected
 ```
 
 ### Status Definitions
 
 - **`not_started`**: Application created but work hasn't begun
 - **`in_progress`**: Application is being actively worked on
+- **`awaiting_customer`**: Waiting on customer to provide information or complete steps
 - **`awaiting_partner`**: Waiting on external partner (installer, utility, etc.)
 - **`completed`**: All work finished, ready for submission
 - **`submitted`**: Application submitted to utility/program administrator
@@ -39,7 +40,7 @@ The API provides two ways to retrieve application data, optimized for different 
 - Optimized for listing and filtering
 - Faster response times
 - Supports pagination
-- Filter by `refId`, `customer_id`, or `application_status`
+- Filter by `refId` or `application_status`
 
 **Use when**: You need to list applications, filter by criteria, or build application lists in your UI.
 
@@ -120,7 +121,7 @@ Applications are updated internally as they progress through the workflow. You c
 
 1. **Polling periodically**: Check application status at regular intervals
 2. **Filtering by status**: Use `application_status` parameter to find applications in specific states
-3. **Tracking by customer**: Use `refId` or `customer_id` to monitor specific customers' applications
+3. **Tracking by customer**: Use `refId` to monitor specific customers' applications
 
 ### Example: Finding Applications by Status
 
@@ -129,7 +130,7 @@ Applications are updated internally as they progress through the workflow. You c
 curl -X GET "https://api.incentives.leap.energy/alpha/applications?application_status=submitted" \
   -H "x-api-key: leap_live_..."
 
-# Find applications for a specific customer
+# Find applications for a specific customer by reference ID
 curl -X GET "https://api.incentives.leap.energy/alpha/applications?refId=customer-123" \
   -H "x-api-key: leap_live_..."
 ```

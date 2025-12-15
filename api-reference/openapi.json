@@ -182,7 +182,7 @@
     "/incentives": {
       "post": {
         "summary": "Get aggregated incentives for a customer",
-        "description": "Retrieves and aggregates incentive calculations from multiple utility programs\nbased on the customer's address and building type.\n\nThe API automatically:\n1. Creates or finds the customer based on address components\n2. Links the customer to your organization using the `reference_id`\n3. Associates the device with the customer if not already linked\n4. Identifies the utility serving the address\n5. Finds all active programs for that utility and building type\n6. Calls each program's incentive calculation function\n7. Optionally creates application records (if `create_application=true`)\n8. Aggregates and returns the results\n\n**Authentication:** Requires API key via `x-api-key` header.\n\n**Reference ID:** The `reference_id` is required and must be unique per organization. It's used to link customers to your organization and is returned in the response for your records. To update applications later, use the PATCH endpoint with `application_id` (requires API key authentication).\n",
+        "description": "Retrieves and aggregates incentive calculations from multiple utility programs\nbased on the customer's address and building type.\n\nThe API automatically:\n1. Creates or finds the customer based on address components\n2. Links the customer to your organization using the `reference_id`\n3. Associates devices with the customer (supports multiple devices via `device_ids` array)\n4. Identifies the utility serving the address\n5. Finds all active programs for that utility and building type\n6. Calls each program's incentive calculation function\n7. Optionally creates application records (if `create_application=true` and customer is eligible)\n8. Aggregates and returns the results\n\n**Authentication:** Requires API key via `x-api-key` header.\n\n**Reference ID:** The `reference_id` is required and must be unique per organization. It's used to link customers to your organization and is returned in the response for your records. To update applications later, use the PATCH endpoint with `application_id` (requires API key authentication).\n\n**Operation Types:**\n- `lookup`: New calculation with geocoding (requires address and device_ids)\n- `refresh`: Re-calculate using cached utilities (device_ids optional, uses existing devices if not provided)\n- `override`: Replace all customer devices with new ones, then refresh calculation\n",
         "operationId": "getAggregatedIncentives",
         "tags": [
           "Incentives"
@@ -191,37 +191,37 @@
           {
             "lang": "curl",
             "label": "cURL",
-            "source": "curl -X POST \\\n  \"https://api.incentives.leap.energy/alpha/incentives\" \\\n  -H \"x-api-key: leap_live_...\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"operation_type\": \"lookup\",\n    \"reference_id\": \"external-ref-123\",\n    \"address\": {\n      \"street_1\": \"123 Main St\",\n      \"street_2\": \"Apt 4B\",\n      \"city\": \"San Francisco\",\n      \"state_or_province_code\": \"CA\",\n      \"postal_code\": \"94102\",\n      \"country_code\": \"US\"\n    },\n    \"building_type\": \"single_family\",\n    \"device_id\": 42,\n    \"create_application\": true\n  }'"
+            "source": "curl -X POST \\\n  \"https://api.incentives.leap.energy/alpha/incentives\" \\\n  -H \"x-api-key: leap_live_...\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"operation_type\": \"lookup\",\n    \"reference_id\": \"external-ref-123\",\n    \"address\": {\n      \"street_1\": \"123 Main St\",\n      \"street_2\": \"Apt 4B\",\n      \"city\": \"San Francisco\",\n      \"state_or_province_code\": \"CA\",\n      \"postal_code\": \"94102\",\n      \"country_code\": \"US\"\n    },\n    \"building_type\": \"RESIDENTIAL\",\n    \"device_ids\": [42],\n    \"create_application\": true\n  }'"
           },
           {
             "lang": "python",
             "label": "Python",
-            "source": "import requests\n\nurl = \"https://api.incentives.leap.energy/alpha/incentives\"\n\npayload = {\n    \"operation_type\": \"lookup\",\n    \"reference_id\": \"external-ref-123\",\n    \"address\": {\n        \"street_1\": \"123 Main St\",\n        \"street_2\": \"Apt 4B\",\n        \"city\": \"San Francisco\",\n        \"state_or_province_code\": \"CA\",\n        \"postal_code\": \"94102\",\n        \"country_code\": \"US\"\n    },\n    \"building_type\": \"single_family\",\n    \"device_id\": 42,\n    \"create_application\": True\n}\n\nheaders = {\n    \"x-api-key\": \"leap_live_...\",\n    \"Content-Type\": \"application/json\"\n}\n\nresponse = requests.post(url, json=payload, headers=headers)\nprint(response.json())"
+            "source": "import requests\n\nurl = \"https://api.incentives.leap.energy/alpha/incentives\"\n\npayload = {\n    \"operation_type\": \"lookup\",\n    \"reference_id\": \"external-ref-123\",\n    \"address\": {\n        \"street_1\": \"123 Main St\",\n        \"street_2\": \"Apt 4B\",\n        \"city\": \"San Francisco\",\n        \"state_or_province_code\": \"CA\",\n        \"postal_code\": \"94102\",\n        \"country_code\": \"US\"\n    },\n    \"building_type\": \"RESIDENTIAL\",\n    \"device_ids\": [42],\n    \"create_application\": True\n}\n\nheaders = {\n    \"x-api-key\": \"leap_live_...\",\n    \"Content-Type\": \"application/json\"\n}\n\nresponse = requests.post(url, json=payload, headers=headers)\nprint(response.json())"
           },
           {
             "lang": "javascript",
             "label": "JavaScript",
-            "source": "const response = await fetch(\n  'https://api.incentives.leap.energy/alpha/incentives',\n  {\n    method: 'POST',\n    headers: {\n      'x-api-key': 'leap_live_...',\n      'Content-Type': 'application/json'\n    },\n    body: JSON.stringify({\n      operation_type: 'lookup',\n      reference_id: 'external-ref-123',\n      address: {\n        street_1: '123 Main St',\n        street_2: 'Apt 4B',\n        city: 'San Francisco',\n        state_or_province_code: 'CA',\n        postal_code: '94102',\n        country_code: 'US'\n      },\n      building_type: 'single_family',\n      device_id: 42,\n      create_application: true\n    })\n  }\n);\n\nconst data = await response.json();\nconsole.log(data);"
+            "source": "const response = await fetch(\n  'https://api.incentives.leap.energy/alpha/incentives',\n  {\n    method: 'POST',\n    headers: {\n      'x-api-key': 'leap_live_...',\n      'Content-Type': 'application/json'\n    },\n    body: JSON.stringify({\n      operation_type: 'lookup',\n      reference_id: 'external-ref-123',\n      address: {\n        street_1: '123 Main St',\n        street_2: 'Apt 4B',\n        city: 'San Francisco',\n        state_or_province_code: 'CA',\n        postal_code: '94102',\n        country_code: 'US'\n      },\n      building_type: 'RESIDENTIAL',\n      device_ids: [42],\n      create_application: true\n    })\n  }\n);\n\nconst data = await response.json();\nconsole.log(data);"
           },
           {
             "lang": "php",
             "label": "PHP",
-            "source": "<?php\n\n$url = 'https://api.incentives.leap.energy/alpha/incentives';\n\n$payload = [\n    'operation_type' => 'lookup',\n    'reference_id' => 'external-ref-123',\n    'address' => [\n        'street_1' => '123 Main St',\n        'street_2' => 'Apt 4B',\n        'city' => 'San Francisco',\n        'state_or_province_code' => 'CA',\n        'postal_code' => '94102',\n        'country_code' => 'US'\n    ],\n    'building_type' => 'single_family',\n    'device_id' => 42,\n    'create_application' => true\n];\n\n$ch = curl_init($url);\ncurl_setopt($ch, CURLOPT_POST, true);\ncurl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));\ncurl_setopt($ch, CURLOPT_HTTPHEADER, [\n    'x-api-key: leap_live_...',\n    'Content-Type: application/json'\n]);\ncurl_setopt($ch, CURLOPT_RETURNTRANSFER, true);\n\n$response = curl_exec($ch);\ncurl_close($ch);\n\nprint_r(json_decode($response, true));"
+            "source": "<?php\n\n$url = 'https://api.incentives.leap.energy/alpha/incentives';\n\n$payload = [\n    'operation_type' => 'lookup',\n    'reference_id' => 'external-ref-123',\n    'address' => [\n        'street_1' => '123 Main St',\n        'street_2' => 'Apt 4B',\n        'city' => 'San Francisco',\n        'state_or_province_code' => 'CA',\n        'postal_code' => '94102',\n        'country_code' => 'US'\n    ],\n    'building_type' => 'RESIDENTIAL',\n    'device_ids' => [42],\n    'create_application' => true\n];\n\n$ch = curl_init($url);\ncurl_setopt($ch, CURLOPT_POST, true);\ncurl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));\ncurl_setopt($ch, CURLOPT_HTTPHEADER, [\n    'x-api-key: leap_live_...',\n    'Content-Type: application/json'\n]);\ncurl_setopt($ch, CURLOPT_RETURNTRANSFER, true);\n\n$response = curl_exec($ch);\ncurl_close($ch);\n\nprint_r(json_decode($response, true));"
           },
           {
             "lang": "java",
             "label": "Java",
-            "source": "import java.net.http.*;\nimport java.net.URI;\n\nHttpClient client = HttpClient.newHttpClient();\n\nString json = \"\"\"{\n  \"operation_type\": \"lookup\",\n  \"reference_id\": \"external-ref-123\",\n  \"address\": {\n    \"street_1\": \"123 Main St\",\n    \"street_2\": \"Apt 4B\",\n    \"city\": \"San Francisco\",\n    \"state_or_province_code\": \"CA\",\n    \"postal_code\": \"94102\",\n    \"country_code\": \"US\"\n  },\n  \"building_type\": \"single_family\",\n  \"device_id\": 42,\n  \"create_application\": true\n}\"\"\";\n\nHttpRequest request = HttpRequest.newBuilder()\n    .uri(URI.create(\"https://api.incentives.leap.energy/alpha/incentives\"))\n    .header(\"x-api-key\", \"leap_live_...\")\n    .header(\"Content-Type\", \"application/json\")\n    .POST(HttpRequest.BodyPublishers.ofString(json))\n    .build();\n\nHttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());\nSystem.out.println(response.body());"
+            "source": "import java.net.http.*;\nimport java.net.URI;\n\nHttpClient client = HttpClient.newHttpClient();\n\nString json = \"\"\"{\n  \"operation_type\": \"lookup\",\n  \"reference_id\": \"external-ref-123\",\n  \"address\": {\n    \"street_1\": \"123 Main St\",\n    \"street_2\": \"Apt 4B\",\n    \"city\": \"San Francisco\",\n    \"state_or_province_code\": \"CA\",\n    \"postal_code\": \"94102\",\n    \"country_code\": \"US\"\n  },\n  \"building_type\": \"RESIDENTIAL\",\n  \"device_ids\": [42],\n  \"create_application\": true\n}\"\"\";\n\nHttpRequest request = HttpRequest.newBuilder()\n    .uri(URI.create(\"https://api.incentives.leap.energy/alpha/incentives\"))\n    .header(\"x-api-key\", \"leap_live_...\")\n    .header(\"Content-Type\", \"application/json\")\n    .POST(HttpRequest.BodyPublishers.ofString(json))\n    .build();\n\nHttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());\nSystem.out.println(response.body());"
           },
           {
             "lang": "ruby",
             "label": "Ruby",
-            "source": "require 'net/http'\nrequire 'json'\n\nuri = URI('https://api.incentives.leap.energy/alpha/incentives')\n\npayload = {\n  operation_type: 'lookup',\n  reference_id: 'external-ref-123',\n  address: {\n    street_1: '123 Main St',\n    street_2: 'Apt 4B',\n    city: 'San Francisco',\n    state_or_province_code: 'CA',\n    postal_code: '94102',\n    country_code: 'US'\n  },\n  building_type: 'single_family',\n  device_id: 42,\n  create_application: true\n}\n\nhttp = Net::HTTP.new(uri.host, uri.port)\nhttp.use_ssl = true\n\nrequest = Net::HTTP::Post.new(uri)\nrequest['x-api-key'] = 'leap_live_...'\nrequest['Content-Type'] = 'application/json'\nrequest.body = payload.to_json\n\nresponse = http.request(request)\nputs JSON.parse(response.body)"
+            "source": "require 'net/http'\nrequire 'json'\n\nuri = URI('https://api.incentives.leap.energy/alpha/incentives')\n\npayload = {\n  operation_type: 'lookup',\n  reference_id: 'external-ref-123',\n  address: {\n    street_1: '123 Main St',\n    street_2: 'Apt 4B',\n    city: 'San Francisco',\n    state_or_province_code: 'CA',\n    postal_code: '94102',\n    country_code: 'US'\n  },\n  building_type: 'RESIDENTIAL',\n  device_ids: [42],\n  create_application: true\n}\n\nhttp = Net::HTTP.new(uri.host, uri.port)\nhttp.use_ssl = true\n\nrequest = Net::HTTP::Post.new(uri)\nrequest['x-api-key'] = 'leap_live_...'\nrequest['Content-Type'] = 'application/json'\nrequest.body = payload.to_json\n\nresponse = http.request(request)\nputs JSON.parse(response.body)"
           },
           {
             "lang": "go",
             "label": "Go",
-            "source": "package main\n\nimport (\n\t\"bytes\"\n\t\"encoding/json\"\n\t\"fmt\"\n\t\"net/http\"\n)\n\nfunc main() {\n\turl := \"https://api.incentives.leap.energy/alpha/incentives\"\n\n\tpayload := map[string]interface{}{\n\t\t\"operation_type\": \"lookup\",\n\t\t\"reference_id\":   \"external-ref-123\",\n\t\t\"address\": map[string]interface{}{\n\t\t\t\"street_1\":               \"123 Main St\",\n\t\t\t\"street_2\":               \"Apt 4B\",\n\t\t\t\"city\":                   \"San Francisco\",\n\t\t\t\"state_or_province_code\": \"CA\",\n\t\t\t\"postal_code\":            \"94102\",\n\t\t\t\"country_code\":           \"US\",\n\t\t},\n\t\t\"building_type\":      \"single_family\",\n\t\t\"device_id\":          42,\n\t\t\"create_application\": true,\n\t}\n\n\tjsonData, _ := json.Marshal(payload)\n\treq, _ := http.NewRequest(\"POST\", url, bytes.NewBuffer(jsonData))\n\treq.Header.Set(\"x-api-key\", \"leap_live_...\")\n\treq.Header.Set(\"Content-Type\", \"application/json\")\n\n\tclient := &http.Client{}\n\tresp, _ := client.Do(req)\n\tdefer resp.Body.Close()\n\n\tvar result map[string]interface{}\n\tjson.NewDecoder(resp.Body).Decode(&result)\n\tfmt.Println(result)\n}"
+            "source": "package main\n\nimport (\n\t\"bytes\"\n\t\"encoding/json\"\n\t\"fmt\"\n\t\"net/http\"\n)\n\nfunc main() {\n\turl := \"https://api.incentives.leap.energy/alpha/incentives\"\n\n\tpayload := map[string]interface{}{\n\t\t\"operation_type\": \"lookup\",\n\t\t\"reference_id\":   \"external-ref-123\",\n\t\t\"address\": map[string]interface{}{\n\t\t\t\"street_1\":               \"123 Main St\",\n\t\t\t\"street_2\":               \"Apt 4B\",\n\t\t\t\"city\":                   \"San Francisco\",\n\t\t\t\"state_or_province_code\": \"CA\",\n\t\t\t\"postal_code\":            \"94102\",\n\t\t\t\"country_code\":           \"US\",\n\t\t},\n\t\t\"building_type\":      \"RESIDENTIAL\",\n\t\t\"device_ids\":          []int{42},\n\t\t\"create_application\": true,\n\t}\n\n\tjsonData, _ := json.Marshal(payload)\n\treq, _ := http.NewRequest(\"POST\", url, bytes.NewBuffer(jsonData))\n\treq.Header.Set(\"x-api-key\", \"leap_live_...\")\n\treq.Header.Set(\"Content-Type\", \"application/json\")\n\n\tclient := &http.Client{}\n\tresp, _ := client.Do(req)\n\tdefer resp.Body.Close()\n\n\tvar result map[string]interface{}\n\tjson.NewDecoder(resp.Body).Decode(&result)\n\tfmt.Println(result)\n}"
           }
         ],
         "requestBody": {
@@ -246,8 +246,8 @@
                       "postal_code": "94102",
                       "country_code": "US"
                     },
-                    "building_type": "single_family",
-                    "device_id": 42,
+                    "building_type": "RESIDENTIAL",
+                    "device_ids": [42],
                     "create_application": true
                   }
                 },
@@ -256,8 +256,6 @@
                   "value": {
                     "operation_type": "refresh",
                     "reference_id": "external-ref-123",
-                    "building_type": "single_family",
-                    "device_id": 42,
                     "create_application": true
                   }
                 }
@@ -281,7 +279,7 @@
                         "eiaid": 12345,
                         "name": "Pacific Gas & Electric"
                       },
-                      "address": "123 Main St, Apt 4B, San Francisco, CA 94102",
+                      "address": "123 Main St, San Francisco, CA 94102",
                       "possible_utilities": [
                         {
                           "eiaid": "12345",
@@ -331,14 +329,7 @@
                         "eiaid": 15248,
                         "name": "Portland General Electric Co"
                       },
-                      "address": {
-                        "street_1": "100 SW Main St",
-                        "street_2": "",
-                        "city": "Portland",
-                        "state_or_province_code": "OR",
-                        "postal_code": "97204",
-                        "country_code": "US"
-                      },
+                      "address": "100 SW Main St, Portland, OR 97204",
                       "building_type": "RESIDENTIAL",
                       "customer_id": 789,
                       "programs_evaluated": 0,
@@ -364,7 +355,7 @@
                   "missing_parameters": {
                     "summary": "Missing required fields",
                     "value": {
-                      "error": "Missing required fields: address (street_1, city, state_or_province_code, postal_code, country_code), building_type, and device_id"
+                      "error": "Missing required fields: address (street_1, city, state_or_province_code, postal_code, country_code), building_type, and device_ids"
                     }
                   },
                   "invalid_json": {
@@ -956,7 +947,11 @@
                 "NEAT_REPORT",
                 "INCOME_FORM",
                 "W9",
-                "OTHER"
+                "OTHER",
+                "VEHICLE_PURCHASE",
+                "UTILITY_BILL",
+                "VEHICLE_REGISTRATION",
+                "SIGNATURE"
               ]
             },
             "example": "INVOICE_EQUIPMENT"
@@ -1079,7 +1074,11 @@
                       "NEAT_REPORT",
                       "INCOME_FORM",
                       "W9",
-                      "OTHER"
+                      "OTHER",
+                      "VEHICLE_PURCHASE",
+                      "UTILITY_BILL",
+                      "VEHICLE_REGISTRATION",
+                      "SIGNATURE"
                     ],
                     "description": "Type of attachment being uploaded",
                     "example": "INVOICE_EQUIPMENT"
@@ -1397,7 +1396,11 @@
                       "NEAT_REPORT",
                       "INCOME_FORM",
                       "W9",
-                      "OTHER"
+                      "OTHER",
+                      "VEHICLE_PURCHASE",
+                      "UTILITY_BILL",
+                      "VEHICLE_REGISTRATION",
+                      "SIGNATURE"
                     ],
                     "description": "Type of attachment",
                     "example": "INVOICE_EQUIPMENT"
@@ -1725,17 +1728,16 @@
         "type": "object",
         "required": [
           "operation_type",
-          "reference_id",
-          "building_type",
-          "device_id"
+          "reference_id"
         ],
         "properties": {
           "operation_type": {
             "type": "string",
-            "description": "Operation type: 'lookup' for new calculations with geocoding, 'refresh' for using cached utility data (faster)",
+            "description": "Operation type: 'lookup' for new calculations with geocoding, 'refresh' for using cached utility data (faster), 'override' for replacing all customer devices",
             "enum": [
               "lookup",
-              "refresh"
+              "refresh",
+              "override"
             ],
             "example": "lookup"
           },
@@ -1746,18 +1748,11 @@
           },
           "address": {
             "type": "object",
-            "description": "Customer's address information. Required for 'lookup' operation, optional for 'refresh' operation (uses stored address if not provided)",
-            "required": [
-              "street_1",
-              "city",
-              "state_or_province_code",
-              "postal_code",
-              "country_code"
-            ],
+            "description": "Customer's address information. Required for 'lookup' operation, optional for 'refresh' and 'override' operations (uses stored address if not provided)",
             "properties": {
               "street_1": {
                 "type": "string",
-                "description": "Street address line 1 (primary street address)",
+                "description": "Street address line 1 (primary street address). Required for 'lookup' operation.",
                 "example": "123 Main St"
               },
               "street_2": {
@@ -1767,29 +1762,29 @@
               },
               "city": {
                 "type": "string",
-                "description": "City name",
+                "description": "City name. Required for 'lookup' operation.",
                 "example": "San Francisco"
               },
               "state_or_province_code": {
                 "type": "string",
-                "description": "State or province code (2-letter abbreviation)",
+                "description": "State or province code (2-letter abbreviation). Required for 'lookup' operation.",
                 "example": "CA"
               },
               "postal_code": {
                 "type": "string",
-                "description": "Postal/ZIP code",
+                "description": "Postal/ZIP code. Required for 'lookup' operation.",
                 "example": "94102"
               },
               "country_code": {
                 "type": "string",
-                "description": "Country code (2-letter ISO code)",
+                "description": "Country code (2-letter ISO code). Required for 'lookup' operation.",
                 "example": "US"
               }
             }
           },
           "building_type": {
             "type": "string",
-            "description": "Type of building for which to calculate incentives",
+            "description": "Type of building for which to calculate incentives. Required for 'lookup' and 'override' operations, optional for 'refresh' (uses stored building_type_id if not provided)",
             "enum": [
               "RESIDENTIAL",
               "MULTIFAMILY",
@@ -1798,10 +1793,13 @@
             ],
             "example": "RESIDENTIAL"
           },
-          "device_id": {
-            "type": "integer",
-            "description": "ID of the device for which to calculate incentives",
-            "example": 42
+          "device_ids": {
+            "type": "array",
+            "description": "Array of device IDs to associate with the customer. Required for 'lookup' and 'override' operations, optional for 'refresh' (uses existing devices if not provided). Can contain duplicates.",
+            "items": {
+              "type": "integer"
+            },
+            "example": [32, 44, 44, 44]
           },
           "create_application": {
             "type": "boolean",
@@ -1832,9 +1830,9 @@
             ],
             "properties": {
               "eiaid": {
-                "type": "integer",
+                "type": "string",
                 "description": "EIA utility identification number",
-                "example": 14354
+                "example": "14354"
               },
               "name": {
                 "type": "string",
@@ -1844,34 +1842,9 @@
             }
           },
           "address": {
-            "type": "object",
-            "description": "Address object returned from the utility lookup",
-            "properties": {
-              "street_1": {
-                "type": "string",
-                "example": "456 Main St"
-              },
-              "street_2": {
-                "type": "string",
-                "example": "Apt 2B"
-              },
-              "city": {
-                "type": "string",
-                "example": "Bend"
-              },
-              "state_or_province_code": {
-                "type": "string",
-                "example": "OR"
-              },
-              "postal_code": {
-                "type": "string",
-                "example": "97701"
-              },
-              "country_code": {
-                "type": "string",
-                "example": "US"
-              }
-            }
+            "type": "string",
+            "description": "Formatted address string",
+            "example": "123 Main St, San Francisco, CA 94102"
           },
           "possible_utilities": {
             "type": "array",
@@ -1916,7 +1889,7 @@
           "connect_url": {
             "type": "string",
             "description": "URL to connect/apply for incentives (only returned if create_application=true)",
-            "example": "https://connect.leap.energy?refId=ref-abc123"
+            "example": "https://connect.incentives.leap.energy/your-company/refId/external-ref-123"
           },
           "programs_evaluated": {
             "type": "integer",
@@ -1995,16 +1968,17 @@
       },
       "DeviceTierResult": {
         "type": "object",
-        "required": [
-          "device_id",
-          "device_name",
-          "tier_id",
-          "tier_name",
-          "eligible",
-          "incentive_amount",
-          "failed_requirements",
-          "ignored_requirements"
-        ],
+          "required": [
+            "device_id",
+            "device_name",
+            "tier_id",
+            "tier_name",
+            "eligible",
+            "incentive_amount",
+            "failed_requirements",
+            "ignored_requirements",
+            "completed_requirements"
+          ],
         "properties": {
           "device_id": {
             "type": "integer",
@@ -2057,6 +2031,14 @@
               "type": "string"
             },
             "example": []
+          },
+          "completed_requirements": {
+            "type": "array",
+            "description": "List of eligibility requirements that were completed/passed.",
+            "items": {
+              "type": "string"
+            },
+            "example": []
           }
         }
       },
@@ -2069,7 +2051,7 @@
           "error": {
             "type": "string",
             "description": "Description of the error",
-            "example": "Missing required parameters: street_1, street_2, postal_code, city, state_or_province, country_code, building_type, and device_id"
+            "example": "Missing required parameters: street_1, street_2, postal_code, city, state_or_province, country_code, building_type, and device_ids"
           }
         }
       },
@@ -2595,7 +2577,11 @@
               "NEAT_REPORT",
               "INCOME_FORM",
               "W9",
-              "OTHER"
+              "OTHER",
+              "VEHICLE_PURCHASE",
+              "UTILITY_BILL",
+              "VEHICLE_REGISTRATION",
+              "SIGNATURE"
             ],
             "description": "Type of attachment",
             "example": "INVOICE_EQUIPMENT"

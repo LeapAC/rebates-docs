@@ -11,26 +11,50 @@ For detailed endpoint specifications, see the [Check Incentives](/api-reference/
 
 ## Operation Types
 
-The Incentives API supports two operation modes:
+The Incentives API supports three operation modes:
 
 ### `lookup` Operation
 
 Use for first-time customers or when you need fresh utility data:
 
-- Requires full address including `street_1`, `city`, `state_or_province_code`, `postal_code`, and `country_code`
+- **Required fields**: `address`, `building_type`, and `device_ids` (array)
+- Creates a new customer if not found
 - Geocodes the address to find applicable utilities
+- Caches utility data on the customer record for future use
+- Creates `customer_device` records for all `device_ids` in the array (including duplicates)
 - Slower due to address processing and utility lookup
+- **Device handling**: On first call, creates all `device_ids` as customer devices. On subsequent calls, validates that all `device_ids` already exist for the customer.
 
 ### `refresh` Operation
 
-Use for returning customers with cached utility data:
+Use for returning customers with cached utility data (faster):
 
-- Address is optional (uses cached data)
+- **Required fields**: Only `reference_id`
+- Customer must already exist
+- **Optional fields**:
+  - `address`: If provided and differs from stored address, updates customer address (still uses cached utilities, no geocoding)
+  - `building_type`: If not provided, resolved from customer's stored `building_type_id` in the database
+  - `device_ids`: 
+    - **If not provided**: Uses all existing devices from customer's `customer_devices` table
+    - **If provided**: Validates that all `device_ids` already exist for the customer, then uses those devices
 - Significantly faster—no geocoding or utility lookup required
-- Requires that the customer already exists
+- Uses cached utility data from previous lookup
+- **Device handling**: Without `device_ids`, uses all existing devices. With `device_ids`, validates they exist before using them.
+
+### `override` Operation
+
+Use when a customer changes their devices completely:
+
+- **Required fields**: `reference_id`, `building_type`, and `device_ids` (array)
+- Customer must already exist
+- **Optional fields**:
+  - `address`: If provided and differs from stored address, updates customer address (still uses cached utilities, no geocoding)
+- **Device handling**: Deletes ALL existing customer devices, then creates new ones from `device_ids` array (including duplicates)
+- Then refreshes calculation using cached utilities (faster than lookup)
+- Use when you need to completely replace a customer's device list without validation errors
 
 <Tip>
-**Performance Tip**: Always use `operation_type="refresh"` for returning customers. This skips geocoding and uses cached utility data, providing much faster responses.
+**Performance Tip**: Always use `operation_type="refresh"` for returning customers with the same devices. This skips geocoding and uses cached utility data, providing much faster responses. Use `override` only when devices have changed.
 </Tip>
 
 ## Reference IDs
@@ -51,6 +75,19 @@ Set `create_application: true` in the Incentives request to automatically create
 
 This streamlines the workflow by combining incentive calculation and application creation in a single API call.
 
+## Device IDs
+
+The `device_ids` field is an **array** that can contain multiple device IDs, including duplicates:
+
+- **Array format**: `device_ids: [42, 44, 44, 44]` creates 4 customer device records (1 for device 42, 3 for device 44)
+- **Device categories**: The API extracts unique device categories from all `device_ids` and looks up programs for all device types (e.g., EV Chargers, Thermostats, Heat Pumps)
+- **Required for**: `lookup` and `override` operations
+- **Optional for**: `refresh` operation (uses existing devices if not provided)
+
+<Note>
+When using `refresh` without `device_ids`, the API uses all existing devices from the customer's `customer_devices` table. This allows refreshing with just the `reference_id`.
+</Note>
+
 ## Example Workflow
 
 ### First-Time Customer (Lookup)
@@ -70,12 +107,12 @@ curl -X POST "https://api.incentives.leap.energy/alpha/incentives" \
       "country_code": "US"
     },
     "building_type": "RESIDENTIAL",
-    "device_id": 42,
+    "device_ids": [42],
     "create_application": true
   }'
 ```
 
-### Returning Customer (Refresh)
+### Returning Customer (Refresh - Minimal)
 
 ```bash
 curl -X POST "https://api.incentives.leap.energy/alpha/incentives" \
@@ -84,8 +121,36 @@ curl -X POST "https://api.incentives.leap.energy/alpha/incentives" \
   -d '{
     "operation_type": "refresh",
     "reference_id": "customer-123",
+    "create_application": true
+  }'
+```
+
+### Returning Customer (Refresh - With Device Validation)
+
+```bash
+curl -X POST "https://api.incentives.leap.energy/alpha/incentives" \
+  -H "x-api-key: leap_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "operation_type": "refresh",
+    "reference_id": "customer-123",
+    "device_ids": [42, 44],
+    "create_application": true
+  }'
+```
+
+### Customer Changed Devices (Override)
+
+```bash
+curl -X POST "https://api.incentives.leap.energy/alpha/incentives" \
+  -H "x-api-key: leap_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "operation_type": "override",
+    "reference_id": "customer-123",
     "building_type": "RESIDENTIAL",
-    "device_id": 42
+    "device_ids": [55, 66, 77],
+    "create_application": true
   }'
 ```
 
@@ -93,15 +158,25 @@ curl -X POST "https://api.incentives.leap.energy/alpha/incentives" \
 
 ### Choose the Right Operation Type
 
-- **First interaction**: Use `lookup` with full address
-- **Subsequent calls**: Use `refresh` with just the `reference_id`
-- **Address changes**: Use `lookup` to update utility information
+- **First interaction**: Use `lookup` with full address and `device_ids`
+- **Subsequent calls (same devices)**: Use `refresh` with just the `reference_id` (fastest option)
+- **Subsequent calls (validate specific devices)**: Use `refresh` with `reference_id` and `device_ids`
+- **Customer changed devices**: Use `override` to replace all devices
+- **Address changes**: Use `lookup` to update utility information (geocodes new address)
+
+### Device ID Strategy
+
+- Use arrays for `device_ids` even for single devices: `[42]` not `42`
+- Include duplicates in the array if customer has multiple of the same device: `[42, 42, 42]`
+- For `refresh` operations, you can omit `device_ids` to use all existing devices
+- For `override` operations, provide the complete new device list (old devices are deleted)
 
 ### Reference ID Strategy
 
 - Use your internal customer/account ID as the `reference_id`
 - Maintain consistency across all API calls for the same customer
 - Store the mapping between your IDs and Leap's `customer_id` for reference
+- Reference IDs are scoped to your organization (same ID can exist in different organizations)
 
 ### Error Handling
 
@@ -110,6 +185,8 @@ Common scenarios to handle:
 - **No utility found**: Address may be in an unsupported area
 - **Reference ID mismatch**: Ensure the `reference_id` matches the customer's existing record when using refresh
 - **Missing address**: Lookup operations require complete address information
+- **Device not found**: When using `refresh` with `device_ids`, all devices must already exist for the customer
+- **No devices for refresh**: If customer has no devices and you use `refresh` without `device_ids`, you'll get an error
 
 ## Related Resources
 

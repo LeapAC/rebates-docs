@@ -1622,6 +1622,12 @@
             "description": "Organization ID",
             "example": "550e8400-e29b-41d4-a716-446655440000"
           },
+          "reference_id": {
+            "type": "string",
+            "nullable": true,
+            "description": "Reference ID for the customer within the organization (from customer_organizations)",
+            "example": "external-ref-123"
+          },
           "customer_device_id": {
             "type": "array",
             "items": {
@@ -1759,7 +1765,7 @@
           },
           "reference_id": {
             "type": "string",
-            "description": "Your internal reference ID for tracking this customer within your organization (unique per organization). Must be 3-256 characters and use only RFC 3986 unreserved characters: A-Z, a-z, 0-9, ., _, ~, -.",
+            "description": "Your internal reference ID for tracking this customer within your organization (unique per organization)",
             "example": "external-ref-123"
           },
           "address": {
@@ -2124,6 +2130,12 @@
             "type": "integer",
             "description": "ID of the customer who owns this application",
             "example": 609
+          },
+          "reference_id": {
+            "type": "string",
+            "nullable": true,
+            "description": "Reference ID for the customer within the organization (from customer_organizations). Matches the reference_id used with the incentives API.",
+            "example": "external-ref-123"
           },
           "customer_device_id": {
             "type": "array",
@@ -2893,6 +2905,15 @@
             "type": "string",
             "nullable": true,
             "description": "Make and model of coil (for HVAC)"
+          },
+          "added_by": {
+            "type": "string",
+            "enum": [
+              "organization",
+              "customer"
+            ],
+            "description": "Indicates who added the device record: 'organization' when created via incentives lookup, or 'customer' when added directly by the customer or partner.",
+            "example": "organization"
           },
           "device": {
             "type": "object",

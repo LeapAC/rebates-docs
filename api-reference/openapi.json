@@ -258,6 +258,16 @@
                     "reference_id": "external-ref-123",
                     "create_application": true
                   }
+                },
+                "override_request": {
+                  "summary": "Override operation - Replace all customer devices",
+                  "value": {
+                    "operation_type": "override",
+                    "reference_id": "external-ref-123",
+                    "building_type": "RESIDENTIAL",
+                    "device_ids": [55, 66, 77],
+                    "create_application": true
+                  }
                 }
               }
             }
@@ -552,11 +562,14 @@
                         "contractor_license": "EC-12345",
                         "permits_obtained": true,
                         "inspection_passed": true,
-                        "vehicle_make": "Tesla",
-                        "vehicle_model": "Model 3",
-                        "vehicle_year": 2023,
                         "created_at": "2025-01-10T12:00:00Z",
-                        "updated_at": "2025-01-15T14:30:00Z"
+                        "updated_at": "2025-01-15T14:30:00Z",
+                        "device": {
+                          "model_name": "Smart Splitter",
+                          "manufacturer": "ChargePoint",
+                          "manufacture_year": 2024,
+                          "device_category_name": "EV Charger"
+                        }
                       }
                     ]
                   }
@@ -951,7 +964,8 @@
                 "VEHICLE_PURCHASE",
                 "UTILITY_BILL",
                 "VEHICLE_REGISTRATION",
-                "SIGNATURE"
+                "SIGNATURE",
+                "TARIFF_CONFIRMATION"
               ]
             },
             "example": "INVOICE_EQUIPMENT"
@@ -1078,7 +1092,8 @@
                       "VEHICLE_PURCHASE",
                       "UTILITY_BILL",
                       "VEHICLE_REGISTRATION",
-                      "SIGNATURE"
+                      "SIGNATURE",
+                      "TARIFF_CONFIRMATION"
                     ],
                     "description": "Type of attachment being uploaded",
                     "example": "INVOICE_EQUIPMENT"
@@ -1400,7 +1415,8 @@
                       "VEHICLE_PURCHASE",
                       "UTILITY_BILL",
                       "VEHICLE_REGISTRATION",
-                      "SIGNATURE"
+                      "SIGNATURE",
+                      "TARIFF_CONFIRMATION"
                     ],
                     "description": "Type of attachment",
                     "example": "INVOICE_EQUIPMENT"
@@ -1743,7 +1759,7 @@
           },
           "reference_id": {
             "type": "string",
-            "description": "Your internal reference ID for tracking this customer within your organization (unique per organization)",
+            "description": "Your internal reference ID for tracking this customer within your organization (unique per organization). Must be 3-256 characters and use only RFC 3986 unreserved characters: A-Z, a-z, 0-9, ., _, ~, -.",
             "example": "external-ref-123"
           },
           "address": {
@@ -2581,7 +2597,8 @@
               "VEHICLE_PURCHASE",
               "UTILITY_BILL",
               "VEHICLE_REGISTRATION",
-              "SIGNATURE"
+              "SIGNATURE",
+              "TARIFF_CONFIRMATION"
             ],
             "description": "Type of attachment",
             "example": "INVOICE_EQUIPMENT"
@@ -2758,18 +2775,6 @@
             "description": "Permit number",
             "example": "PMT-2025-001"
           },
-          "vehicle_make": {
-            "type": "string",
-            "nullable": true,
-            "description": "Make of vehicle (for EV chargers)",
-            "example": "Tesla"
-          },
-          "vehicle_model": {
-            "type": "string",
-            "nullable": true,
-            "description": "Model of vehicle (for EV chargers)",
-            "example": "Model 3"
-          },
           "vehicle_year": {
             "type": "integer",
             "nullable": true,
@@ -2888,6 +2893,37 @@
             "type": "string",
             "nullable": true,
             "description": "Make and model of coil (for HVAC)"
+          },
+          "device": {
+            "type": "object",
+            "nullable": true,
+            "description": "Device information from the devices catalog (only present when device_id is set)",
+            "properties": {
+              "model_name": {
+                "type": "string",
+                "nullable": true,
+                "description": "Marketing or product line name for the device",
+                "example": "Smart Splitter"
+              },
+              "manufacturer": {
+                "type": "string",
+                "nullable": true,
+                "description": "Company or brand that manufactures the device",
+                "example": "ChargePoint"
+              },
+              "manufacture_year": {
+                "type": "integer",
+                "nullable": true,
+                "description": "Year the specific unit was manufactured",
+                "example": 2024
+              },
+              "device_category_name": {
+                "type": "string",
+                "nullable": true,
+                "description": "Name of the device category (e.g., EV Charger, HVAC, Water Heater)",
+                "example": "EV Charger"
+              }
+            }
           },
           "created_at": {
             "type": "string",
@@ -3414,14 +3450,6 @@
             "nullable": true
           },
           "permit_number": {
-            "type": "string",
-            "nullable": true
-          },
-          "vehicle_make": {
-            "type": "string",
-            "nullable": true
-          },
-          "vehicle_model": {
             "type": "string",
             "nullable": true
           },

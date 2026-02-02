@@ -17,7 +17,11 @@ This function:
 
 ## Authentication
 
-**Required:** API key in `x-api-key` header
+The function supports two mutually-exclusive authentication methods:
+
+### Method 1: API Key (for integrations)
+
+**Header:** `x-api-key`
 
 ```
 x-api-key: leap_live_<your_api_key>
@@ -31,6 +35,18 @@ To generate an API key:
 
 See [API Key Manager documentation](../api-key-manager/README.md) for details.
 
+### Method 2: Clerk Bearer Token (for portal)
+
+**Header:** `Authorization`
+
+```
+Authorization: Bearer <Clerk_session_JWT>
+```
+
+The Clerk JWT must include an `org_id` claim (active organization). The organization must be provisioned in the database with a matching `clerk_org_id` value.
+
+**Important:** Provide either `x-api-key` OR `Authorization`, not both. If both headers are present, the request will be rejected with a 400 error.
+
 ## Endpoint
 
 **POST /incentives**
@@ -40,7 +56,12 @@ See [API Key Manager documentation](../api-key-manager/README.md) for details.
 **Headers:**
 
 ```
+# Option 1: API Key (for integrations)
 x-api-key: leap_live_abc123...
+Content-Type: application/json
+
+# Option 2: Clerk Bearer Token (for portal)
+Authorization: Bearer <Clerk_session_JWT>
 Content-Type: application/json
 ```
 
@@ -58,20 +79,31 @@ Content-Type: application/json
     "postal_code": "94102",
     "country_code": "US"
   },
-  "building_type": "single_family",
-  "device_id": 42,
+  "building_type": "RESIDENTIAL",
+  "device_ids": [32, 44, 44, 44],
   "create_application": true
 }
 ```
 
 **Required Fields:**
 
-- `operation_type` (string): **Always required** - Must be either `"lookup"` or `"refresh"`
+- `operation_type` (string): **Always required** - Must be either `"lookup"`, `"refresh"`, or `"override"`
   - `"lookup"`: Standard new incentive calculation (address is required)
   - `"refresh"`: Refresh existing calculation using cached utilities (address is optional)
-- `reference_id` (string): **Always required** - Unique identifier for the customer within your organization
-- `building_type` (string): Always required (e.g., "single_family", "multifamily", "commercial")
-- `device_id` (number): Always required
+  - `"override"`: Replace all customer devices with new ones, then refresh calculation using cached utilities (address is optional)
+- `reference_id` (string): **Always required** - Unique identifier for the customer within your organization.
+  - **Format & validation (RFC 3986 unreserved characters):**
+    - **Length:** 3–256 characters
+    - **Allowed characters:** `A–Z`, `a–z`, `0–9`, `.`, `_`, `~`, `-`
+    - **Pattern:** `^[A-Za-z0-9._~-]{3,256}$`
+  - **Impact:** Requests with invalid `reference_id` values (for example values containing `#`, `/`, spaces, or other reserved characters) will be rejected with a `400` error to prevent broken Connect URLs.
+- `building_type` (string): **Required for `lookup` and `override` operations, optional for `refresh`** - Building type (e.g., "RESIDENTIAL", "MULTIFAMILY", "COMMERCIAL"). For `refresh` operations, if not provided, it will be resolved from the customer's stored `building_type_id` in the database.
+- `device_ids` (array of numbers): **Required for `lookup` and `override` operations, optional for `refresh`** - Array of device IDs to associate with the customer. Can contain duplicates (e.g., `[32, 44, 44, 44]` creates 4 customer_device records). 
+  - For `lookup`: Required - all device_ids are created on first call
+  - For `override`: Required - replaces all existing devices with the new device_ids
+  - For `refresh`: Optional - if not provided, uses existing devices from the customer's `customer_devices` table. If provided, validates that all device_ids already exist for the customer.
+  
+  Note: Utility lookups use **all unique device categories** from the `device_ids` array (or existing devices for refresh) (passed as an array to utility lookup functions) to find programs for all device types (e.g., if you have EV Chargers and Thermostats, it will look up programs for both categories).
 
 **Conditionally Required Fields:**
 
@@ -88,6 +120,7 @@ Content-Type: application/json
 **When `operation_type="refresh"`:**
 
 - `address` (object): **Optional** - If provided and differs from stored address, the customer's address will be updated
+- `building_type` (string): **Optional** - If not provided, will be resolved from the customer's stored `building_type_id` in the database
 
 **Optional Fields:**
 
@@ -179,7 +212,7 @@ Content-Type: application/json
 
 ### Operation Types
 
-The function supports two operation types that determine customer lookup and utility resolution behavior:
+The function supports three operation types that determine customer lookup and utility resolution behavior:
 
 #### 1. Lookup Operation (`operation_type="lookup"`)
 
@@ -187,10 +220,8 @@ The function supports two operation types that determine customer lookup and uti
 
 **Customer Lookup:**
 
-1. Searches for existing customer by full address match
-   - Matches on: address_line1, address_line2, city, state, zip_code, country_code
-2. If found, uses existing customer
-3. If not found, creates new customer record
+1. Searches for customer by `reference_id` + `organization_id` in `customer_organizations` table
+2. If not found, creates new customer record
 
 **Utility Resolution:**
 
@@ -212,6 +243,38 @@ The function supports two operation types that determine customer lookup and uti
    - Updates customer's address in database
    - Still uses cached utilities (no geocoding)
 
+**Device Handling:**
+
+- **Without `device_ids`:** Uses all existing devices from the customer's `customer_devices` table. This allows refreshing with just `reference_id`.
+- **With `device_ids`:** Validates that all provided `device_ids` already exist for the customer, then uses those devices. Rejects if any device_id is missing.
+
+**Utility Resolution:**
+
+- Reads cached `eiaid` and `possible_utilities` from customer record
+- Calls `programs-for-utilities` edge function with cached utility list
+- Much faster than lookup operation (no geocoding required)
+- Falls back to standard utility lookup if no cached utilities exist
+
+**Required Fields**: Only `reference_id` is required. `address` and `building_type` are optional (uses stored customer data if not provided)
+
+#### 3. Override Operation (`operation_type="override"`)
+
+**Purpose**: Replace all customer devices with new ones, then refresh calculation using cached utilities
+
+**Customer Lookup:**
+
+1. Searches for customer by `reference_id` + `organization_id` in `customer_organizations` table
+2. Returns 400 error if customer not found with that reference_id
+3. If address is provided in request and differs from stored address:
+   - Updates customer's address in database
+   - Still uses cached utilities (no geocoding)
+
+**Device Handling:**
+
+- **Deletes all existing `customer_devices` for the customer**
+- Creates new `customer_devices` from the `device_ids` array (including duplicates)
+- Allows replacing devices completely, unlike refresh which requires existing devices
+
 **Utility Resolution:**
 
 - Reads cached `eiaid` and `possible_utilities` from customer record
@@ -220,6 +283,8 @@ The function supports two operation types that determine customer lookup and uti
 - Falls back to standard utility lookup if no cached utilities exist
 
 **Required Fields**: Address is optional (uses stored customer address if not provided)
+
+**Use Case**: Use when you need to completely replace a customer's device list (e.g., customer changed their equipment)
 
 ### Customer Creation
 
@@ -242,9 +307,21 @@ If customer exists:
 
 ### Device Association
 
-- Checks if customer already has the specified device
-- Creates customer_device record if not exists
-- Uses quantity of 1 by default
+**For `lookup` and `refresh` operations:**
+- **First call (customer has no devices):** Creates `customer_device` records for all `device_ids` in the array, including duplicates. For example, `device_ids: [32, 44, 44, 44]` creates 4 records (1 for device 32, 3 for device 44).
+- **Subsequent calls:** Validates that all `device_ids` in the array already exist for the customer. If any device_id is missing, the request is rejected with a 400 error.
+
+**For `refresh` operation:**
+- **Without `device_ids`:** Uses all existing devices from the customer's `customer_devices` table. This allows refreshing with just `reference_id`.
+- **With `device_ids`:** Validates that all provided `device_ids` already exist for the customer, then uses those devices.
+
+**For `override` operation:**
+- **Always:** Deletes all existing `customer_device` records for the customer, then creates new records from the `device_ids` array (including duplicates).
+- This allows completely replacing a customer's device list without validation errors.
+
+**General:**
+- Each `customer_device` record uses quantity of 1 by default.
+- **Utility Program Lookups:** The function extracts **unique device categories** from all `device_ids` and passes them as an array to utility lookup functions. For example, if `device_ids: [32, 44, 44, 45]` where device 32 has category 2, device 44 has category 2, and device 45 has category 4, it will pass `device_category_id: [2, 4]` to the utility lookup functions, which will return programs for both categories. This ensures you get programs for all device types (e.g., EV Chargers, Thermostats, Heat Pumps, etc.).
 
 ### Application Creation
 
@@ -263,7 +340,7 @@ When `create_application` is set to `true`:
    - **If application already exists:**
      - Updates the existing application's `customer_device_id` array with the latest list
      - This ensures applications stay in sync with current customer devices
-3. Applications are created/updated even if the program returns no eligible incentives
+3. Applications are only created/updated if the customer is eligible (has eligible combinations or incentive amount > 0)
 
 **Connect URL Generation:**
 
@@ -280,7 +357,12 @@ Where `{company}` is the organization's company field. This URL can be used to d
 ### Authentication Errors
 
 ```json
-// 401 - Missing API key
+// 400 - Both authentication headers provided
+{
+  "error": "Provide either x-api-key OR Authorization, not both."
+}
+
+// 401 - Missing authentication
 {
   "error": "Missing x-api-key header"
 }
@@ -316,12 +398,17 @@ Where `{company}` is the organization's company field. This URL can be used to d
 
 // 400 - Invalid operation_type
 {
-  "error": "Invalid operation_type. Must be either \"lookup\" or \"refresh\""
+  "error": "Invalid operation_type. Must be either \"lookup\", \"refresh\", or \"override\""
+}
+
+// 400 - Invalid reference_id format
+{
+  "error": "Invalid reference_id. Must be 3-256 characters and contain only RFC 3986 unreserved characters (A-Za-z0-9._~-)"
 }
 
 // 400 - Missing address fields for lookup operation
 {
-  "error": "For lookup operation, address fields are required: street_1, city, state_or_province_code, postal_code, country_code, building_type, device_id"
+  "error": "For lookup operation, address fields are required: street_1, city, state_or_province_code, postal_code, country_code, building_type"
 }
 
 // 400 - Organization company not configured
@@ -362,7 +449,7 @@ API_KEY="leap_live_abc123..."
 
 # Example 1: Lookup operation - New incentive calculation with address
 # This will geocode the address, find utilities, and calculate incentives
-curl -X POST 'https://api.incentives.leap.energy/alpha/incentives' \
+curl -X POST 'https://your-project.supabase.co/functions/v1/incentives' \
   -H "x-api-key: $API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -375,27 +462,26 @@ curl -X POST 'https://api.incentives.leap.energy/alpha/incentives' \
       "postal_code": "94102",
       "country_code": "US"
     },
-    "building_type": "single_family",
-    "device_id": 42,
+    "building_type": "RESIDENTIAL",
+    "device_ids": [42],
     "create_application": true
   }'
 
-# Example 2: Refresh operation - Re-calculate using cached utilities
-# Much faster than lookup - uses cached utility data, no geocoding
-curl -X POST 'https://api.incentives.leap.energy/alpha/incentives' \
+# Example 2: Refresh operation - Re-calculate using cached utilities (minimal fields needed)
+# Much faster than lookup - uses cached utility data, existing devices, and stored building_type
+curl -X POST 'https://your-project.supabase.co/functions/v1/incentives' \
   -H "x-api-key: $API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "operation_type": "refresh",
     "reference_id": "external-ref-123",
-    "building_type": "single_family",
-    "device_id": 42,
     "create_application": true
   }'
 
-# Example 3: Refresh with address update
+# Example 3: Refresh with address update and optional device_ids validation
 # Updates customer address while using cached utilities (no geocoding)
-curl -X POST 'https://api.incentives.leap.energy/alpha/incentives' \
+# If device_ids provided, validates they exist; otherwise uses all existing devices
+curl -X POST 'https://your-project.supabase.co/functions/v1/incentives' \
   -H "x-api-key: $API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -408,8 +494,21 @@ curl -X POST 'https://api.incentives.leap.energy/alpha/incentives' \
       "postal_code": "94103",
       "country_code": "US"
     },
-    "building_type": "single_family",
-    "device_id": 42,
+    "building_type": "RESIDENTIAL",
+    "device_ids": [42],
+    "create_application": false
+  }'
+
+# Example 4: Override operation - Replace all customer devices
+# Deletes all existing devices and creates new ones from device_ids array
+curl -X POST 'https://your-project.supabase.co/functions/v1/incentives' \
+  -H "x-api-key: $API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "operation_type": "override",
+    "reference_id": "external-ref-123",
+    "building_type": "RESIDENTIAL",
+    "device_ids": [55, 66, 77],
     "create_application": false
   }'
 ```
@@ -417,7 +516,8 @@ curl -X POST 'https://api.incentives.leap.energy/alpha/incentives' \
 **When to use each operation type:**
 
 - **`lookup`**: First-time customer, new address, or when you need fresh utility data
-- **`refresh`**: Returning customer with same address, faster performance by using cached utilities
+- **`refresh`**: Returning customer with same address and same devices, faster performance by using cached utilities
+- **`override`**: Returning customer who changed their devices - replaces all existing devices with new ones, then refreshes calculation
 
 ## Related Functions
 
@@ -432,7 +532,7 @@ All successful API calls are automatically logged to the `incentive_api_logs` ta
 
 - `customer_id`: The customer ID associated with the request
 - `organization_id`: The organization making the request
-- `operation_type`: Either "lookup" or "refresh"
+- `operation_type`: Either "lookup", "refresh", or "override"
 - `response_data`: Full JSON response returned to the client
 - `created_at`: Timestamp of the API call
 
@@ -473,4 +573,5 @@ Note: Logging failures do not cause the API request to fail - they are logged bu
 ### RLS Policies:
 
 All queries respect Row Level Security policies that enforce organization-level isolation.
+
 

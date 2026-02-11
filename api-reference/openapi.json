@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Leap Energy API",
-    "description": "The Leap Energy API provides a unified interface for managing rebate incentives and applications.\n\n## Incentives API\nSearch for and calculate incentive amounts across multiple utility programs. Given a customer\naddress and building type, the API identifies applicable utility programs and calculates potential\nincentive amounts for various device and tier combinations.\n\n## Applications API\nManage rebate applications on behalf of customers. Applications represent a customer's request\nfor a rebate under a specific utility program, including customer information, device details,\nand application metadata.",
+    "description": "The Leap Energy API provides a unified interface for managing rebate incentives and applications.\n\n## Incentives API\nSearch for and calculate incentive amounts across multiple utility programs. Given a customer\naddress and building type, the API identifies applicable utility programs and calculates potential\nincentive amounts for various device and tier combinations. When your organization has a webhook URL\nconfigured (Webhook Config API), each successful lookup triggers a POST to your URL with the response\nand optional custom fields (`webhook_custom_fields`).\n\n## Applications API\nManage rebate applications on behalf of customers. Applications represent a customer's request\nfor a rebate under a specific utility program, including customer information, device details,\nand application metadata.",
     "version": "2.0.0",
     "contact": {
       "name": "Leap Energy",
@@ -18,6 +18,9 @@
   "security": [
     {
       "ApiKeyAuth": []
+    },
+    {
+      "BearerAuth": []
     }
   ],
   "paths": {
@@ -182,7 +185,7 @@
     "/incentives": {
       "post": {
         "summary": "Get aggregated incentives for a customer",
-        "description": "Retrieves and aggregates incentive calculations from multiple utility programs\nbased on the customer's address and building type.\n\nThe API automatically:\n1. Creates or finds the customer based on address components\n2. Links the customer to your organization using the `reference_id`\n3. Associates devices with the customer (supports multiple devices via `device_ids` array)\n4. Identifies the utility serving the address\n5. Finds all active programs for that utility and building type\n6. Calls each program's incentive calculation function\n7. Optionally creates application records (if `create_application=true` and customer is eligible)\n8. Aggregates and returns the results\n\n**Authentication:** Requires API key via `x-api-key` header.\n\n**Reference ID:** The `reference_id` is required and must be unique per organization. It's used to link customers to your organization and is returned in the response for your records. To update applications later, use the PATCH endpoint with `application_id` (requires API key authentication).\n\n**Operation Types:**\n- `lookup`: New calculation with geocoding (requires address and device_ids)\n- `refresh`: Re-calculate using cached utilities (device_ids optional, uses existing devices if not provided)\n- `override`: Replace all customer devices with new ones, then refresh calculation\n",
+        "description": "Retrieves and aggregates incentive calculations from multiple utility programs\nbased on the customer's address and building type.\n\nThe API automatically:\n1. Creates or finds the customer based on address components\n2. Links the customer to your organization using the `reference_id`\n3. Associates devices with the customer (supports multiple devices via `device_ids` array)\n4. Identifies the utility serving the address\n5. Finds all active programs for that utility and building type\n6. Calls each program's incentive calculation function\n7. Optionally creates application records (if `create_application=true` and customer is eligible)\n8. Aggregates and returns the results\n9. If your organization has a webhook URL configured (see Webhook Config API), sends a POST to that URL with the response plus any `webhook_custom_fields` you include in the request\n\n**Authentication:** Requires API key via `x-api-key` header.\n\n**Reference ID:** The `reference_id` is required and must be unique per organization. It's used to link customers to your organization and is returned in the response for your records. To update applications later, use the PATCH endpoint with `application_id` (requires API key authentication).\n\n**Operation Types:**\n- `lookup`: New calculation with geocoding (requires address and device_ids)\n- `refresh`: Re-calculate using cached utilities (device_ids optional, uses existing devices if not provided)\n- `override`: Replace all customer devices with new ones, then refresh calculation\n",
         "operationId": "getAggregatedIncentives",
         "tags": [
           "Incentives"
@@ -1089,6 +1092,7 @@
                       "INCOME_FORM",
                       "W9",
                       "OTHER",
+                      "MODEL_TECH_SPECS",
                       "VEHICLE_PURCHASE",
                       "UTILITY_BILL",
                       "VEHICLE_REGISTRATION",
@@ -1412,6 +1416,7 @@
                       "INCOME_FORM",
                       "W9",
                       "OTHER",
+                      "MODEL_TECH_SPECS",
                       "VEHICLE_PURCHASE",
                       "UTILITY_BILL",
                       "VEHICLE_REGISTRATION",
@@ -1515,6 +1520,296 @@
           }
         }
       }
+    },
+    "/batch-lookups": {
+      "post": {
+        "summary": "Create Batch Job",
+        "description": "Create a new batch job with multiple lookup items. Each item will be processed independently with its own device_ids.\n\n**Processing:**\n- Items are queued immediately with status `pending`\n- Background worker processes items automatically (every 5 minutes)\n- You can poll the job status or manually trigger the worker\n\n**Validation:**\n- All items are validated before job creation\n- Duplicate `reference_id` values within a batch are rejected\n- Invalid items are reported with specific error messages\n\n**Limits:**\n- Maximum 10,000 items per batch\n- Each item can have different `device_ids`\n- Each item can have different `create_application` setting",
+        "operationId": "createBatchJob",
+        "tags": ["Batch Lookups"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateBatchRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Batch job created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateBatchResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - missing or invalid authentication"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "curl",
+            "label": "cURL",
+            "source": "curl -X POST \"https://api.incentives.leap.energy/alpha/batch-lookups\" -H \"x-api-key: leap_live_...\" -H \"Content-Type: application/json\" -d '{\"items\":[{\"reference_id\":\"deal-001\",\"address\":{\"street_1\":\"123 Main St\",\"city\":\"San Francisco\",\"state_or_province_code\":\"CA\",\"postal_code\":\"94102\",\"country_code\":\"US\"},\"building_type\":\"RESIDENTIAL\",\"device_ids\":[1]}]}'"
+          }
+        ]
+      },
+      "get": {
+        "summary": "List Batch Jobs",
+        "description": "List all batch jobs for your organization with optional filtering and pagination.",
+        "operationId": "listBatchJobs",
+        "tags": ["Batch Lookups"],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["pending", "processing", "completed", "failed", "cancelled"]
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "minimum": 1,
+              "maximum": 200
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of batch jobs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobListResponse"
+                }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" },
+          "500": { "description": "Internal server error" }
+        }
+      }
+    },
+    "/batch-lookups/{job_id}": {
+      "get": {
+        "summary": "Get Batch Job Status",
+        "description": "Get detailed status and progress for a specific batch job.",
+        "operationId": "getBatchJob",
+        "tags": ["Batch Lookups"],
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "include_items",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "boolean", "default": false }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Job details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchJob"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Job not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BatchError" }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/batch-lookups/{job_id}/items": {
+      "get": {
+        "summary": "Get Batch Job Items",
+        "description": "Get all items (lookups) for a batch job with optional filtering and pagination.",
+        "operationId": "getBatchJobItems",
+        "tags": ["Batch Lookups"],
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["pending", "processing", "completed", "failed"]
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "default": 50, "minimum": 1, "maximum": 500 }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "default": 0, "minimum": 0 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of queue items",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemListResponse"
+                }
+              }
+            }
+          },
+          "404": { "description": "Job not found" },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/batch-lookups/{job_id}/cancel": {
+      "post": {
+        "summary": "Cancel Batch Job",
+        "description": "Cancel a pending or processing batch job.",
+        "operationId": "cancelBatchJob",
+        "tags": ["Batch Lookups"],
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Job cancelled successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CancelJobResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Cannot cancel job",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BatchError" }
+              }
+            }
+          },
+          "404": { "description": "Job not found" },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/webhook-config": {
+      "get": {
+        "summary": "Get webhook configuration",
+        "description": "Return the authenticated organization's webhook URL and optional custom field names. If no webhook is configured, `url` is null.",
+        "operationId": "getWebhookConfig",
+        "tags": ["Webhook Config"],
+        "responses": {
+          "200": {
+            "description": "Current webhook config",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/WebhookConfig" }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" }
+        }
+      },
+      "put": {
+        "summary": "Update webhook configuration",
+        "description": "Set or clear webhook URL and/or field names. Partial update: omit fields to leave them unchanged. Use `url: null` or empty string to clear. URL must use HTTPS.",
+        "operationId": "putWebhookConfig",
+        "tags": ["Webhook Config"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/WebhookConfigUpdate" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Config updated",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/WebhookConfig" }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/WebhookError" }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" },
+          "500": { "description": "Failed to save webhook config" }
+        }
+      }
     }
   },
   "components": {
@@ -1524,6 +1819,12 @@
         "in": "header",
         "name": "x-api-key",
         "description": "API key for authentication. Include your Leap API key in the `x-api-key` header: `x-api-key: leap_live_...`\n"
+      },
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Clerk JWT token for portal authentication"
       }
     },
     "schemas": {
@@ -1827,6 +2128,12 @@
             "type": "boolean",
             "description": "Whether to create/update application records and return a connect_url",
             "example": true
+          },
+          "webhook_custom_fields": {
+            "type": "object",
+            "additionalProperties": { "type": "string" },
+            "description": "Optional custom fields to include in the webhook payload when your organization has a webhook URL configured (e.g. Project ID, Record ID). Only keys allowed by your org's webhook field_names config are merged into the POST body.",
+            "example": { "Project ID": "proj-123", "Record ID": "row-5" }
           }
         }
       },
@@ -2606,6 +2913,7 @@
               "INCOME_FORM",
               "W9",
               "OTHER",
+              "MODEL_TECH_SPECS",
               "VEHICLE_PURCHASE",
               "UTILITY_BILL",
               "VEHICLE_REGISTRATION",
@@ -3563,6 +3871,176 @@
         }
       }
     },
+    "BatchError": {
+      "type": "object",
+      "properties": {
+        "error": { "type": "string", "description": "Error message" },
+        "invalid_items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "index": { "type": "integer" },
+              "error": { "type": "string" }
+            }
+          },
+          "description": "Details about invalid items (when creating batch)"
+        },
+        "duplicates": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Duplicate reference_ids found (when creating batch)"
+        }
+      }
+    },
+    "Address": {
+      "type": "object",
+      "required": ["street_1", "city", "state_or_province_code", "postal_code", "country_code"],
+      "properties": {
+        "street_1": { "type": "string", "example": "123 Main Street" },
+        "street_2": { "type": "string", "example": "Apt 4B" },
+        "city": { "type": "string", "example": "San Francisco" },
+        "state_or_province_code": { "type": "string", "example": "CA" },
+        "postal_code": { "type": "string", "example": "94102" },
+        "country_code": { "type": "string", "example": "US" }
+      }
+    },
+    "BatchLookupItem": {
+      "type": "object",
+      "required": ["reference_id", "address", "building_type", "device_ids"],
+      "properties": {
+        "reference_id": { "type": "string", "example": "deal-12345" },
+        "address": { "$ref": "#/components/schemas/Address" },
+        "building_type": { "type": "string", "enum": ["RESIDENTIAL", "COMMERCIAL", "MULTIFAMILY"], "example": "RESIDENTIAL" },
+        "device_ids": { "type": "array", "items": { "type": "integer" }, "minItems": 1, "example": [1, 2] },
+        "create_application": { "type": "boolean", "default": false, "example": false },
+        "webhook_custom_fields": { "type": "object", "additionalProperties": { "type": "string" }, "description": "Optional per-item custom fields for webhook payload" }
+      }
+    },
+    "CreateBatchRequest": {
+      "type": "object",
+      "required": ["items"],
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": { "$ref": "#/components/schemas/BatchLookupItem" },
+          "minItems": 1,
+          "maxItems": 10000
+        }
+      }
+    },
+    "CreateBatchResponse": {
+      "type": "object",
+      "properties": {
+        "job_id": { "type": "string", "format": "uuid" },
+        "status": { "type": "string", "enum": ["pending"] },
+        "total_items": { "type": "integer" },
+        "created_at": { "type": "string", "format": "date-time" },
+        "report": {
+          "type": "object",
+          "properties": {
+            "id": { "type": "string", "format": "uuid" },
+            "name": { "type": "string" },
+            "description": { "type": "string", "nullable": true },
+            "status": { "type": "string", "enum": ["processing"] },
+            "report_type": { "type": "string", "enum": ["bulk_lookup"] },
+            "total_sites": { "type": "integer" },
+            "created_at": { "type": "string", "format": "date-time" }
+          },
+          "required": ["id", "name", "status", "report_type", "total_sites", "created_at"]
+        },
+        "message": { "type": "string" }
+      }
+    },
+    "BatchJob": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "organization_id": { "type": "string", "format": "uuid" },
+        "status": { "type": "string", "enum": ["pending", "processing", "completed", "failed", "cancelled"] },
+        "total_items": { "type": "integer" },
+        "processed_items": { "type": "integer" },
+        "failed_items": { "type": "integer" },
+        "report_id": { "type": "string", "format": "uuid", "nullable": true },
+        "created_at": { "type": "string", "format": "date-time" },
+        "started_at": { "type": "string", "format": "date-time", "nullable": true },
+        "completed_at": { "type": "string", "format": "date-time", "nullable": true },
+        "item_counts": {
+          "type": "object",
+          "properties": {
+            "pending": { "type": "integer" },
+            "processing": { "type": "integer" },
+            "completed": { "type": "integer" },
+            "failed": { "type": "integer" }
+          }
+        }
+      }
+    },
+    "QueueItem": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "job_id": { "type": "string", "format": "uuid" },
+        "status": { "type": "string", "enum": ["pending", "processing", "completed", "failed"] },
+        "reference_id": { "type": "string" },
+        "address": { "$ref": "#/components/schemas/Address" },
+        "building_type": { "type": "string", "enum": ["RESIDENTIAL", "COMMERCIAL", "MULTIFAMILY"] },
+        "device_ids": { "type": "array", "items": { "type": "integer" } },
+        "result": { "type": "object", "nullable": true },
+        "error_message": { "type": "string", "nullable": true },
+        "retry_count": { "type": "integer" },
+        "created_at": { "type": "string", "format": "date-time" },
+        "processed_at": { "type": "string", "format": "date-time", "nullable": true }
+      }
+    },
+    "JobListResponse": {
+      "type": "object",
+      "properties": {
+        "jobs": { "type": "array", "items": { "$ref": "#/components/schemas/BatchJob" } },
+        "total": { "type": "integer" },
+        "limit": { "type": "integer" },
+        "offset": { "type": "integer" }
+      }
+    },
+    "ItemListResponse": {
+      "type": "object",
+      "properties": {
+        "items": { "type": "array", "items": { "$ref": "#/components/schemas/QueueItem" } },
+        "total": { "type": "integer" },
+        "limit": { "type": "integer" },
+        "offset": { "type": "integer" }
+      }
+    },
+    "CancelJobResponse": {
+      "type": "object",
+      "properties": {
+        "message": { "type": "string", "example": "Job cancelled successfully" },
+        "job_id": { "type": "string", "format": "uuid" }
+      }
+    },
+    "WebhookConfig": {
+      "type": "object",
+      "description": "Current webhook configuration for the authenticated organization",
+      "properties": {
+        "url": { "type": "string", "format": "uri", "nullable": true, "description": "Webhook URL; POST is sent here after each successful lookup." },
+        "field_names": { "type": "array", "items": { "type": "string" }, "example": ["Project ID", "Record ID"] }
+      }
+    },
+    "WebhookConfigUpdate": {
+      "type": "object",
+      "description": "Partial update; all fields optional.",
+      "properties": {
+        "url": { "type": "string", "format": "uri", "nullable": true, "description": "Set webhook URL (HTTPS required). Use null or empty to clear." },
+        "field_names": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "WebhookError": {
+      "type": "object",
+      "properties": {
+        "error": { "type": "string", "description": "Error message (e.g. Webhook URL must use HTTPS, Invalid URL format)" }
+      }
+    }
+    },
     "responses": {
       "UnauthorizedError": {
         "description": "API key is missing or invalid",
@@ -3593,7 +4071,6 @@
             }
           }
         }
-      }
     }
   },
   "tags": [
@@ -3604,6 +4081,14 @@
     {
       "name": "Applications",
       "description": "Manage rebate applications for customers"
+    },
+    {
+      "name": "Batch Lookups",
+      "description": "Process large volumes of incentive lookups via queue-based batch jobs"
+    },
+    {
+      "name": "Webhook Config",
+      "description": "Configure webhook URL and custom field names for backend-triggered webhooks"
     }
   ]
 }

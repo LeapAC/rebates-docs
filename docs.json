@@ -33,6 +33,23 @@
               "api-reference/endpoint/download-attachment",
               "api-reference/endpoint/delete-attachment"
             ]
+          },
+          {
+            "group": "Batch Lookups",
+            "pages": [
+              "api-reference/endpoint/batch-create",
+              "api-reference/endpoint/batch-list",
+              "api-reference/endpoint/batch-get",
+              "api-reference/endpoint/batch-items",
+              "api-reference/endpoint/batch-cancel"
+            ]
+          },
+          {
+            "group": "Webhook Config",
+            "pages": [
+              "api-reference/endpoint/get-webhook-config",
+              "api-reference/endpoint/update-webhook-config"
+            ]
           }
         ]
       },
@@ -61,15 +78,15 @@
   },
   "contextual": {
     "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
+      "copy",
+      "view",
+      "chatgpt",
+      "claude",
+      "perplexity",
+      "mcp",
+      "cursor",
+      "vscode"
+    ]
   },
   "footer": {
     "socials": {

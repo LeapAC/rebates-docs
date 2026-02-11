@@ -1,0 +1,9 @@
+---
+title: 'Get Batch Job Status'
+description: 'Get detailed status and progress for a specific batch job, including item counts and timestamps.'
+openapi: 'GET /batch-lookups/{job_id}'
+---
+
+## Overview
+
+Retrieve job status, processed/failed counts, and optional full item details. Use `include_items=true` to include item details in the response. Poll this endpoint to track completion.

@@ -35,15 +35,11 @@ To generate an API key:
 
 See [API Key Manager documentation](../api-key-manager/README.md) for details.
 
-### Method 2: Clerk Bearer Token (for portal)
+### Method 2: Bearer Token (Leap dashboard)
 
 **Header:** `Authorization`
 
-```
-Authorization: Bearer <Clerk_session_JWT>
-```
-
-The Clerk JWT must include an `org_id` claim (active organization). The organization must be provisioned in the database with a matching `clerk_org_id` value.
+Bearer token authentication is used by the Leap dashboard. For your API integrations, use the API key (Method 1) above.
 
 **Important:** Provide either `x-api-key` OR `Authorization`, not both. If both headers are present, the request will be rejected with a 400 error.
 
@@ -60,8 +56,8 @@ The Clerk JWT must include an `org_id` claim (active organization). The organiza
 x-api-key: leap_live_abc123...
 Content-Type: application/json
 
-# Option 2: Clerk Bearer Token (for portal)
-Authorization: Bearer <Clerk_session_JWT>
+# Option 2: Bearer Token (Leap dashboard only)
+Authorization: Bearer <token>
 Content-Type: application/json
 ```
 
@@ -97,11 +93,11 @@ Content-Type: application/json
     - **Allowed characters:** `A–Z`, `a–z`, `0–9`, `.`, `_`, `~`, `-`
     - **Pattern:** `^[A-Za-z0-9._~-]{3,256}$`
   - **Impact:** Requests with invalid `reference_id` values (for example values containing `#`, `/`, spaces, or other reserved characters) will be rejected with a `400` error to prevent broken Connect URLs.
-- `building_type` (string): **Required for `lookup` and `override` operations, optional for `refresh`** - Building type (e.g., "RESIDENTIAL", "MULTIFAMILY", "COMMERCIAL"). For `refresh` operations, if not provided, it will be resolved from the customer's stored `building_type_id` in the database.
+- `building_type` (string): **Required for `lookup` and `override` operations, optional for `refresh`** - Building type (e.g., "RESIDENTIAL", "MULTIFAMILY", "COMMERCIAL"). For `refresh` operations, if not provided, the previously stored building type for that customer is used.
 - `device_ids` (array of numbers): **Required for `lookup` and `override` operations, optional for `refresh`** - Array of device IDs to associate with the customer. Can contain duplicates (e.g., `[32, 44, 44, 44]` creates 4 customer_device records). 
   - For `lookup`: Required - all device_ids are created on first call
   - For `override`: Required - replaces all existing devices with the new device_ids
-  - For `refresh`: Optional - if not provided, uses existing devices from the customer's `customer_devices` table. If provided, validates that all device_ids already exist for the customer.
+  - For `refresh`: Optional - if not provided, uses all devices already associated with the customer. If provided, validates that all device_ids are already associated with the customer.
   
   Note: Utility lookups use **all unique device categories** from the `device_ids` array (or existing devices for refresh) (passed as an array to utility lookup functions) to find programs for all device types (e.g., if you have EV Chargers and Thermostats, it will look up programs for both categories).
 
@@ -120,7 +116,7 @@ Content-Type: application/json
 **When `operation_type="refresh"`:**
 
 - `address` (object): **Optional** - If provided and differs from stored address, the customer's address will be updated
-- `building_type` (string): **Optional** - If not provided, will be resolved from the customer's stored `building_type_id` in the database
+- `building_type` (string): **Optional** - If not provided, the previously stored building type for that customer is used
 
 **Optional Fields:**
 
@@ -190,23 +186,20 @@ Content-Type: application/json
 
 ### Organization Requirements
 
-- Organization must have a `company` field set in the database
-- This field is used to generate the Connect URL
+- Your organization must have a company name configured (used to generate the Connect URL)
 - API calls will fail with 400 error if organization company is not configured
 
 ### Organization Isolation
 
-- Customers are automatically linked to the API key user's organization via `customer_organizations` table
-- Users can only access customers within their organization
-- Enforced by Row Level Security (RLS) policies
-- Cross-organization access is prevented
-- Reference IDs are scoped to organizations (same reference_id can exist in different organizations)
+- Customers are automatically linked to your organization using the `reference_id` you provide
+- You can only access customers associated with your organization
+- Reference IDs are scoped per organization (the same reference_id can be used for different customers in different organizations)
 
 ### Customer Access Control
 
-- Function verifies the customer is linked to the user's organization
-- Returns 400 error if reference_id mismatch is detected
-- Prevents unauthorized access to customer data across organizations
+- The API verifies that the customer is associated with your organization
+- Returns 400 error if the reference_id does not match your records
+- You can only access customers that belong to your organization
 
 ## Behavior
 
@@ -220,12 +213,12 @@ The function supports three operation types that determine customer lookup and u
 
 **Customer Lookup:**
 
-1. Searches for customer by `reference_id` + `organization_id` in `customer_organizations` table
-2. If not found, creates new customer record
+1. Searches for an existing customer by your `reference_id` (within your organization)
+2. If not found, creates a new customer record
 
 **Utility Resolution:**
 
-- Calls `utility-programs-lookup` edge function to geocode address and find utilities
+- Geocodes the address and finds utilities for the location
 - Caches the primary utility and possible utilities list on the customer record
 - Uses fresh data from utility lookup
 
@@ -237,23 +230,21 @@ The function supports three operation types that determine customer lookup and u
 
 **Customer Lookup:**
 
-1. Searches for customer by `reference_id` + `organization_id` in `customer_organizations` table
-2. Returns 400 error if customer not found with that reference_id
-3. If address is provided in request and differs from stored address:
-   - Updates customer's address in database
-   - Still uses cached utilities (no geocoding)
+1. Searches for an existing customer by your `reference_id` (within your organization)
+2. Returns 400 error if no customer is found with that reference_id
+3. If address is provided and differs from the stored address, the customer's address is updated; cached utilities are still used (no geocoding)
 
 **Device Handling:**
 
-- **Without `device_ids`:** Uses all existing devices from the customer's `customer_devices` table. This allows refreshing with just `reference_id`.
+- **Without `device_ids`:** Uses all existing devices already associated with the customer. This allows refreshing with just `reference_id`.
 - **With `device_ids`:** Validates that all provided `device_ids` already exist for the customer, then uses those devices. Rejects if any device_id is missing.
 
 **Utility Resolution:**
 
-- Reads cached `eiaid` and `possible_utilities` from customer record
-- Calls `programs-for-utilities` edge function with cached utility list
+- Uses cached utility data from the customer record
+- Looks up programs for those utilities
 - Much faster than lookup operation (no geocoding required)
-- Falls back to standard utility lookup if no cached utilities exist
+- Falls back to full utility lookup if no cached data exists
 
 **Required Fields**: Only `reference_id` is required. `address` and `building_type` are optional (uses stored customer data if not provided)
 
@@ -263,24 +254,22 @@ The function supports three operation types that determine customer lookup and u
 
 **Customer Lookup:**
 
-1. Searches for customer by `reference_id` + `organization_id` in `customer_organizations` table
-2. Returns 400 error if customer not found with that reference_id
-3. If address is provided in request and differs from stored address:
-   - Updates customer's address in database
-   - Still uses cached utilities (no geocoding)
+1. Searches for an existing customer by your `reference_id` (within your organization)
+2. Returns 400 error if no customer is found with that reference_id
+3. If address is provided and differs from the stored address, the customer's address is updated; cached utilities are still used (no geocoding)
 
 **Device Handling:**
 
-- **Deletes all existing `customer_devices` for the customer**
-- Creates new `customer_devices` from the `device_ids` array (including duplicates)
+- **Replaces all existing devices for the customer** with the new `device_ids` you provide
+- Associates the customer with the devices in the `device_ids` array (duplicates are allowed, e.g. multiple units of the same device)
 - Allows replacing devices completely, unlike refresh which requires existing devices
 
 **Utility Resolution:**
 
-- Reads cached `eiaid` and `possible_utilities` from customer record
-- Calls `programs-for-utilities` edge function with cached utility list
+- Uses cached utility data from the customer record
+- Looks up programs for those utilities
 - Much faster than lookup operation (no geocoding required)
-- Falls back to standard utility lookup if no cached utilities exist
+- Falls back to full utility lookup if no cached data exists
 
 **Required Fields**: Address is optional (uses stored customer address if not provided)
 
@@ -290,29 +279,29 @@ The function supports three operation types that determine customer lookup and u
 
 If no customer exists (lookup operation only):
 
-1. Validates building_type against `building_types` table
-2. Creates new customer record with provided address and building_type_id
-3. Automatically links customer to user's organization via `customer_organizations` table with the provided `reference_id`
-4. Logs the customer ID and organization ID
+1. Validates building_type (RESIDENTIAL, MULTIFAMILY, MANUFACTURED_HOME, COMMERCIAL)
+2. Creates a new customer record with the provided address and building type
+3. Links the customer to your organization using the `reference_id` you provided
+4. Proceeds with incentive calculation
 
 ### Existing Customer
 
 If customer exists:
 
-1. Verifies customer is linked to user's organization via `customer_organizations` table
-2. Validates that the `reference_id` matches the stored reference_id for this organization
-   - Returns 400 error if reference_id mismatch detected
-3. Creates organization link if customer exists but not linked to this organization
+1. Verifies the customer is associated with your organization
+2. Validates that the `reference_id` matches the one you previously used for this customer
+   - Returns 400 error if reference_id does not match
+3. If the customer exists but was not yet linked to your organization, creates the link with your `reference_id`
 4. Proceeds with incentive calculation
 
 ### Device Association
 
 **For `lookup` and `refresh` operations:**
-- **First call (customer has no devices):** Creates `customer_device` records for all `device_ids` in the array, including duplicates. For example, `device_ids: [32, 44, 44, 44]` creates 4 records (1 for device 32, 3 for device 44).
-- **Subsequent calls:** Validates that all `device_ids` in the array already exist for the customer. If any device_id is missing, the request is rejected with a 400 error.
+- **First call (customer has no devices yet):** Associates all `device_ids` in the array with the customer, including duplicates. For example, `device_ids: [32, 44, 44, 44]` creates one association for device 32 and three for device 44.
+- **Subsequent calls:** Validates that all `device_ids` in the array are already associated with the customer. If any device_id is missing, the request is rejected with a 400 error.
 
 **For `refresh` operation:**
-- **Without `device_ids`:** Uses all existing devices from the customer's `customer_devices` table. This allows refreshing with just `reference_id`.
+- **Without `device_ids`:** Uses all devices already associated with the customer. This allows refreshing with just `reference_id`.
 - **With `device_ids`:** Validates that all provided `device_ids` already exist for the customer, then uses those devices.
 
 **For `override` operation:**
@@ -327,7 +316,7 @@ If customer exists:
 
 When `create_application` is set to `true`:
 
-1. Queries all `customer_devices` for the customer to get the complete list of device IDs
+1. Uses all devices associated with the customer to get the complete list of device IDs
 2. For each program with an incentive calculation:
    - Checks if an application already exists for the (customer_id, program_id) combination
    - **If no application exists:**
@@ -528,7 +517,7 @@ curl -X POST 'https://your-project.supabase.co/functions/v1/incentives' \
 
 ## API Call Logging
 
-All successful API calls are automatically logged to the `incentive_api_logs` table with the following information:
+All successful API calls are automatically logged with the following information:
 
 - `customer_id`: The customer ID associated with the request
 - `organization_id`: The organization making the request
@@ -544,34 +533,3 @@ This logging helps with:
 - Performance monitoring
 
 Note: Logging failures do not cause the API request to fail - they are logged but the response is still returned.
-
-## Database Tables
-
-### Tables Used:
-
-- `api_keys` - API key validation
-- `organizations` - Organization context and company field
-- `customers` - Customer records (stores cached eiaid and possible_utilities)
-- `customer_organizations` - Customer-organization links with reference_id (many-to-many)
-- `customer_devices` - Customer device associations
-- `building_types` - Valid building types (RESIDENTIAL, MULTIFAMILY, MANUFACTURED_HOME, COMMERCIAL)
-- `applications` - Application records (created/updated if create_application is true)
-- `incentive_api_logs` - API call logging for auditing and debugging
-
-### Key Fields:
-
-**customers table:**
-
-- `eiaid` (string): Cached primary utility ID
-- `possible_utilities` (text[]): Cached list of possible utility IDs for this address
-
-**customer_organizations table:**
-
-- Composite key: `(customer_id, organization_id, reference_id)`
-- Allows same customer to be linked to multiple organizations with different reference_ids
-
-### RLS Policies:
-
-All queries respect Row Level Security policies that enforce organization-level isolation.
-
-

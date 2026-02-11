@@ -967,7 +967,6 @@
                 "VEHICLE_PURCHASE",
                 "UTILITY_BILL",
                 "VEHICLE_REGISTRATION",
-                "SIGNATURE",
                 "TARIFF_CONFIRMATION"
               ]
             },
@@ -1096,7 +1095,6 @@
                       "VEHICLE_PURCHASE",
                       "UTILITY_BILL",
                       "VEHICLE_REGISTRATION",
-                      "SIGNATURE",
                       "TARIFF_CONFIRMATION"
                     ],
                     "description": "Type of attachment being uploaded",
@@ -1420,7 +1418,6 @@
                       "VEHICLE_PURCHASE",
                       "UTILITY_BILL",
                       "VEHICLE_REGISTRATION",
-                      "SIGNATURE",
                       "TARIFF_CONFIRMATION"
                     ],
                     "description": "Type of attachment",
@@ -1926,7 +1923,7 @@
           "reference_id": {
             "type": "string",
             "nullable": true,
-            "description": "Reference ID for the customer within the organization (from customer_organizations)",
+            "description": "Your unique identifier for the customer in your system. Must be unique per customer within your organization and matches the value you use with the incentives API.",
             "example": "external-ref-123"
           },
           "customer_device_id": {
@@ -2441,7 +2438,7 @@
           "reference_id": {
             "type": "string",
             "nullable": true,
-            "description": "Reference ID for the customer within the organization (from customer_organizations). Matches the reference_id used with the incentives API.",
+            "description": "Your unique identifier for the customer in your system. Must be unique per customer within your organization and matches the value you use with the incentives API.",
             "example": "external-ref-123"
           },
           "customer_device_id": {
@@ -2917,7 +2914,6 @@
               "VEHICLE_PURCHASE",
               "UTILITY_BILL",
               "VEHICLE_REGISTRATION",
-              "SIGNATURE",
               "TARIFF_CONFIRMATION"
             ],
             "description": "Type of attachment",

@@ -1,0 +1,9 @@
+---
+title: 'Cancel Batch Job'
+description: 'Cancel a pending or processing batch job. Only pending or processing jobs can be cancelled.'
+openapi: 'POST /batch-lookups/{job_id}/cancel'
+---
+
+## Overview
+
+Cancel a batch job to stop processing. Pending items are marked as failed with "Job cancelled"; items already in progress are allowed to complete. Cancelled jobs cannot be resumed.

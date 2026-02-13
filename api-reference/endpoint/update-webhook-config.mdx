@@ -1,0 +1,9 @@
+---
+title: 'Update Webhook Configuration'
+description: 'Set or clear webhook URL and/or custom field names. Partial update supported; URL must use HTTPS.'
+openapi: 'PUT /webhook-config'
+---
+
+## Overview
+
+Configure or clear the webhook URL and optional `field_names` allowlist. Omit fields to leave them unchanged. Use `url: null` or empty string to clear the webhook. Single lookups can send `webhook_custom_fields` in `POST /incentives`; batch items support `webhook_custom_fields` per item.

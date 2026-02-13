@@ -1,0 +1,9 @@
+---
+title: 'Get Batch Job Items'
+description: 'Get all lookup items for a batch job with optional status filter and pagination. Use to export results or inspect failed items.'
+openapi: 'GET /batch-lookups/{job_id}/items'
+---
+
+## Overview
+
+List items (lookups) for a batch job. Filter by `status` (`pending`, `processing`, `completed`, `failed`) and use `limit`/`offset` for pagination. Completed items include the full incentive result; failed items include `error_message` and `retry_count`.

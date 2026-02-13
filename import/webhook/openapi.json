@@ -1,0 +1,158 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Webhook Config API",
+    "description": "Per-organization webhook URL and custom field names for **backend-triggered** webhooks.\n\nWhen your organization has a webhook URL configured, the backend sends a `POST` to that URL after every successful incentive lookup:\n- **Single lookups**: After each `POST /incentives` success\n- **Batch lookups**: After each completed queue item in a batch job\n\nThe payload is the incentive response (reference_id, address, utility, incentives, connect_url, etc.) plus any custom fields you configure or pass per request.\n\n## Custom fields\n\n- **field_names** (config): Optional allowlist of custom field names to include in the webhook payload. If set, only these keys from `webhook_custom_fields` are merged into the payload.\n- **Single lookups**: Send `webhook_custom_fields` in the `POST /incentives` body.\n- **Batch lookups**: Send `webhook_custom_fields` on each item in `POST /batch-lookups` (e.g. from CSV columns); the worker forwards them and the webhook receives them per completed item.\n\n## Authentication\n\n- **API Key**: `x-api-key: leap_live_<your_api_key>`\n- **Clerk Bearer Token**: `Authorization: Bearer <clerk_jwt_token>`\n\nWebhook URLs must use **HTTPS**. Use `null` or empty string for `url` to clear the webhook.",
+    "version": "1.0.0",
+    "contact": {
+      "name": "Leap Energy",
+      "url": "https://leap.energy"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://api.incentives.leap.energy/alpha",
+      "description": "Production API"
+    },
+    {
+      "url": "http://127.0.0.1:54321/functions/v1",
+      "description": "Local Development"
+    }
+  ],
+  "security": [
+    { "ApiKeyAuth": [] },
+    { "BearerAuth": [] }
+  ],
+  "components": {
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-api-key",
+        "description": "API key for partner integrations. Format: `leap_live_<64_hex_chars>`"
+      },
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Clerk JWT token for portal authentication"
+      }
+    },
+    "schemas": {
+      "WebhookConfig": {
+        "type": "object",
+        "description": "Current webhook configuration for the authenticated organization",
+        "properties": {
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "nullable": true,
+            "description": "Webhook URL; POST is sent here after each successful lookup. Null if not configured.",
+            "example": "https://your-server.com/webhook"
+          },
+          "field_names": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Optional allowlist of custom field names to include in webhook payload (e.g. Project ID, Record ID)",
+            "example": ["Project ID", "Record ID"]
+          }
+        }
+      },
+      "WebhookConfigUpdate": {
+        "type": "object",
+        "description": "Partial update; all fields optional. Omitted fields are left unchanged.",
+        "properties": {
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "nullable": true,
+            "description": "Set webhook URL (HTTPS required). Use null or \"\" to clear.",
+            "example": "https://your-server.com/webhook"
+          },
+          "field_names": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Custom field names to allow in webhook payload",
+            "example": ["Project ID", "Record ID"]
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "Error message (e.g. \"Webhook URL must use HTTPS\", \"Invalid URL format\")"
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/webhook-config": {
+      "get": {
+        "summary": "Get webhook configuration",
+        "description": "Return the authenticated organization's webhook URL and optional custom field names. If no webhook is configured, `url` is null.",
+        "operationId": "getWebhookConfig",
+        "tags": ["Webhook Config"],
+        "responses": {
+          "200": {
+            "description": "Current webhook config",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/WebhookConfig" },
+                "example": {
+                  "url": "https://your-server.com/webhook",
+                  "field_names": ["Project ID", "Record ID"]
+                }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized - missing or invalid authentication" }
+        }
+      },
+      "put": {
+        "summary": "Update webhook configuration",
+        "description": "Set or clear webhook URL and/or field names. Partial update: omit fields to leave them unchanged. Use `url: null` or `url: \"\"` to clear the webhook. URL must use HTTPS.",
+        "operationId": "putWebhookConfig",
+        "tags": ["Webhook Config"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/WebhookConfigUpdate" },
+              "example": {
+                "url": "https://your-server.com/webhook",
+                "field_names": ["Project ID", "Record ID"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Config updated; returns current config (same shape as GET)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/WebhookConfig" }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error (e.g. invalid URL, non-HTTPS)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" },
+                "examples": {
+                  "https_required": { "value": { "error": "Webhook URL must use HTTPS" } },
+                  "invalid_url": { "value": { "error": "Invalid URL format" } }
+                }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" },
+          "500": { "description": "Failed to save webhook config" }
+        }
+      }
+    }
+  }
+}

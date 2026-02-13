@@ -1,0 +1,15 @@
+---
+title: 'Create Batch Job'
+description: 'Create a new batch job with multiple incentive lookup items. Items are queued and processed asynchronously by a background worker.'
+openapi: 'POST /batch-lookups'
+---
+
+## Overview
+
+Create a batch job with multiple addresses and device lookups. Items are validated upfront, then processed by a worker that runs every 5 minutes. A report is created immediately and sites are added as each item completes.
+
+<Tip>
+Include `webhook_custom_fields` on each item when your organization has a webhook URL configured; the backend merges them into the webhook payload for each completed lookup.
+</Tip>
+
+Poll `GET /batch-lookups/{job_id}` for job status and use `GET /batch-lookups/{job_id}/items` to retrieve results.

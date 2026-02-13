@@ -32,7 +32,7 @@ List applications belonging to your organization. Optionally filter by `refId` t
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `refId` | string | No | Reference ID to filter applications for a specific customer within your organization |
-| `application_status` | string | No | Filter by status: `not_started`, `in_progress`, `awaiting_partner`, `completed`, `submitted`, `approved`, `rejected` |
+| `application_status` | string | No | Filter by status: `not_started`, `in_progress`, `awaiting_customer`, `awaiting_partner`, `completed`, `submitted`, `approved`, `rejected` |
 | `limit` | number | No | Number of results per page (default: 50, max: 100) |
 | `page_token` | string | No | Pagination token from previous response |
 
@@ -195,7 +195,6 @@ Update an application belonging to your organization. The `application_id` must 
 
 ```json
 {
-  "status": "submitted",
   "total_requested_amount": 500.00,
   "customer_device_id": [123],
   "customer": {
@@ -214,6 +213,8 @@ Update an application belonging to your organization. The `application_id` must 
 }
 ```
 
+**Note**: The `status` field is **not editable** by organization API keys. Only admin API keys can modify application status. If you include `status` in your request body, it will be ignored.
+
 #### Request Example (Dry Run)
 
 ```bash
@@ -221,7 +222,7 @@ curl -X PATCH "https://api.incentives.leap.energy/alpha/applications/27?dryRun=t
   -H "x-api-key: leap_live_..." \
   -H "Content-Type: application/json" \
   -d '{
-    "status": "submitted"
+    "total_requested_amount": 500.00
   }'
 ```
 
@@ -240,12 +241,11 @@ curl -X PATCH "https://api.incentives.leap.energy/alpha/applications/27?dryRun=t
     "strictStatusTransitions": true
   },
   "wouldMutate": {
-    "customer_devices": [],
-    "applications": [
-      {
-        "status": "submitted"
-      }
-    ]
+    "application": {
+      "total_requested_amount": 500.00
+    },
+    "customer": undefined,
+    "customer_devices": []
   }
 }
 ```
@@ -270,7 +270,6 @@ curl -X PATCH "https://api.incentives.leap.energy/alpha/applications/27?dryRun=t
 
 - **400 Bad Request**: 
   - Invalid request body
-  - Status transition validation failed
 - **401 Unauthorized**: Invalid or missing API key
 - **403 Forbidden**: Application does not belong to your organization
 - **404 Not Found**: Application not found
@@ -664,5 +663,5 @@ All error responses follow this format:
 
 7. **Status Values**: 
    - Valid application statuses: `not_started`, `in_progress`, `awaiting_customer`, `awaiting_partner`, `completed`, `submitted`, `approved`, `rejected`
-   - Status transitions may be restricted based on configuration
+   - **Status is read-only for organization keys**: only admin API keys can modify application status. Organization keys can read status but cannot update it via PATCH requests.
 

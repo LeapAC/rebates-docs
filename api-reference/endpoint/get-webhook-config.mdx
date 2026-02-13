@@ -1,0 +1,9 @@
+---
+title: 'Get Webhook Configuration'
+description: "Return the authenticated organization's webhook URL and optional custom field names for backend-triggered webhooks."
+openapi: 'GET /webhook-config'
+---
+
+## Overview
+
+Get the current webhook URL and custom field allowlist. When a URL is set, the backend sends a POST to it after each successful incentive lookup (single or batch). If no webhook is configured, `url` is null.

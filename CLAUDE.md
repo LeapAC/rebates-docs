@@ -43,10 +43,12 @@ Key configuration file:
 ## Content Architecture
 
 ### Navigation Structure
-The site uses a tabbed navigation system defined in `docs.json`:
-- **Guides tab**: Getting started, customization, writing content, AI tools
-- **API reference tab**: API documentation and endpoint examples
-- Navigation is configured via the `navigation` object in `docs.json`
+The site uses a flat left-nav with groups defined in `docs.json`:
+- **Getting Started**: Introduction, Quickstart
+- **API Reference**: API Guide, endpoint pages, subgroups (Attachments, Batch Lookups, Webhook Config)
+- **Guides**: Incentives, Applications, Claimed Fields, Program Roadmap
+- Navigation is configured via the `navigation.groups` array in `docs.json`
+- Do NOT use `tabs` — the site uses flat groups in the left sidebar
 
 ### MDX Components
 Documentation pages use MDX format with built-in components:
@@ -118,6 +120,49 @@ When creating or editing documentation:
 - API reference MDX files should only contain: frontmatter with `openapi` reference, brief overview, unique tips/warnings, links to guides
 - Keep API reference pages minimal (15-30 lines) - let Mintlify auto-generate the technical details
 
+### OpenAPI Spec Maintenance (`api-reference/openapi.json`)
+When editing the OpenAPI spec, follow these rules to avoid breaking the API reference pages:
+
+**JSON structure:**
+- All schemas must be inside `components.schemas` (not direct children of `components`)
+- All reusable responses must be inside `components.responses`
+- Watch for extra closing braces `}` that prematurely close `schemas` or `responses` — JSON will still be valid but `$ref` paths will silently break
+
+**After any spec edit, validate `$ref` resolution:**
+```bash
+python3 -c "
+import json, re
+spec = json.load(open('api-reference/openapi.json'))
+content = json.dumps(spec)
+refs = re.findall(r'\"\\\$ref\"\s*:\s*\"([^\"]+)\"', content)
+for ref in set(refs):
+    if ref.startswith('#/'):
+        parts = ref.replace('#/', '').split('/')
+        obj = spec
+        try:
+            for p in parts:
+                obj = obj[p]
+        except (KeyError, TypeError):
+            print(f'BROKEN: {ref}')
+print('Done — no output above means all refs resolve.')
+"
+```
+
+**What breaks when `$ref`s don't resolve:**
+- API endpoint pages lose rich request/response schema rendering
+- Try-it playground stops working
+- Code samples panel disappears
+- Pages still render but show only the MDX content, not auto-generated API details
+
+### Mintlify + OpenAPI Configuration (docs.json)
+These rules prevent common Mintlify misconfigurations:
+
+- **Do NOT add `"openapi"` at the top level of `docs.json`** — Mintlify interprets docs.json itself as an OpenAPI file and throws validation errors
+- **Do NOT use `tabs` navigation with an `openapi` property** — this auto-generates nav entries for every operation in the spec, creating duplicate sidebar entries alongside the curated MDX pages
+- **Mintlify auto-discovers `api-reference/openapi.json`** — no explicit config needed in docs.json when using a single spec file
+- MDX endpoint files use short-form frontmatter: `openapi: 'POST /incentives'` (no file path needed with single spec)
+- If you ever need multiple spec files, include the path in frontmatter: `openapi: 'path/to/spec.json POST /endpoint'`
+
 ### Organization Scoping
 - **DO NOT repeatedly mention** organization scoping in API documentation
 - For external API users, organization scoping is implicit and assumed
@@ -137,6 +182,41 @@ The following technical details should NOT be included in partner-facing documen
 - API calls are logged in `incentive_api_logs` table for auditing
 
 **Rationale:** Partners don't need to know about internal security mechanisms or key naming conventions. Focus documentation on what they need to do (use API keys), not how the system works internally.
+
+## Visual Verification with agent-browser
+
+After making changes, verify the site renders correctly using agent-browser. Use port 3333 and `/tmp/` for screenshots. Always navigate directly to URLs — `find text` clicks can be flaky with Mintlify's SPA routing.
+
+```bash
+# 1. Start dev server (background, takes ~60-90 seconds)
+# Kill old server first if needed: lsof -ti:3333 | xargs kill -9
+npx mint dev --port 3333
+
+# 2. Navigate directly to the page
+agent-browser open http://localhost:3333/path-to-page
+
+# 3. Screenshot to /tmp/ (no approval needed)
+agent-browser screenshot /tmp/verify.png
+
+# 4. Read screenshot to inspect visually
+# Use the Read tool on /tmp/verify.png
+
+# 5. Close when done
+agent-browser close
+```
+
+**Key pages to check after changes:**
+- Homepage: `http://localhost:3333/`
+- API endpoint (rich schemas + Try it): `http://localhost:3333/api-reference/endpoint/check-incentives`
+- Batch endpoint: `http://localhost:3333/api-reference/endpoint/batch-create`
+- Guides: `http://localhost:3333/incentives-guide`
+
+**What to verify on API endpoint pages:**
+- Try-it button is visible next to the method badge (e.g., `POST /incentives [Try it]`)
+- Right panel shows code samples (cURL, Python, JavaScript)
+- Response section shows status code tabs (200, 400, etc.) with example data
+- Left sidebar shows flat navigation with no duplicate endpoint sections
+- If any of these are missing, the OpenAPI spec likely has broken `$ref` references
 
 ## Git workflow
 - Ask how to handle uncommitted changes before starting

@@ -157,11 +157,24 @@ print('Done — no output above means all refs resolve.')
 ### Mintlify + OpenAPI Configuration (docs.json)
 These rules prevent common Mintlify misconfigurations:
 
-- **Do NOT add `"openapi"` at the top level of `docs.json`** — Mintlify interprets docs.json itself as an OpenAPI file and throws validation errors
-- **Do NOT use `tabs` navigation with an `openapi` property** — this auto-generates nav entries for every operation in the spec, creating duplicate sidebar entries alongside the curated MDX pages
-- **Mintlify auto-discovers `api-reference/openapi.json`** — no explicit config needed in docs.json when using a single spec file
-- MDX endpoint files use short-form frontmatter: `openapi: 'POST /incentives'` (no file path needed with single spec)
-- If you ever need multiple spec files, include the path in frontmatter: `openapi: 'path/to/spec.json POST /endpoint'`
+**Current working pattern:**
+- The API Reference group in `docs.json` has `"openapi": "api-reference/openapi.json"` — this is **required** for production builds to resolve spec references
+- All operations in the spec have `"x-hidden": true` — this prevents Mintlify from auto-generating duplicate sidebar entries
+- All operations have NO `tags` — tags cause additional auto-generated nav groups
+- MDX endpoint files use short-form frontmatter: `openapi: 'POST /incentives'` (no file path needed since the group-level config handles resolution)
+
+**Critical: local dev vs production builds:**
+- `mint dev` (local) auto-discovers OpenAPI specs — everything works without explicit config
+- **Production builds require** an explicit `openapi` property on a navigation group in `docs.json`
+- If you remove the `openapi` property from the group, pages will look fine locally but lose rich content (Try-it, code samples, schemas) in production
+
+**Do NOT:**
+- Add `"openapi"` at the top level of `docs.json` — Mintlify interprets docs.json itself as an OpenAPI file and throws validation errors
+- Use `tabs` navigation with an `openapi` property — this auto-generates nav entries for every operation in the spec, creating duplicate sidebar entries
+- Add `tags` to operations in the OpenAPI spec — tags create auto-generated nav groups alongside the curated MDX pages
+- Remove `x-hidden: true` from operations — without it, Mintlify auto-generates duplicate sidebar entries for every operation
+
+**If you ever need multiple spec files**, include the path in frontmatter: `openapi: 'path/to/spec.json POST /endpoint'`
 
 ### Organization Scoping
 - **DO NOT repeatedly mention** organization scoping in API documentation

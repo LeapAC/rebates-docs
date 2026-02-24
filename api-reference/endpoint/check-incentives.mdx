@@ -1,7 +1,7 @@
 ---
 title: 'Check Incentives'
 description: 'Get aggregated incentive calculations from multiple utility programs based on customer address and device'
-openapi: 'POST /incentives'
+openapi: 'api-reference/openapi.json POST /incentives'
 ---
 
 ## Overview
@@ -14,83 +14,8 @@ The API supports three operation types:
 - **`refresh`**: Returning customers using cached utilities (fastest, only requires `reference_id`)
 - **`override`**: Replace all customer devices with new ones, then refresh calculation
 
-<Note>
-The `reference_id` is **required** and must be unique within your organization. It enables faster lookups on subsequent calls.
-</Note>
-
 <Tip>
-**Performance Tip**: Use `operation_type="refresh"` for returning customers to skip geocoding and use cached utility data. This is significantly faster than lookup operations. You can even omit `device_ids` to use all existing devices automatically.
+**Performance Tip**: Use `operation_type="refresh"` for returning customers to skip geocoding and use cached utility data. You can even omit `device_ids` to use all existing devices automatically.
 </Tip>
 
-## Operation Types
-
-### Lookup Operation
-
-**When to use**: First-time customers or when you need fresh utility data
-
-**Required fields**:
-- `operation_type`: `"lookup"`
-- `reference_id`: Your internal customer identifier
-- `address`: Full address object (street_1, city, state_or_province_code, postal_code, country_code)
-- `building_type`: One of `RESIDENTIAL`, `MULTIFAMILY`, `MANUFACTURED_HOME`, `COMMERCIAL`
-- `device_ids`: Array of device IDs (can contain duplicates)
-
-**Behavior**:
-- Creates new customer if not found
-- Geocodes address to find utilities
-- Creates customer device records for all `device_ids`
-- Caches utility data for future use
-
-### Refresh Operation
-
-**When to use**: Returning customers with same devices (fastest option)
-
-**Required fields**:
-- `operation_type`: `"refresh"`
-- `reference_id`: Your internal customer identifier
-
-**Optional fields**:
-- `address`: Updates customer address if provided and different (still uses cached utilities)
-- `building_type`: If omitted, uses stored building_type_id
-- `device_ids`: 
-  - **Omit**: Uses all existing devices from customer
-  - **Include**: Validates all devices exist, then uses those devices
-
-**Behavior**:
-- Customer must already exist
-- Uses cached utility data (no geocoding)
-- Fastest operation type
-
-### Override Operation
-
-**When to use**: Customer changed their devices completely
-
-**Required fields**:
-- `operation_type`: `"override"`
-- `reference_id`: Your internal customer identifier
-- `building_type`: One of `RESIDENTIAL`, `MULTIFAMILY`, `MANUFACTURED_HOME`, `COMMERCIAL`
-- `device_ids`: Array of new device IDs (replaces all existing devices)
-
-**Optional fields**:
-- `address`: Updates customer address if provided and different (still uses cached utilities)
-
-**Behavior**:
-- Customer must already exist
-- Deletes ALL existing customer devices
-- Creates new devices from `device_ids` array
-- Uses cached utility data (no geocoding)
-
-## Device IDs
-
-The `device_ids` field is an **array** that supports:
-
-- **Multiple devices**: `[42, 44, 45]`
-- **Duplicates**: `[42, 42, 42]` creates 3 customer device records
-- **Device categories**: API automatically looks up programs for all device categories (e.g., EV Chargers + Thermostats)
-
-**Requirements by operation**:
-- `lookup`: Required
-- `refresh`: Optional (uses existing devices if omitted)
-- `override`: Required
-
-For more details on operation types, organization scoping, and best practices, see the [Incentives API Guide](/incentives-guide).
+For detailed operation type behavior, device ID handling, and best practices, see the [Incentives API Guide](/incentives-guide).

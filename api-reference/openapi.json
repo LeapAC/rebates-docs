@@ -122,7 +122,10 @@
                           "id": 123,
                           "program_id": 339,
                           "customer_id": 609,
-                          "customer_device_id": [45, 46],
+                          "customer_device_id": [
+                            45,
+                            46
+                          ],
                           "status": "awaiting_partner",
                           "rebate_type": "instant",
                           "payee_type": "customer",
@@ -250,7 +253,9 @@
                       "country_code": "US"
                     },
                     "building_type": "RESIDENTIAL",
-                    "device_ids": [42],
+                    "device_ids": [
+                      42
+                    ],
                     "create_application": true
                   }
                 },
@@ -268,7 +273,11 @@
                     "operation_type": "override",
                     "reference_id": "external-ref-123",
                     "building_type": "RESIDENTIAL",
-                    "device_ids": [55, 66, 77],
+                    "device_ids": [
+                      55,
+                      66,
+                      77
+                    ],
                     "create_application": true
                   }
                 }
@@ -523,7 +532,10 @@
                   "id": 123,
                   "program_id": 339,
                   "customer_id": 609,
-                  "customer_device_id": [45, 46],
+                  "customer_device_id": [
+                    45,
+                    46
+                  ],
                   "status": "in_progress",
                   "rebate_type": "instant",
                   "payee_type": "customer",
@@ -795,11 +807,16 @@
                       "mutations": {
                         "application": {
                           "updated": true,
-                          "fields": ["status", "approval_date"]
+                          "fields": [
+                            "status",
+                            "approval_date"
+                          ]
                         },
                         "customer": {
                           "updated": true,
-                          "fields": ["email"]
+                          "fields": [
+                            "email"
+                          ]
                         }
                       },
                       "data": {
@@ -1061,7 +1078,7 @@
             "schema": {
               "type": "integer"
             },
-              "example": 123
+            "example": 123
           }
         ],
         "requestBody": {
@@ -1523,7 +1540,9 @@
         "summary": "Create Batch Job",
         "description": "Create a new batch job with multiple lookup items. Each item will be processed independently with its own device_ids.\n\n**Processing:**\n- Items are queued immediately with status `pending`\n- Background worker processes items automatically (every 5 minutes)\n- You can poll the job status or manually trigger the worker\n\n**Validation:**\n- All items are validated before job creation\n- Duplicate `reference_id` values within a batch are rejected\n- Invalid items are reported with specific error messages\n\n**Limits:**\n- Maximum 10,000 items per batch\n- Each item can have different `device_ids`\n- Each item can have different `create_application` setting",
         "operationId": "createBatchJob",
-        "tags": ["Batch Lookups"],
+        "tags": [
+          "Batch Lookups"
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -1574,7 +1593,9 @@
         "summary": "List Batch Jobs",
         "description": "List all batch jobs for your organization with optional filtering and pagination.",
         "operationId": "listBatchJobs",
-        "tags": ["Batch Lookups"],
+        "tags": [
+          "Batch Lookups"
+        ],
         "parameters": [
           {
             "name": "status",
@@ -1582,7 +1603,13 @@
             "required": false,
             "schema": {
               "type": "string",
-              "enum": ["pending", "processing", "completed", "failed", "cancelled"]
+              "enum": [
+                "pending",
+                "processing",
+                "completed",
+                "failed",
+                "cancelled"
+              ]
             }
           },
           {
@@ -1618,8 +1645,12 @@
               }
             }
           },
-          "401": { "description": "Unauthorized" },
-          "500": { "description": "Internal server error" }
+          "401": {
+            "description": "Unauthorized"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
         }
       }
     },
@@ -1628,19 +1659,27 @@
         "summary": "Get Batch Job Status",
         "description": "Get detailed status and progress for a specific batch job.",
         "operationId": "getBatchJob",
-        "tags": ["Batch Lookups"],
+        "tags": [
+          "Batch Lookups"
+        ],
         "parameters": [
           {
             "name": "job_id",
             "in": "path",
             "required": true,
-            "schema": { "type": "string", "format": "uuid" }
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
           },
           {
             "name": "include_items",
             "in": "query",
             "required": false,
-            "schema": { "type": "boolean", "default": false }
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
           }
         ],
         "responses": {
@@ -1658,11 +1697,15 @@
             "description": "Job not found",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/BatchError" }
+                "schema": {
+                  "$ref": "#/components/schemas/BatchError"
+                }
               }
             }
           },
-          "401": { "description": "Unauthorized" }
+          "401": {
+            "description": "Unauthorized"
+          }
         }
       }
     },
@@ -1671,13 +1714,18 @@
         "summary": "Get Batch Job Items",
         "description": "Get all items (lookups) for a batch job with optional filtering and pagination.",
         "operationId": "getBatchJobItems",
-        "tags": ["Batch Lookups"],
+        "tags": [
+          "Batch Lookups"
+        ],
         "parameters": [
           {
             "name": "job_id",
             "in": "path",
             "required": true,
-            "schema": { "type": "string", "format": "uuid" }
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
           },
           {
             "name": "status",
@@ -1685,20 +1733,34 @@
             "required": false,
             "schema": {
               "type": "string",
-              "enum": ["pending", "processing", "completed", "failed"]
+              "enum": [
+                "pending",
+                "processing",
+                "completed",
+                "failed"
+              ]
             }
           },
           {
             "name": "limit",
             "in": "query",
             "required": false,
-            "schema": { "type": "integer", "default": 50, "minimum": 1, "maximum": 500 }
+            "schema": {
+              "type": "integer",
+              "default": 50,
+              "minimum": 1,
+              "maximum": 500
+            }
           },
           {
             "name": "offset",
             "in": "query",
             "required": false,
-            "schema": { "type": "integer", "default": 0, "minimum": 0 }
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "minimum": 0
+            }
           }
         ],
         "responses": {
@@ -1712,8 +1774,12 @@
               }
             }
           },
-          "404": { "description": "Job not found" },
-          "401": { "description": "Unauthorized" }
+          "404": {
+            "description": "Job not found"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
         }
       }
     },
@@ -1722,13 +1788,18 @@
         "summary": "Cancel Batch Job",
         "description": "Cancel a pending or processing batch job.",
         "operationId": "cancelBatchJob",
-        "tags": ["Batch Lookups"],
+        "tags": [
+          "Batch Lookups"
+        ],
         "parameters": [
           {
             "name": "job_id",
             "in": "path",
             "required": true,
-            "schema": { "type": "string", "format": "uuid" }
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
           }
         ],
         "responses": {
@@ -1746,12 +1817,18 @@
             "description": "Cannot cancel job",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/BatchError" }
+                "schema": {
+                  "$ref": "#/components/schemas/BatchError"
+                }
               }
             }
           },
-          "404": { "description": "Job not found" },
-          "401": { "description": "Unauthorized" }
+          "404": {
+            "description": "Job not found"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
         }
       }
     },
@@ -1760,29 +1837,39 @@
         "summary": "Get webhook configuration",
         "description": "Return the authenticated organization's webhook URL and optional custom field names. If no webhook is configured, `url` is null.",
         "operationId": "getWebhookConfig",
-        "tags": ["Webhook Config"],
+        "tags": [
+          "Webhook Config"
+        ],
         "responses": {
           "200": {
             "description": "Current webhook config",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/WebhookConfig" }
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookConfig"
+                }
               }
             }
           },
-          "401": { "description": "Unauthorized" }
+          "401": {
+            "description": "Unauthorized"
+          }
         }
       },
       "put": {
         "summary": "Update webhook configuration",
         "description": "Set or clear webhook URL and/or field names. Partial update: omit fields to leave them unchanged. Use `url: null` or empty string to clear. URL must use HTTPS.",
         "operationId": "putWebhookConfig",
-        "tags": ["Webhook Config"],
+        "tags": [
+          "Webhook Config"
+        ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/WebhookConfigUpdate" }
+              "schema": {
+                "$ref": "#/components/schemas/WebhookConfigUpdate"
+              }
             }
           }
         },
@@ -1791,7 +1878,9 @@
             "description": "Config updated",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/WebhookConfig" }
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookConfig"
+                }
               }
             }
           },
@@ -1799,12 +1888,18 @@
             "description": "Validation error",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/WebhookError" }
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookError"
+                }
               }
             }
           },
-          "401": { "description": "Unauthorized" },
-          "500": { "description": "Failed to save webhook config" }
+          "401": {
+            "description": "Unauthorized"
+          },
+          "500": {
+            "description": "Failed to save webhook config"
+          }
         }
       }
     }
@@ -2119,7 +2214,12 @@
             "items": {
               "type": "integer"
             },
-            "example": [32, 44, 44, 44]
+            "example": [
+              32,
+              44,
+              44,
+              44
+            ]
           },
           "create_application": {
             "type": "boolean",
@@ -2128,9 +2228,14 @@
           },
           "webhook_custom_fields": {
             "type": "object",
-            "additionalProperties": { "type": "string" },
+            "additionalProperties": {
+              "type": "string"
+            },
             "description": "Optional custom fields to include in the webhook payload when your organization has a webhook URL configured (e.g. Project ID, Record ID). Only keys allowed by your org's webhook field_names config are merged into the POST body.",
-            "example": { "Project ID": "proj-123", "Record ID": "row-5" }
+            "example": {
+              "Project ID": "proj-123",
+              "Record ID": "row-5"
+            }
           }
         }
       },
@@ -2176,15 +2281,15 @@
             "type": "array",
             "description": "List of possible utilities that could serve this address",
             "items": {
-            "type": "object",
-            "properties": {
+              "type": "object",
+              "properties": {
                 "eiaid": {
-                "type": "string",
+                  "type": "string",
                   "description": "EIA utility identification number",
                   "example": "14354"
-              },
+                },
                 "name": {
-                "type": "string",
+                  "type": "string",
                   "description": "Name of the utility company",
                   "example": "PacifiCorp (Oregon)"
                 }
@@ -2294,17 +2399,17 @@
       },
       "DeviceTierResult": {
         "type": "object",
-          "required": [
-            "device_id",
-            "device_name",
-            "tier_id",
-            "tier_name",
-            "eligible",
-            "incentive_amount",
-            "failed_requirements",
-            "ignored_requirements",
-            "completed_requirements"
-          ],
+        "required": [
+          "device_id",
+          "device_name",
+          "tier_id",
+          "tier_name",
+          "eligible",
+          "incentive_amount",
+          "failed_requirements",
+          "ignored_requirements",
+          "completed_requirements"
+        ],
         "properties": {
           "device_id": {
             "type": "integer",
@@ -3299,7 +3404,11 @@
           },
           "payee_type": {
             "type": "string",
-            "enum": ["customer", "contractor", "instant"],
+            "enum": [
+              "customer",
+              "contractor",
+              "instant"
+            ],
             "nullable": true,
             "description": "Who will receive the rebate payment"
           },
@@ -3361,7 +3470,9 @@
       },
       "ApplicationFieldsUpdate": {
         "type": "object",
-        "required": ["id"],
+        "required": [
+          "id"
+        ],
         "description": "Application fields to update. 'id' is required to identify which application to update.",
         "properties": {
           "id": {
@@ -3691,7 +3802,9 @@
       "CustomerDevicePatchRequest": {
         "type": "object",
         "description": "Customer device information to update.\n- Must include 'id' (required) to identify the device\n- All other fields are optional\n",
-        "required": ["id"],
+        "required": [
+          "id"
+        ],
         "properties": {
           "id": {
             "type": "integer",
@@ -3865,177 +3978,440 @@
             "nullable": true
           }
         }
-      }
-    },
-    "BatchError": {
-      "type": "object",
-      "properties": {
-        "error": { "type": "string", "description": "Error message" },
-        "invalid_items": {
-          "type": "array",
+      },
+      "BatchError": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "Error message"
+          },
+          "invalid_items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "index": {
+                  "type": "integer"
+                },
+                "error": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Details about invalid items (when creating batch)"
+          },
+          "duplicates": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Duplicate reference_ids found (when creating batch)"
+          }
+        }
+      },
+      "Address": {
+        "type": "object",
+        "required": [
+          "street_1",
+          "city",
+          "state_or_province_code",
+          "postal_code",
+          "country_code"
+        ],
+        "properties": {
+          "street_1": {
+            "type": "string",
+            "example": "123 Main Street"
+          },
+          "street_2": {
+            "type": "string",
+            "example": "Apt 4B"
+          },
+          "city": {
+            "type": "string",
+            "example": "San Francisco"
+          },
+          "state_or_province_code": {
+            "type": "string",
+            "example": "CA"
+          },
+          "postal_code": {
+            "type": "string",
+            "example": "94102"
+          },
+          "country_code": {
+            "type": "string",
+            "example": "US"
+          }
+        }
+      },
+      "BatchLookupItem": {
+        "type": "object",
+        "required": [
+          "reference_id",
+          "address",
+          "building_type",
+          "device_ids"
+        ],
+        "properties": {
+          "reference_id": {
+            "type": "string",
+            "example": "deal-12345"
+          },
+          "address": {
+            "$ref": "#/components/schemas/Address"
+          },
+          "building_type": {
+            "type": "string",
+            "enum": [
+              "RESIDENTIAL",
+              "COMMERCIAL",
+              "MULTIFAMILY"
+            ],
+            "example": "RESIDENTIAL"
+          },
+          "device_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "minItems": 1,
+            "example": [
+              1,
+              2
+            ]
+          },
+          "create_application": {
+            "type": "boolean",
+            "default": false,
+            "example": false
+          },
+          "webhook_custom_fields": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Optional per-item custom fields for webhook payload"
+          }
+        }
+      },
+      "CreateBatchRequest": {
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "properties": {
           "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BatchLookupItem"
+            },
+            "minItems": 1,
+            "maxItems": 10000
+          }
+        }
+      },
+      "CreateBatchResponse": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending"
+            ]
+          },
+          "total_items": {
+            "type": "integer"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "report": {
             "type": "object",
             "properties": {
-              "index": { "type": "integer" },
-              "error": { "type": "string" }
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "name": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string",
+                "nullable": true
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "processing"
+                ]
+              },
+              "report_type": {
+                "type": "string",
+                "enum": [
+                  "bulk_lookup"
+                ]
+              },
+              "total_sites": {
+                "type": "integer"
+              },
+              "created_at": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "status",
+              "report_type",
+              "total_sites",
+              "created_at"
+            ]
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "BatchJob": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "organization_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "processing",
+              "completed",
+              "failed",
+              "cancelled"
+            ]
+          },
+          "total_items": {
+            "type": "integer"
+          },
+          "processed_items": {
+            "type": "integer"
+          },
+          "failed_items": {
+            "type": "integer"
+          },
+          "report_id": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "completed_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "item_counts": {
+            "type": "object",
+            "properties": {
+              "pending": {
+                "type": "integer"
+              },
+              "processing": {
+                "type": "integer"
+              },
+              "completed": {
+                "type": "integer"
+              },
+              "failed": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+      },
+      "QueueItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "job_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "processing",
+              "completed",
+              "failed"
+            ]
+          },
+          "reference_id": {
+            "type": "string"
+          },
+          "address": {
+            "$ref": "#/components/schemas/Address"
+          },
+          "building_type": {
+            "type": "string",
+            "enum": [
+              "RESIDENTIAL",
+              "COMMERCIAL",
+              "MULTIFAMILY"
+            ]
+          },
+          "device_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer"
             }
           },
-          "description": "Details about invalid items (when creating batch)"
-        },
-        "duplicates": {
-          "type": "array",
-          "items": { "type": "string" },
-          "description": "Duplicate reference_ids found (when creating batch)"
-        }
-      }
-    },
-    "Address": {
-      "type": "object",
-      "required": ["street_1", "city", "state_or_province_code", "postal_code", "country_code"],
-      "properties": {
-        "street_1": { "type": "string", "example": "123 Main Street" },
-        "street_2": { "type": "string", "example": "Apt 4B" },
-        "city": { "type": "string", "example": "San Francisco" },
-        "state_or_province_code": { "type": "string", "example": "CA" },
-        "postal_code": { "type": "string", "example": "94102" },
-        "country_code": { "type": "string", "example": "US" }
-      }
-    },
-    "BatchLookupItem": {
-      "type": "object",
-      "required": ["reference_id", "address", "building_type", "device_ids"],
-      "properties": {
-        "reference_id": { "type": "string", "example": "deal-12345" },
-        "address": { "$ref": "#/components/schemas/Address" },
-        "building_type": { "type": "string", "enum": ["RESIDENTIAL", "COMMERCIAL", "MULTIFAMILY"], "example": "RESIDENTIAL" },
-        "device_ids": { "type": "array", "items": { "type": "integer" }, "minItems": 1, "example": [1, 2] },
-        "create_application": { "type": "boolean", "default": false, "example": false },
-        "webhook_custom_fields": { "type": "object", "additionalProperties": { "type": "string" }, "description": "Optional per-item custom fields for webhook payload" }
-      }
-    },
-    "CreateBatchRequest": {
-      "type": "object",
-      "required": ["items"],
-      "properties": {
-        "items": {
-          "type": "array",
-          "items": { "$ref": "#/components/schemas/BatchLookupItem" },
-          "minItems": 1,
-          "maxItems": 10000
-        }
-      }
-    },
-    "CreateBatchResponse": {
-      "type": "object",
-      "properties": {
-        "job_id": { "type": "string", "format": "uuid" },
-        "status": { "type": "string", "enum": ["pending"] },
-        "total_items": { "type": "integer" },
-        "created_at": { "type": "string", "format": "date-time" },
-        "report": {
-          "type": "object",
-          "properties": {
-            "id": { "type": "string", "format": "uuid" },
-            "name": { "type": "string" },
-            "description": { "type": "string", "nullable": true },
-            "status": { "type": "string", "enum": ["processing"] },
-            "report_type": { "type": "string", "enum": ["bulk_lookup"] },
-            "total_sites": { "type": "integer" },
-            "created_at": { "type": "string", "format": "date-time" }
+          "result": {
+            "type": "object",
+            "nullable": true
           },
-          "required": ["id", "name", "status", "report_type", "total_sites", "created_at"]
-        },
-        "message": { "type": "string" }
-      }
-    },
-    "BatchJob": {
-      "type": "object",
-      "properties": {
-        "id": { "type": "string", "format": "uuid" },
-        "organization_id": { "type": "string", "format": "uuid" },
-        "status": { "type": "string", "enum": ["pending", "processing", "completed", "failed", "cancelled"] },
-        "total_items": { "type": "integer" },
-        "processed_items": { "type": "integer" },
-        "failed_items": { "type": "integer" },
-        "report_id": { "type": "string", "format": "uuid", "nullable": true },
-        "created_at": { "type": "string", "format": "date-time" },
-        "started_at": { "type": "string", "format": "date-time", "nullable": true },
-        "completed_at": { "type": "string", "format": "date-time", "nullable": true },
-        "item_counts": {
-          "type": "object",
-          "properties": {
-            "pending": { "type": "integer" },
-            "processing": { "type": "integer" },
-            "completed": { "type": "integer" },
-            "failed": { "type": "integer" }
+          "error_message": {
+            "type": "string",
+            "nullable": true
+          },
+          "retry_count": {
+            "type": "integer"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "processed_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        }
+      },
+      "JobListResponse": {
+        "type": "object",
+        "properties": {
+          "jobs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BatchJob"
+            }
+          },
+          "total": {
+            "type": "integer"
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "offset": {
+            "type": "integer"
+          }
+        }
+      },
+      "ItemListResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QueueItem"
+            }
+          },
+          "total": {
+            "type": "integer"
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "offset": {
+            "type": "integer"
+          }
+        }
+      },
+      "CancelJobResponse": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "example": "Job cancelled successfully"
+          },
+          "job_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "WebhookConfig": {
+        "type": "object",
+        "description": "Current webhook configuration for the authenticated organization",
+        "properties": {
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "nullable": true,
+            "description": "Webhook URL; POST is sent here after each successful lookup."
+          },
+          "field_names": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "Project ID",
+              "Record ID"
+            ]
+          }
+        }
+      },
+      "WebhookConfigUpdate": {
+        "type": "object",
+        "description": "Partial update; all fields optional.",
+        "properties": {
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "nullable": true,
+            "description": "Set webhook URL (HTTPS required). Use null or empty to clear."
+          },
+          "field_names": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "WebhookError": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "Error message (e.g. Webhook URL must use HTTPS, Invalid URL format)"
           }
         }
       }
-    },
-    "QueueItem": {
-      "type": "object",
-      "properties": {
-        "id": { "type": "string", "format": "uuid" },
-        "job_id": { "type": "string", "format": "uuid" },
-        "status": { "type": "string", "enum": ["pending", "processing", "completed", "failed"] },
-        "reference_id": { "type": "string" },
-        "address": { "$ref": "#/components/schemas/Address" },
-        "building_type": { "type": "string", "enum": ["RESIDENTIAL", "COMMERCIAL", "MULTIFAMILY"] },
-        "device_ids": { "type": "array", "items": { "type": "integer" } },
-        "result": { "type": "object", "nullable": true },
-        "error_message": { "type": "string", "nullable": true },
-        "retry_count": { "type": "integer" },
-        "created_at": { "type": "string", "format": "date-time" },
-        "processed_at": { "type": "string", "format": "date-time", "nullable": true }
-      }
-    },
-    "JobListResponse": {
-      "type": "object",
-      "properties": {
-        "jobs": { "type": "array", "items": { "$ref": "#/components/schemas/BatchJob" } },
-        "total": { "type": "integer" },
-        "limit": { "type": "integer" },
-        "offset": { "type": "integer" }
-      }
-    },
-    "ItemListResponse": {
-      "type": "object",
-      "properties": {
-        "items": { "type": "array", "items": { "$ref": "#/components/schemas/QueueItem" } },
-        "total": { "type": "integer" },
-        "limit": { "type": "integer" },
-        "offset": { "type": "integer" }
-      }
-    },
-    "CancelJobResponse": {
-      "type": "object",
-      "properties": {
-        "message": { "type": "string", "example": "Job cancelled successfully" },
-        "job_id": { "type": "string", "format": "uuid" }
-      }
-    },
-    "WebhookConfig": {
-      "type": "object",
-      "description": "Current webhook configuration for the authenticated organization",
-      "properties": {
-        "url": { "type": "string", "format": "uri", "nullable": true, "description": "Webhook URL; POST is sent here after each successful lookup." },
-        "field_names": { "type": "array", "items": { "type": "string" }, "example": ["Project ID", "Record ID"] }
-      }
-    },
-    "WebhookConfigUpdate": {
-      "type": "object",
-      "description": "Partial update; all fields optional.",
-      "properties": {
-        "url": { "type": "string", "format": "uri", "nullable": true, "description": "Set webhook URL (HTTPS required). Use null or empty to clear." },
-        "field_names": { "type": "array", "items": { "type": "string" } }
-      }
-    },
-    "WebhookError": {
-      "type": "object",
-      "properties": {
-        "error": { "type": "string", "description": "Error message (e.g. Webhook URL must use HTTPS, Invalid URL format)" }
-      }
-    }
     },
     "responses": {
       "UnauthorizedError": {
@@ -4067,6 +4443,7 @@
             }
           }
         }
+      }
     }
   },
   "tags": [

@@ -29,9 +29,6 @@
         "summary": "Search applications",
         "description": "Search and filter applications with optional pagination. Returns a list of applications\nmatching the specified criteria. All results are automatically filtered to applications belonging to your organization.\n\n**Authentication:**\nRequires API key authentication via `x-api-key` header.\n\n**Organization Scoping:**\nResults are automatically filtered by your organization ID. You can only access applications that belong to your organization.\n",
         "operationId": "searchApplications",
-        "tags": [
-          "Applications"
-        ],
         "parameters": [
           {
             "name": "refId",
@@ -182,7 +179,8 @@
           "500": {
             "$ref": "#/components/responses/InternalServerError"
           }
-        }
+        },
+        "x-hidden": true
       }
     },
     "/incentives": {
@@ -190,9 +188,6 @@
         "summary": "Get aggregated incentives for a customer",
         "description": "Retrieves and aggregates incentive calculations from multiple utility programs\nbased on the customer's address and building type.\n\nThe API automatically:\n1. Creates or finds the customer based on address components\n2. Links the customer to your organization using the `reference_id`\n3. Associates devices with the customer (supports multiple devices via `device_ids` array)\n4. Identifies the utility serving the address\n5. Finds all active programs for that utility and building type\n6. Calls each program's incentive calculation function\n7. Optionally creates application records (if `create_application=true` and customer is eligible)\n8. Aggregates and returns the results\n9. If your organization has a webhook URL configured (see Webhook Config API), sends a POST to that URL with the response plus any `webhook_custom_fields` you include in the request\n\n**Authentication:** Requires API key via `x-api-key` header.\n\n**Reference ID:** The `reference_id` is required and must be unique per organization. It's used to link customers to your organization and is returned in the response for your records. To update applications later, use the PATCH endpoint with `application_id` (requires API key authentication).\n\n**Operation Types:**\n- `lookup`: New calculation with geocoding (requires address and device_ids)\n- `refresh`: Re-calculate using cached utilities (device_ids optional, uses existing devices if not provided)\n- `override`: Replace all customer devices with new ones, then refresh calculation\n",
         "operationId": "getAggregatedIncentives",
-        "tags": [
-          "Incentives"
-        ],
         "x-codeSamples": [
           {
             "lang": "curl",
@@ -470,7 +465,8 @@
               }
             }
           }
-        }
+        },
+        "x-hidden": true
       }
     },
     "/applications/{application_id}": {
@@ -478,9 +474,6 @@
         "summary": "Get an application by ID",
         "description": "Retrieves a complete application including customer information and all associated\ncustomer devices. The response includes nested customer and device data.\n\n**Authentication:**\nRequires API key authentication via `x-api-key` header.\n\n**Organization Verification:**\nThe application must belong to your organization. Returns 403 Forbidden if the application belongs to a different organization.\n",
         "operationId": "getApplication",
-        "tags": [
-          "Applications"
-        ],
         "parameters": [
           {
             "name": "application_id",
@@ -623,15 +616,13 @@
           "500": {
             "$ref": "#/components/responses/InternalServerError"
           }
-        }
+        },
+        "x-hidden": true
       },
       "patch": {
         "summary": "Update application by application ID",
         "description": "Updates an application identified by application ID. Supports updating application fields, customer information, and customer devices.\n\n**Authentication:**\nRequires API key authentication via `x-api-key` header. The application must belong to your organization.\n\n**Application ID:**\nUse the `application_id` path parameter to identify which application to update. The API verifies the application belongs to your organization.\n\n**Request Structure:**\nMatches the GET `/applications/{id}` response structure (without protected fields):\n- Application fields at top level (e.g., `rebate_type`, `approval_date`)\n- `customer` (optional): Customer fields to update\n- `customer_devices` (optional): Array of devices to update (must include `id`)\n\n**Protected Fields:**\nThe following fields cannot be updated: `id`, `customer_id`, `organization_id`, `program_id`, `status`, `created_at`, `updated_at`\n\n**Dry Run:**\nSet `dryRun=true` as a query parameter to validate the request without applying changes.\n\n**Partial Update Behavior:**\n- Only include fields you want to change\n- Omitted fields will keep their current values\n- Set a field to `null` to clear its value (where nullable)\n\n**Customer Devices:**\n- Must include `id` (required) to identify the device\n- Missing `id` will return 400 Bad Request with error code `invalid_body`\n\n**Status Field:**\nThe `status` field is read-only for organizations and cannot be updated through this endpoint.\n\nAll updates are transactional - if any part fails, the entire operation is rolled back.\n",
         "operationId": "patchApplicationById",
-        "tags": [
-          "Applications"
-        ],
         "parameters": [
           {
             "name": "application_id",
@@ -930,7 +921,8 @@
             "label": "C#",
             "source": "using System;\nusing System.Net.Http;\nusing System.Text;\nusing System.Text.Json;\nusing System.Threading.Tasks;\n\nvar client = new HttpClient();\nvar url = \"https://api.incentives.leap.energy/alpha/applications/123\";\n\nvar payload = new {\n    approval_date = \"2025-01-25\",\n    customer = new {\n        email = \"newemail@example.com\"\n    }\n};\n\nvar content = new StringContent(\n    JsonSerializer.Serialize(payload),\n    Encoding.UTF8,\n    \"application/json\"\n);\n\nvar request = new HttpRequestMessage(new HttpMethod(\"PATCH\"), url) {\n    Content = content\n};\nrequest.Headers.Add(\"x-api-key\", \"leap_live_...\");\n\nvar response = await client.SendAsync(request);\nvar result = await response.Content.ReadAsStringAsync();\nConsole.WriteLine(result);"
           }
-        ]
+        ],
+        "x-hidden": true
       }
     },
     "/applications/attachments": {
@@ -938,9 +930,6 @@
         "summary": "List attachments",
         "description": "List attachments for one or more applications.\n\n**Authentication:**\nRequires API key authentication via `x-api-key` header. The application must belong to your organization.\n\n**Query Parameters:**\n- Use `application_id` for a single application (requires `attachment_type`)\n- Use `application_ids` for bulk listing (comma-separated, `attachment_type` is optional)",
         "operationId": "listAttachments",
-        "tags": [
-          "Applications"
-        ],
         "parameters": [
           {
             "name": "application_id",
@@ -1023,15 +1012,13 @@
           "500": {
             "$ref": "#/components/responses/InternalServerError"
           }
-        }
+        },
+        "x-hidden": true
       },
       "post": {
         "summary": "Create signed upload URL for attachment",
         "description": "Creates a signed upload URL for uploading an attachment to the application. After receiving the signed URL, upload the file using a PUT request, then commit using the commit endpoint.\n\n**Authentication:**\nRequires API key authentication via `x-api-key` header. The application must belong to your organization.\n\n**Application ID:**\nUse the `application_id` query parameter to identify which application to attach the file to. The API verifies the application belongs to your organization.",
         "operationId": "createAttachmentUploadUrl",
-        "tags": [
-          "Applications"
-        ],
         "x-codeSamples": [
           {
             "lang": "curl",
@@ -1185,7 +1172,8 @@
           "500": {
             "$ref": "#/components/responses/InternalServerError"
           }
-        }
+        },
+        "x-hidden": true
       }
     },
     "/applications/attachments/{id}/download": {
@@ -1193,9 +1181,6 @@
         "summary": "Download attachment",
         "description": "Get a signed download URL for an attachment. The URL is valid for 1 hour.\n\n**Authentication:**\nRequires API key authentication via `x-api-key` header. The application must belong to your organization.\n\nThe signed URL is valid for 1 hour. The response includes three fields (`downloadUrl`, `url`, `file_url`) all containing the same URL for compatibility.",
         "operationId": "downloadAttachment",
-        "tags": [
-          "Applications"
-        ],
         "parameters": [
           {
             "name": "id",
@@ -1278,7 +1263,8 @@
           "500": {
             "$ref": "#/components/responses/InternalServerError"
           }
-        }
+        },
+        "x-hidden": true
       }
     },
     "/applications/attachments/{id}": {
@@ -1286,9 +1272,6 @@
         "summary": "Delete attachment",
         "description": "Delete an attachment from storage and remove the database record.\n\n**Authentication:**\nRequires API key authentication via `x-api-key` header. The application must belong to your organization.\n\n**Warning:**\nThis operation is **permanent** and cannot be undone. The file will be deleted from storage and the database record will be removed.",
         "operationId": "deleteAttachment",
-        "tags": [
-          "Applications"
-        ],
         "parameters": [
           {
             "name": "id",
@@ -1345,7 +1328,8 @@
           "500": {
             "$ref": "#/components/responses/InternalServerError"
           }
-        }
+        },
+        "x-hidden": true
       }
     },
     "/applications/attachments/commit": {
@@ -1353,9 +1337,6 @@
         "summary": "Commit uploaded attachment",
         "description": "Commits an attachment after the file has been successfully uploaded to the signed URL from the create endpoint.\n\n**Authentication:**\nRequires API key authentication via `x-api-key` header. The application must belong to your organization.\n\n**Application ID:**\nUse the `application_id` query parameter to identify which application the attachment belongs to. The API verifies the application belongs to your organization.\n\n**Path Format:**\nFor organization authentication, the path should use the `app-{application_id}/` prefix format (e.g., `app-123/uuid-filename.pdf`).",
         "operationId": "commitAttachment",
-        "tags": [
-          "Applications"
-        ],
         "x-codeSamples": [
           {
             "lang": "curl",
@@ -1532,7 +1513,8 @@
           "500": {
             "$ref": "#/components/responses/InternalServerError"
           }
-        }
+        },
+        "x-hidden": true
       }
     },
     "/batch-lookups": {
@@ -1540,9 +1522,6 @@
         "summary": "Create Batch Job",
         "description": "Create a new batch job with multiple lookup items. Each item will be processed independently with its own device_ids.\n\n**Processing:**\n- Items are queued immediately with status `pending`\n- Background worker processes items automatically (every 5 minutes)\n- You can poll the job status or manually trigger the worker\n\n**Validation:**\n- All items are validated before job creation\n- Duplicate `reference_id` values within a batch are rejected\n- Invalid items are reported with specific error messages\n\n**Limits:**\n- Maximum 10,000 items per batch\n- Each item can have different `device_ids`\n- Each item can have different `create_application` setting",
         "operationId": "createBatchJob",
-        "tags": [
-          "Batch Lookups"
-        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -1587,15 +1566,13 @@
             "label": "cURL",
             "source": "curl -X POST \"https://api.incentives.leap.energy/alpha/batch-lookups\" -H \"x-api-key: leap_live_...\" -H \"Content-Type: application/json\" -d '{\"items\":[{\"reference_id\":\"deal-001\",\"address\":{\"street_1\":\"123 Main St\",\"city\":\"San Francisco\",\"state_or_province_code\":\"CA\",\"postal_code\":\"94102\",\"country_code\":\"US\"},\"building_type\":\"RESIDENTIAL\",\"device_ids\":[1]}]}'"
           }
-        ]
+        ],
+        "x-hidden": true
       },
       "get": {
         "summary": "List Batch Jobs",
         "description": "List all batch jobs for your organization with optional filtering and pagination.",
         "operationId": "listBatchJobs",
-        "tags": [
-          "Batch Lookups"
-        ],
         "parameters": [
           {
             "name": "status",
@@ -1651,7 +1628,8 @@
           "500": {
             "description": "Internal server error"
           }
-        }
+        },
+        "x-hidden": true
       }
     },
     "/batch-lookups/{job_id}": {
@@ -1659,9 +1637,6 @@
         "summary": "Get Batch Job Status",
         "description": "Get detailed status and progress for a specific batch job.",
         "operationId": "getBatchJob",
-        "tags": [
-          "Batch Lookups"
-        ],
         "parameters": [
           {
             "name": "job_id",
@@ -1706,7 +1681,8 @@
           "401": {
             "description": "Unauthorized"
           }
-        }
+        },
+        "x-hidden": true
       }
     },
     "/batch-lookups/{job_id}/items": {
@@ -1714,9 +1690,6 @@
         "summary": "Get Batch Job Items",
         "description": "Get all items (lookups) for a batch job with optional filtering and pagination.",
         "operationId": "getBatchJobItems",
-        "tags": [
-          "Batch Lookups"
-        ],
         "parameters": [
           {
             "name": "job_id",
@@ -1780,7 +1753,8 @@
           "401": {
             "description": "Unauthorized"
           }
-        }
+        },
+        "x-hidden": true
       }
     },
     "/batch-lookups/{job_id}/cancel": {
@@ -1788,9 +1762,6 @@
         "summary": "Cancel Batch Job",
         "description": "Cancel a pending or processing batch job.",
         "operationId": "cancelBatchJob",
-        "tags": [
-          "Batch Lookups"
-        ],
         "parameters": [
           {
             "name": "job_id",
@@ -1829,7 +1800,8 @@
           "401": {
             "description": "Unauthorized"
           }
-        }
+        },
+        "x-hidden": true
       }
     },
     "/webhook-config": {
@@ -1837,9 +1809,6 @@
         "summary": "Get webhook configuration",
         "description": "Return the authenticated organization's webhook URL and optional custom field names. If no webhook is configured, `url` is null.",
         "operationId": "getWebhookConfig",
-        "tags": [
-          "Webhook Config"
-        ],
         "responses": {
           "200": {
             "description": "Current webhook config",
@@ -1854,15 +1823,13 @@
           "401": {
             "description": "Unauthorized"
           }
-        }
+        },
+        "x-hidden": true
       },
       "put": {
         "summary": "Update webhook configuration",
         "description": "Set or clear webhook URL and/or field names. Partial update: omit fields to leave them unchanged. Use `url: null` or empty string to clear. URL must use HTTPS.",
         "operationId": "putWebhookConfig",
-        "tags": [
-          "Webhook Config"
-        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -1900,7 +1867,8 @@
           "500": {
             "description": "Failed to save webhook config"
           }
-        }
+        },
+        "x-hidden": true
       }
     }
   },
@@ -4445,23 +4413,5 @@
         }
       }
     }
-  },
-  "tags": [
-    {
-      "name": "Incentives",
-      "description": "Calculate incentive amounts across utility programs"
-    },
-    {
-      "name": "Applications",
-      "description": "Manage rebate applications for customers"
-    },
-    {
-      "name": "Batch Lookups",
-      "description": "Process large volumes of incentive lookups via queue-based batch jobs"
-    },
-    {
-      "name": "Webhook Config",
-      "description": "Configure webhook URL and custom field names for backend-triggered webhooks"
-    }
-  ]
+  }
 }

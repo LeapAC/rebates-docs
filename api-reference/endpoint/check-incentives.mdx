@@ -10,12 +10,14 @@ Calculate incentives across multiple utility programs for a customer address and
 
 The API supports three operation types:
 
-- **`lookup`**: First-time customers or when you need fresh utility data (requires full address and `device_ids`)
+- **`lookup`**: First-time customers or when you need fresh utility data (requires full address and `device_ids` or `device_names`)
 - **`refresh`**: Returning customers using cached utilities (fastest, only requires `reference_id`)
 - **`override`**: Replace all customer devices with new ones, then refresh calculation
+
+You can identify devices by Leap device ID (`device_ids`) or by your own equipment/product names (`device_names`). When using `device_names`, the API resolves them via your organization's equipment map. See the [Incentives API Guide](/incentives-guide#device-names) for details on resolution behavior and handling partial matches.
 
 <Tip>
 **Performance Tip**: Use `operation_type="refresh"` for returning customers to skip geocoding and use cached utility data. You can even omit `device_ids` to use all existing devices automatically.
 </Tip>
 
-For detailed operation type behavior, device ID handling, and best practices, see the [Incentives API Guide](/incentives-guide).
+For detailed operation type behavior, device handling, and best practices, see the [Incentives API Guide](/incentives-guide).

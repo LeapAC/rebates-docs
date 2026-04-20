@@ -186,13 +186,18 @@
     "/incentives": {
       "post": {
         "summary": "Get aggregated incentives for a customer",
-        "description": "Retrieves and aggregates incentive calculations from multiple utility programs\nbased on the customer's address and building type.\n\nThe API automatically:\n1. Creates or finds the customer based on address components\n2. Links the customer to your organization using the `reference_id`\n3. Associates devices with the customer (supports multiple devices via `device_ids` array)\n4. Identifies the utility serving the address\n5. Finds all active programs for that utility and building type\n6. Calls each program's incentive calculation function\n7. Optionally creates application records (if `create_application=true` and customer is eligible)\n8. Aggregates and returns the results\n9. If your organization has a webhook URL configured (see Webhook Config API), sends a POST to that URL with the response plus any `webhook_custom_fields` you include in the request\n\n**Authentication:** Requires API key via `x-api-key` header.\n\n**Reference ID:** The `reference_id` is required and must be unique per organization. It's used to link customers to your organization and is returned in the response for your records. To update applications later, use the PATCH endpoint with `application_id` (requires API key authentication).\n\n**Operation Types:**\n- `lookup`: New calculation with geocoding (requires address and device_ids)\n- `refresh`: Re-calculate using cached utilities (device_ids optional, uses existing devices if not provided)\n- `override`: Replace all customer devices with new ones, then refresh calculation\n",
+        "description": "Retrieves and aggregates incentive calculations from multiple utility programs\nbased on the customer's address and building type.\n\nThe API automatically:\n1. Creates or finds the customer based on address components\n2. Links the customer to your organization using the `reference_id`\n3. Associates devices with the customer (via `device_ids` or `device_names`)\n4. Identifies the utility serving the address\n5. Finds all active programs for that utility and building type\n6. Calls each program's incentive calculation function\n7. Optionally creates application records (if `create_application=true` and customer is eligible)\n8. Aggregates and returns the results\n9. If your organization has a webhook URL configured (see Webhook Config API), sends a POST to that URL with the response plus any `webhook_custom_fields` you include in the request\n\n**Authentication:** Requires API key via `x-api-key` header.\n\n**Reference ID:** The `reference_id` is required and must be unique per organization. It's used to link customers to your organization and is returned in the response for your records. To update applications later, use the PATCH endpoint with `application_id` (requires API key authentication).\n\n**Device Identification:** You can specify devices using either `device_ids` (Leap device IDs) or `device_names` (your equipment/product names). When using `device_names`, the API resolves them to Leap device IDs via your organization's equipment map. If some names cannot be resolved, the API proceeds with the resolved devices and includes a `warnings` object in the response.\n\n**Operation Types:**\n- `lookup`: New calculation with geocoding (requires address and `device_ids` or `device_names`)\n- `refresh`: Re-calculate using cached utilities (`device_ids` optional, uses existing devices if not provided; `device_names` not supported)\n- `override`: Replace all customer devices with new ones, then refresh calculation\n",
         "operationId": "getAggregatedIncentives",
         "x-codeSamples": [
           {
             "lang": "curl",
-            "label": "cURL",
+            "label": "cURL (device IDs)",
             "source": "curl -X POST \\\n  \"https://api.incentives.leap.energy/alpha/incentives\" \\\n  -H \"x-api-key: leap_live_...\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"operation_type\": \"lookup\",\n    \"reference_id\": \"external-ref-123\",\n    \"address\": {\n      \"street_1\": \"123 Main St\",\n      \"street_2\": \"Apt 4B\",\n      \"city\": \"San Francisco\",\n      \"state_or_province_code\": \"CA\",\n      \"postal_code\": \"94102\",\n      \"country_code\": \"US\"\n    },\n    \"building_type\": \"RESIDENTIAL\",\n    \"device_ids\": [42],\n    \"create_application\": true\n  }'"
+          },
+          {
+            "lang": "curl",
+            "label": "cURL (device names)",
+            "source": "curl -X POST \\\n  \"https://api.incentives.leap.energy/alpha/incentives\" \\\n  -H \"x-api-key: leap_live_...\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"operation_type\": \"lookup\",\n    \"reference_id\": \"external-ref-456\",\n    \"address\": {\n      \"street_1\": \"456 Oak Ave\",\n      \"city\": \"Portland\",\n      \"state_or_province_code\": \"OR\",\n      \"postal_code\": \"97201\",\n      \"country_code\": \"US\"\n    },\n    \"building_type\": \"RESIDENTIAL\",\n    \"device_names\": [\"Mitsubishi Hyper-Heat MSZ-RXT09\", \"Rheem ProTerraDERA2060\"],\n    \"create_application\": true\n  }'"
           },
           {
             "lang": "python",
@@ -259,6 +264,26 @@
                   "value": {
                     "operation_type": "refresh",
                     "reference_id": "external-ref-123",
+                    "create_application": true
+                  }
+                },
+                "device_names_request": {
+                  "summary": "Lookup operation - Using equipment names instead of device IDs",
+                  "value": {
+                    "operation_type": "lookup",
+                    "reference_id": "external-ref-456",
+                    "address": {
+                      "street_1": "456 Oak Ave",
+                      "city": "Portland",
+                      "state_or_province_code": "OR",
+                      "postal_code": "97201",
+                      "country_code": "US"
+                    },
+                    "building_type": "RESIDENTIAL",
+                    "device_names": [
+                      "Mitsubishi Hyper-Heat MSZ-RXT09",
+                      "Rheem ProTerraDERA2060"
+                    ],
                     "create_application": true
                   }
                 },
@@ -372,7 +397,29 @@
                   "missing_parameters": {
                     "summary": "Missing required fields",
                     "value": {
-                      "error": "Missing required fields: address (street_1, city, state_or_province_code, postal_code, country_code), building_type, and device_ids"
+                      "error": "Missing required fields: address (street_1, city, state_or_province_code, postal_code, country_code), building_type, and device_ids or device_names"
+                    }
+                  },
+                  "both_device_fields": {
+                    "summary": "Both device_ids and device_names provided",
+                    "value": {
+                      "error": "Provide either device_ids or device_names, not both."
+                    }
+                  },
+                  "device_names_unresolved": {
+                    "summary": "No device names could be resolved",
+                    "value": {
+                      "error": "No device names could be resolved. Please update equipment map.",
+                      "unresolved_device_names": [
+                        "Unknown Model ABC",
+                        "Unknown Model XYZ"
+                      ]
+                    }
+                  },
+                  "device_names_on_refresh": {
+                    "summary": "device_names not supported for refresh",
+                    "value": {
+                      "error": "device_names is not supported for refresh operations. Use device_ids or omit devices entirely."
                     }
                   },
                   "invalid_json": {
@@ -2178,7 +2225,7 @@
           },
           "device_ids": {
             "type": "array",
-            "description": "Array of device IDs to associate with the customer. Required for 'lookup' and 'override' operations, optional for 'refresh' (uses existing devices if not provided). Can contain duplicates.",
+            "description": "Array of Leap device IDs to check incentives for. Required for 'lookup' and 'override' operations unless device_names is provided. Optional for 'refresh' (uses existing devices if not provided). Can contain duplicates. Cannot be combined with device_names.",
             "items": {
               "type": "integer"
             },
@@ -2187,6 +2234,17 @@
               44,
               44,
               44
+            ]
+          },
+          "device_names": {
+            "type": "array",
+            "description": "Array of your equipment/product names to check incentives for. The API resolves these to Leap device IDs using your organization's equipment map. Required for 'lookup' and 'override' operations unless device_ids is provided. Not supported for 'refresh' operations. Cannot be combined with device_ids.",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "Mitsubishi Hyper-Heat MSZ-RXT09",
+              "Rheem ProTerraDERA2060"
             ]
           },
           "create_application": {
@@ -2322,6 +2380,27 @@
                 }
               }
             }
+          },
+          "warnings": {
+            "type": "object",
+            "description": "Present when device_names was used and some names could not be resolved. The API proceeds with the resolved devices and reports unresolved names here.",
+            "properties": {
+              "unresolved_device_names": {
+                "type": "array",
+                "description": "Equipment names that could not be matched in your organization's equipment map",
+                "items": {
+                  "type": "string"
+                },
+                "example": [
+                  "Unknown Model XYZ"
+                ]
+              },
+              "message": {
+                "type": "string",
+                "description": "Human-readable summary of the warning",
+                "example": "1 device name(s) could not be resolved and were skipped."
+              }
+            }
           }
         }
       },
@@ -2450,7 +2529,7 @@
           "error": {
             "type": "string",
             "description": "Description of the error",
-            "example": "Missing required parameters: street_1, street_2, postal_code, city, state_or_province, country_code, building_type, and device_ids"
+            "example": "Missing required parameters: street_1, postal_code, city, state_or_province_code, country_code, building_type, and device_ids or device_names"
           }
         }
       },

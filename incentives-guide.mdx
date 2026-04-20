@@ -17,13 +17,13 @@ The Incentives API supports three operation modes:
 
 Use for first-time customers or when you need fresh utility data:
 
-- **Required fields**: `address`, `building_type`, and `device_ids` (array)
+- **Required fields**: `address`, `building_type`, and `device_ids` or `device_names`
 - Creates a new customer if not found
 - Geocodes the address to find applicable utilities
 - Caches utility data on the customer record for future use
-- Creates `customer_device` records for all `device_ids` in the array (including duplicates)
+- Creates `customer_device` records for all devices (including duplicates when using `device_ids`)
 - Slower due to address processing and utility lookup
-- **Device handling**: On first call, creates all `device_ids` as customer devices. On subsequent calls, validates that all `device_ids` already exist for the customer.
+- **Device handling**: On first call, creates all devices as customer devices. On subsequent calls, validates that all devices already exist for the customer.
 
 ### `refresh` Operation
 
@@ -41,15 +41,19 @@ Use for returning customers with cached utility data (faster):
 - Uses cached utility data from previous lookup
 - **Device handling**: Without `device_ids`, uses all existing devices. With `device_ids`, validates they exist before using them.
 
+<Note>
+`device_names` is **not supported** for refresh operations. Use `device_ids` to specify devices, or omit devices entirely to use all existing devices.
+</Note>
+
 ### `override` Operation
 
 Use when a customer changes their devices completely:
 
-- **Required fields**: `reference_id`, `building_type`, and `device_ids` (array)
+- **Required fields**: `reference_id`, `building_type`, and `device_ids` or `device_names`
 - Customer must already exist
 - **Optional fields**:
   - `address`: If provided and differs from stored address, updates customer address (still uses cached utilities, no geocoding)
-- **Device handling**: Deletes ALL existing customer devices, then creates new ones from `device_ids` array (including duplicates)
+- **Device handling**: Deletes ALL existing customer devices, then creates new ones from the provided devices
 - Then refreshes calculation using cached utilities (faster than lookup)
 - Use when you need to completely replace a customer's device list without validation errors
 
@@ -88,6 +92,50 @@ The `device_ids` field is an **array** that can contain multiple device IDs, inc
 When using `refresh` without `device_ids`, the API uses all existing devices from the customer's `customer_devices` table. This allows refreshing with just the `reference_id`.
 </Note>
 
+## Device Names
+
+As an alternative to `device_ids`, you can pass `device_names` — an array of your own equipment or product name strings. The API resolves these to Leap device IDs using your organization's **equipment map**.
+
+- **Supported for**: `lookup` and `override` operations
+- **Not supported for**: `refresh` operations
+- **Mutually exclusive** with `device_ids` — providing both returns a `400` error
+
+### Resolution Behavior
+
+The API matches each name against your organization's equipment map and resolves it to a Leap device ID:
+
+- **All names resolve**: The request proceeds normally using the resolved device IDs.
+- **Partial resolution**: The request proceeds with the resolved devices. The response includes a `warnings` object listing the unresolved names so you can update your equipment map.
+- **Zero resolution**: The request fails with a `400` error and an `unresolved_device_names` array listing the names that could not be matched.
+
+<Tip>
+When the response includes a `warnings.unresolved_device_names` array, review the listed names and work with Leap to update your equipment map. Future requests with those names will then resolve automatically.
+</Tip>
+
+### Example Response with Warnings
+
+When some device names cannot be resolved, the response includes a `warnings` object alongside the normal incentive results:
+
+```json
+{
+  "utility": { "eiaid": "14354", "name": "PacifiCorp (Oregon)" },
+  "address": "456 Oak Ave, Portland, OR 97201",
+  "building_type": "RESIDENTIAL",
+  "customer_id": 790,
+  "programs_evaluated": 2,
+  "incentives": {
+    "total_incentive_amount": 1500,
+    "total_eligible_combinations": 1,
+    "by_program": [...]
+  },
+  "reference_id": "external-ref-456",
+  "warnings": {
+    "unresolved_device_names": ["Unknown Model XYZ"],
+    "message": "1 device name(s) could not be resolved and were skipped."
+  }
+}
+```
+
 ## Example Workflow
 
 ### First-Time Customer (Lookup)
@@ -108,6 +156,28 @@ curl -X POST "https://api.incentives.leap.energy/alpha/incentives" \
     },
     "building_type": "RESIDENTIAL",
     "device_ids": [42],
+    "create_application": true
+  }'
+```
+
+### First-Time Customer (Lookup with Device Names)
+
+```bash
+curl -X POST "https://api.incentives.leap.energy/alpha/incentives" \
+  -H "x-api-key: leap_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "operation_type": "lookup",
+    "reference_id": "customer-456",
+    "address": {
+      "street_1": "456 Oak Ave",
+      "city": "Portland",
+      "state_or_province_code": "OR",
+      "postal_code": "97201",
+      "country_code": "US"
+    },
+    "building_type": "RESIDENTIAL",
+    "device_names": ["Mitsubishi Hyper-Heat MSZ-RXT09", "Rheem ProTerraDERA2060"],
     "create_application": true
   }'
 ```
@@ -158,7 +228,7 @@ curl -X POST "https://api.incentives.leap.energy/alpha/incentives" \
 
 ### Choose the Right Operation Type
 
-- **First interaction**: Use `lookup` with full address and `device_ids`
+- **First interaction**: Use `lookup` with full address and `device_ids` or `device_names`
 - **Subsequent calls (same devices)**: Use `refresh` with just the `reference_id` (fastest option)
 - **Subsequent calls (validate specific devices)**: Use `refresh` with `reference_id` and `device_ids`
 - **Customer changed devices**: Use `override` to replace all devices
@@ -170,6 +240,13 @@ curl -X POST "https://api.incentives.leap.energy/alpha/incentives" \
 - Include duplicates in the array if customer has multiple of the same device: `[42, 42, 42]`
 - For `refresh` operations, you can omit `device_ids` to use all existing devices
 - For `override` operations, provide the complete new device list (old devices are deleted)
+
+### Device Name Strategy
+
+- Use `device_names` when you have equipment model names or product strings but not Leap device IDs
+- Check the `warnings` object in the response to catch unresolved names early
+- `device_names` works with `lookup` and `override` operations only — use `device_ids` for `refresh`
+- You cannot combine `device_ids` and `device_names` in the same request
 
 ### Reference ID Strategy
 
@@ -187,6 +264,9 @@ Common scenarios to handle:
 - **Missing address**: Lookup operations require complete address information
 - **Device not found**: When using `refresh` with `device_ids`, all devices must already exist for the customer
 - **No devices for refresh**: If customer has no devices and you use `refresh` without `device_ids`, you'll get an error
+- **Both device fields provided**: Sending both `device_ids` and `device_names` returns a `400` error — use one or the other
+- **No device names resolved**: If none of the provided `device_names` match your equipment map, the API returns a `400` with an `unresolved_device_names` array
+- **device_names on refresh**: Using `device_names` with `operation_type: "refresh"` returns a `400` error — use `device_ids` or omit devices entirely
 
 ## Related Resources
 

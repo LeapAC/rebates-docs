@@ -255,18 +255,66 @@ curl -X POST "https://api.incentives.leap.energy/alpha/incentives" \
 - Store the mapping between your IDs and Leap's `customer_id` for reference
 - Reference IDs are scoped to your organization (same ID can exist in different organizations)
 
-### Error Handling
+## Error Responses
 
-Common scenarios to handle:
+Non-`2xx` responses follow a consistent shape:
 
-- **No utility found**: Address may be in an unsupported area
-- **Reference ID mismatch**: Ensure the `reference_id` matches the customer's existing record when using refresh
-- **Missing address**: Lookup operations require complete address information
-- **Device not found**: When using `refresh` with `device_ids`, all devices must already exist for the customer
-- **No devices for refresh**: If customer has no devices and you use `refresh` without `device_ids`, you'll get an error
-- **Both device fields provided**: Sending both `device_ids` and `device_names` returns a `400` error — use one or the other
-- **No device names resolved**: If none of the provided `device_names` match your equipment map, the API returns a `400` with an `unresolved_device_names` array
-- **device_names on refresh**: Using `device_names` with `operation_type: "refresh"` returns a `400` error — use `device_ids` or omit devices entirely
+```json
+{
+  "error": "No utility found for this address",
+  "error_code": "no_utility_at_address",
+  "details": {
+    "upstream": "utility-programs-lookup",
+    "upstream_status": 404
+  }
+}
+```
+
+- **`error`** — human-readable message, suitable for logs or support tickets. May be revised over time.
+- **`error_code`** — stable, typed identifier. Build retry logic and branching against `error_code`, not against the message.
+- **`details`** — optional diagnostic payload whose shape varies by `error_code`.
+
+### Error code reference
+
+| `error_code` | Status | When it happens | Retry? |
+|---|---|---|---|
+| `no_utility_at_address` | 404 | Address is not covered by any known utility in our territory data | **No** — address is not serviceable; contact Leap if you believe this is a gap in our data |
+| `address_not_geocodable` | 422 | Address could not be resolved by the geocoder | **No** — correct the address and resubmit |
+| `no_valid_eiaid` | 404 | Matched utilities are missing EIA IDs in our catalog | **No** — contact Leap |
+| `invalid_building_type` | 400 | `building_type` is not a supported value | **No** — use `RESIDENTIAL`, `MULTIFAMILY`, `MANUFACTURED_HOME`, or `COMMERCIAL` |
+| `building_type_unresolved` | 400 | Could not resolve building type during a `refresh` | **No** — include `building_type` explicitly |
+| `invalid_json_body` | 400 | Request body was not valid JSON | **No** |
+| `mutually_exclusive_device_inputs` | 400 | Request included both `device_ids` and `device_names` | **No** — send one or the other |
+| `device_names_not_supported_for_refresh` | 400 | `device_names` is not supported for `refresh` | **No** — use `device_ids` or omit devices |
+| `missing_devices` | 400 | `device_ids` / `device_names` required for lookup or override | **No** |
+| `no_device_categories` | 400 | Provided `device_ids` don't exist in our catalog | **No** |
+| `upstream_transient` | 502 | Transient upstream failure (geocoder, programs service) | **Yes** — exponential backoff |
+| `upstream_infra` | 502 | Upstream infrastructure error | **Yes** — exponential backoff |
+| `device_name_resolution_failed` | 500 | Internal error resolving device names | **Yes** — exponential backoff |
+| `delete_customer_devices_failed` | 500 | Internal error during `override` | **Yes** — exponential backoff |
+| `cached_utilities_read_failed` | 500 | Internal error reading cached utilities | **Yes** — exponential backoff |
+| `internal_error` | 500 | Unexpected server error | **Yes** — exponential backoff |
+
+<Tip>
+**Rule of thumb:** retry on `5xx`, don't retry on `4xx`. The `details.upstream_*` fields on `5xx` responses help Leap support diagnose upstream issues — include them if you file a ticket.
+</Tip>
+
+<Note>
+A small number of validation errors (e.g. reference ID mismatches, missing required fields on new-customer creation) currently return `4xx` responses without an `error_code` field. When `error_code` is absent, fall back to matching on the `error` message. These paths are being migrated to the typed system.
+</Note>
+
+### Retry strategy
+
+For `5xx` errors, use exponential backoff — start at 1 second, double up to a cap of ~30 seconds, with a total retry budget around 60 seconds. Add random jitter to avoid thundering herd.
+
+Do not retry `4xx` responses. They indicate a request-level problem that won't resolve without a change on your end (or a data fix on ours).
+
+### Common scenarios
+
+- **No utility found (`no_utility_at_address`, 404)**: the address does not match any utility service territory in our data. This is not a transient failure — retrying the same address will return the same result. If you believe the address should be serviced, report it to Leap with the `details.upstream_body` fields so we can investigate the territory polygon.
+- **Reference ID mismatch (400, no `error_code` yet)**: the customer already exists in your account under a different `reference_id`. Use the original `reference_id` for this customer, or use a new one for a new customer.
+- **Device not found on refresh**: when using `refresh` with `device_ids`, all IDs must already be associated with the customer. Use `override` if you need to replace the device list.
+- **Unresolved device names**: if zero names resolve, the request returns `400` with an `unresolved_device_names` array. If some resolve, the request succeeds and the response includes `warnings.unresolved_device_names` — update your equipment map for future calls.
 
 ## Related Resources
 

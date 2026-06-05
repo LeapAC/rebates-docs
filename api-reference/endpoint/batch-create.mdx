@@ -6,10 +6,12 @@ openapi: 'POST /batch-lookups'
 
 ## Overview
 
-Create a batch job with multiple addresses and device lookups. Items are validated upfront, then processed by a worker that runs every 5 minutes. A report is created immediately and sites are added as each item completes.
+Create a batch job with multiple addresses and device lookups. Items are validated upfront, then a worker is triggered immediately to process them in the background. A report is created up front and sites are populated as each item completes.
+
+Each completed item's `result` field has the same shape as a single [`POST /incentives`](/api-reference/endpoint/check-incentives) response — including the `processing_summary` and per-program `processing_enabled` fields.
 
 <Tip>
 Include `webhook_custom_fields` on each item when your organization has a webhook URL configured; the backend merges them into the webhook payload for each completed lookup.
 </Tip>
 
-Poll `GET /batch-lookups/{job_id}` for job status and use `GET /batch-lookups/{job_id}/items` to retrieve results.
+Poll [`GET /batch-lookups/{job_id}`](/api-reference/endpoint/batch-get) for job status and use [`GET /batch-lookups/{job_id}/items`](/api-reference/endpoint/batch-items) to retrieve results.

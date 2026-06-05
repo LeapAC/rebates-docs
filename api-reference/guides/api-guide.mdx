@@ -35,10 +35,17 @@ Common HTTP status codes:
 - **400 Bad Request**: Missing required fields, invalid parameters, or validation errors
 - **401 Unauthorized**: Missing or invalid `x-api-key` header
 - **403 Forbidden**: API key valid but lacks permission (e.g., IP restrictions)
-- **404 Not Found**: Resource doesn't exist
+- **404 Not Found**: Resource doesn't exist (Incentives API: address has no utility match)
+- **422 Unprocessable Entity**: Incentives API — address could not be geocoded, or building type could not be resolved during `refresh`
 - **500 Internal Server Error**: Server-side error (contact support if persistent)
+- **502 Bad Gateway**: Incentives API — upstream geocoder or programs service is unavailable. Safe to retry with exponential backoff.
 
-All errors return JSON with an `error` or `message` field describing the issue, plus a `requestId` for support inquiries.
+Error response shape depends on the API:
+
+- **Incentives API** (`/incentives`, `/batch-lookups`, `/webhook-config`): returns `error` (human-readable message) and `error_code` (stable typed identifier). Branch retry logic on `error_code`, not on `error`. See the [Incentives API Guide error reference](/incentives-guide#error-code-reference) for the full table.
+- **Applications API** (`/applications`, attachments): returns `code` (machine-readable identifier), `message` (human-readable), and `requestId` (include in support tickets).
+
+Both shapes may include a `details` object with diagnostic context (e.g. `upstream` + `upstream_status` for Incentives `5xx` responses).
 
 ### Testing & Validation
 

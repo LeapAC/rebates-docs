@@ -20,4 +20,6 @@ You can identify devices by Leap device ID (`device_ids`) or by your own equipme
 **Performance Tip**: Use `operation_type="refresh"` for returning customers to skip geocoding and use cached utility data. You can even omit `device_ids` to use all existing devices automatically.
 </Tip>
 
+The response distinguishes between programs the customer is *eligible* for (`incentives.by_program`) and the subset Leap can *complete an application for today* (`processing_summary`). When surfacing an offer to a customer, prefer `processing_summary.incentive_amount` over `incentives.total_incentive_amount` — see [Processing Status](/incentives-guide#processing-status) for the full rationale. The `connect_url` is populated only when at least one processing-enabled program is eligible.
+
 For detailed operation type behavior, device handling, and best practices, see the [Incentives API Guide](/incentives-guide).

@@ -315,71 +315,165 @@
                 },
                 "examples": {
                   "successful_calculation": {
-                    "summary": "Successful incentive calculation",
+                    "summary": "Eligible — single processing-enabled program",
                     "value": {
                       "utility": {
-                        "eiaid": 12345,
-                        "name": "Pacific Gas & Electric"
+                        "eiaid": "14354",
+                        "name": "PacifiCorp (Oregon)"
                       },
-                      "address": "123 Main St, San Francisco, CA 94102",
                       "possible_utilities": [
                         {
-                          "eiaid": "12345",
-                          "name": "Pacific Gas & Electric"
+                          "eiaid": "14354",
+                          "name": "PacifiCorp (Oregon)"
                         }
                       ],
+                      "address": "123 Main St, Apt 4B, Bend, OR, 97701",
                       "building_type": "RESIDENTIAL",
-                      "customer_id": 789,
-                      "programs_evaluated": 3,
+                      "customer_id": 453,
+                      "programs_evaluated": 2,
                       "incentives": {
-                        "total_incentive_amount": 5500,
-                        "total_eligible_combinations": 2,
+                        "total_incentive_amount": 750,
+                        "total_eligible_combinations": 1,
                         "by_program": [
                           {
-                            "program_id": 101,
-                            "program_name": "Home Upgrade Program",
-                            "total_incentive": 3000,
+                            "program_id": 838,
+                            "program_name": "Pacific Power – Oregon \"Charge at Home\" EV Charger Rebate",
+                            "total_incentive": 750,
                             "eligible_combinations": 1,
+                            "processing_enabled": true,
                             "device_tier_results": [
                               {
                                 "device_id": 42,
-                                "device_name": "Heat Pump",
-                                "tier_id": 1,
-                                "tier_name": "Standard",
+                                "device_name": "Level 2 EV Charger",
+                                "tier_id": 456,
+                                "tier_name": "Standard Rebate",
                                 "eligible": true,
-                                "incentive_amount": 3000,
-                                "calculation_details": "Base incentive for heat pump installation",
+                                "incentive_amount": 750,
+                                "calculation_details": "Fixed rebate per device: $750",
                                 "failed_requirements": [],
-                                "ignored_requirements": [],
-                                "completed_requirements": [
-                                  "Income verification",
-                                  "Building type check"
-                                ]
+                                "ignored_requirements": [
+                                  "Installation must be within 90 days of application",
+                                  "Must use licensed contractor"
+                                ],
+                                "completed_requirements": []
                               }
                             ]
                           }
                         ]
                       },
-                      "reference_id": "external-ref-123",
-                      "connect_url": "https://connect.incentives.leap.energy/your-company/refId/external-ref-123"
+                      "processing_summary": {
+                        "program_ids": [838],
+                        "incentive_amount": 750
+                      },
+                      "connect_url": "https://connect.incentives.leap.energy/your-company/refId/external-ref-123",
+                      "reference_id": "external-ref-123"
+                    }
+                  },
+                  "processing_not_enabled": {
+                    "summary": "Eligible — program not yet processing-enabled",
+                    "value": {
+                      "utility": {
+                        "eiaid": "17609",
+                        "name": "Sacramento Municipal Util Dist"
+                      },
+                      "possible_utilities": [
+                        {
+                          "eiaid": "17609",
+                          "name": "Sacramento Municipal Util Dist"
+                        }
+                      ],
+                      "address": "789 Oak Avenue, Sacramento, CA, 95814",
+                      "building_type": "RESIDENTIAL",
+                      "customer_id": 455,
+                      "programs_evaluated": 1,
+                      "incentives": {
+                        "total_incentive_amount": 500,
+                        "total_eligible_combinations": 1,
+                        "by_program": [
+                          {
+                            "program_id": 1001,
+                            "program_name": "SMUD Charge@Home EV Rebates",
+                            "total_incentive": 500,
+                            "eligible_combinations": 1,
+                            "processing_enabled": false,
+                            "device_tier_results": [
+                              {
+                                "device_id": 42,
+                                "device_name": "Level 2 EV Charger",
+                                "tier_id": 789,
+                                "tier_name": "Standard Tier",
+                                "eligible": true,
+                                "incentive_amount": 500,
+                                "calculation_details": "Fixed rebate per device: $500",
+                                "failed_requirements": [],
+                                "ignored_requirements": [],
+                                "completed_requirements": []
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      "processing_summary": {
+                        "program_ids": [],
+                        "incentive_amount": 0
+                      },
+                      "connect_url": "",
+                      "reference_id": "external-ref-789"
                     }
                   },
                   "no_eligible_programs": {
-                    "summary": "No eligible programs found",
+                    "summary": "Ineligible — no incentive available",
                     "value": {
                       "utility": {
-                        "eiaid": 15248,
+                        "eiaid": "15248",
                         "name": "Portland General Electric Co"
                       },
-                      "address": "100 SW Main St, Portland, OR 97204",
+                      "possible_utilities": [
+                        {
+                          "eiaid": "15248",
+                          "name": "Portland General Electric Co"
+                        }
+                      ],
+                      "address": "100 SW Main St, Portland, OR, 97204",
                       "building_type": "RESIDENTIAL",
-                      "customer_id": 789,
-                      "programs_evaluated": 0,
+                      "customer_id": 454,
+                      "programs_evaluated": 1,
                       "incentives": {
                         "total_incentive_amount": 0,
                         "total_eligible_combinations": 0,
-                        "by_program": []
-                      }
+                        "by_program": [
+                          {
+                            "program_id": 900,
+                            "program_name": "PGE Smart Charging – Tesla Telematics Path",
+                            "total_incentive": 0,
+                            "eligible_combinations": 0,
+                            "processing_enabled": true,
+                            "device_tier_results": [
+                              {
+                                "device_id": 123,
+                                "device_name": "Dumb Level 1 Charger",
+                                "tier_id": 501,
+                                "tier_name": "Smart Charger Tier",
+                                "eligible": false,
+                                "incentive_amount": 0,
+                                "calculation_details": "Device does not meet tier requirements",
+                                "failed_requirements": [
+                                  "Device not OCPP compliant",
+                                  "Charger level must be at least LEVEL_2"
+                                ],
+                                "ignored_requirements": [],
+                                "completed_requirements": []
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      "processing_summary": {
+                        "program_ids": [],
+                        "incentive_amount": 0
+                      },
+                      "connect_url": "",
+                      "reference_id": "external-ref-456"
                     }
                   }
                 }
@@ -387,45 +481,59 @@
             }
           },
           "400": {
-            "description": "Bad request - missing or invalid parameters",
+            "description": "Bad request — request body or parameters could not be accepted",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "examples": {
-                  "missing_parameters": {
-                    "summary": "Missing required fields",
+                  "missing_devices": {
+                    "summary": "Missing device_ids / device_names",
                     "value": {
-                      "error": "Missing required fields: address (street_1, city, state_or_province_code, postal_code, country_code), building_type, and device_ids or device_names"
+                      "error": "device_ids or device_names array is required and must contain at least one device for lookup and override operations",
+                      "error_code": "missing_devices"
                     }
                   },
-                  "both_device_fields": {
+                  "mutually_exclusive_device_inputs": {
                     "summary": "Both device_ids and device_names provided",
                     "value": {
-                      "error": "Provide either device_ids or device_names, not both."
+                      "error": "Provide either device_ids or device_names, not both.",
+                      "error_code": "mutually_exclusive_device_inputs"
+                    }
+                  },
+                  "invalid_building_type": {
+                    "summary": "Invalid building_type",
+                    "value": {
+                      "error": "Invalid building_type",
+                      "error_code": "invalid_building_type"
+                    }
+                  },
+                  "device_names_on_refresh": {
+                    "summary": "device_names not supported for refresh",
+                    "value": {
+                      "error": "device_names is not supported for refresh operations. Use device_ids or omit devices entirely.",
+                      "error_code": "device_names_not_supported_for_refresh"
                     }
                   },
                   "device_names_unresolved": {
                     "summary": "No device names could be resolved",
                     "value": {
                       "error": "No device names could be resolved. Please update equipment map.",
-                      "unresolved_device_names": [
-                        "Unknown Model ABC",
-                        "Unknown Model XYZ"
-                      ]
+                      "error_code": "device_names_unresolved",
+                      "details": {
+                        "unresolved_device_names": [
+                          "Unknown Model ABC",
+                          "Unknown Model XYZ"
+                        ]
+                      }
                     }
                   },
-                  "device_names_on_refresh": {
-                    "summary": "device_names not supported for refresh",
-                    "value": {
-                      "error": "device_names is not supported for refresh operations. Use device_ids or omit devices entirely."
-                    }
-                  },
-                  "invalid_json": {
+                  "invalid_json_body": {
                     "summary": "Invalid JSON body",
                     "value": {
-                      "error": "Invalid or empty JSON body"
+                      "error": "Invalid or empty JSON body",
+                      "error_code": "invalid_json_body"
                     }
                   }
                 }
@@ -433,7 +541,7 @@
             }
           },
           "401": {
-            "description": "Unauthorized - missing or invalid API key",
+            "description": "Unauthorized — missing or invalid API key",
             "content": {
               "application/json": {
                 "schema": {
@@ -441,6 +549,62 @@
                 },
                 "example": {
                   "error": "Authorization header required"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No utility found for the provided address (territory gap or unmapped EIA ID)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "no_utility_at_address": {
+                    "summary": "No utility serves this address",
+                    "value": {
+                      "error": "No utility found for this address",
+                      "error_code": "no_utility_at_address",
+                      "details": {
+                        "upstream": "utility-programs-lookup",
+                        "upstream_status": 404
+                      }
+                    }
+                  },
+                  "no_valid_eiaid": {
+                    "summary": "Matched utilities are missing EIA IDs in our catalog",
+                    "value": {
+                      "error": "Utility matched but has no valid EIA ID in catalog",
+                      "error_code": "no_valid_eiaid"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable entity — request was syntactically valid but the address or building type could not be resolved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "address_not_geocodable": {
+                    "summary": "Address could not be geocoded",
+                    "value": {
+                      "error": "Address could not be geocoded",
+                      "error_code": "address_not_geocodable"
+                    }
+                  },
+                  "building_type_unresolved": {
+                    "summary": "Building type could not be resolved during refresh",
+                    "value": {
+                      "error": "Could not resolve building_type for this customer. Include building_type explicitly.",
+                      "error_code": "building_type_unresolved"
+                    }
+                  }
                 }
               }
             }
@@ -458,24 +622,6 @@
               }
             }
           },
-          "404": {
-            "description": "No utility found for the provided address",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                },
-                "examples": {
-                  "no_utility_found": {
-                    "summary": "No utility found",
-                    "value": {
-                      "error": "Program lookup failed - no utility found"
-                    }
-                  }
-                }
-              }
-            }
-          },
           "500": {
             "description": "Internal server error",
             "content": {
@@ -484,28 +630,51 @@
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "examples": {
-                  "program_lookup_failed": {
-                    "summary": "Program lookup service failed",
-                    "value": {
-                      "error": "Failed to fetch program lookup data"
-                    }
-                  },
-                  "customer_creation_failed": {
-                    "summary": "Failed to create customer",
-                    "value": {
-                      "error": "Failed to create customer. Required fields: address_line1, city, state, zip_code are all provided."
-                    }
-                  },
-                  "device_creation_failed": {
-                    "summary": "Failed to create customer device",
-                    "value": {
-                      "error": "Failed to create customer device. Required fields: customer_id, device_id are all provided."
-                    }
-                  },
                   "internal_error": {
+                    "summary": "Unexpected server error",
+                    "value": {
+                      "error": "Internal server error",
+                      "error_code": "internal_error"
+                    }
+                  },
+                  "legacy_internal_error": {
                     "summary": "Generic internal error",
                     "value": {
                       "error": "Internal server error"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Bad gateway — upstream geocoder or programs service is unavailable. Safe to retry with exponential backoff.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "upstream_transient": {
+                    "summary": "Transient upstream failure",
+                    "value": {
+                      "error": "Upstream programs service returned a transient error",
+                      "error_code": "upstream_transient",
+                      "details": {
+                        "upstream": "utility-programs-lookup",
+                        "upstream_status": 503
+                      }
+                    }
+                  },
+                  "upstream_infra": {
+                    "summary": "Upstream infrastructure error",
+                    "value": {
+                      "error": "Upstream programs service returned an infrastructure error",
+                      "error_code": "upstream_infra",
+                      "details": {
+                        "upstream": "utility-programs-lookup",
+                        "upstream_status": 500
+                      }
                     }
                   }
                 }
@@ -2257,11 +2426,34 @@
             "additionalProperties": {
               "type": "string"
             },
-            "description": "Optional custom fields to include in the webhook payload when your organization has a webhook URL configured (e.g. Project ID, Record ID). Only keys allowed by your org's webhook field_names config are merged into the POST body.",
+            "description": "Optional custom fields to include in the webhook payload when your organization has a webhook URL configured (e.g. Project ID, Record ID). Only keys allowed by your org's webhook `field_names` config are merged into the POST body.",
             "example": {
               "Project ID": "proj-123",
               "Record ID": "row-5"
             }
+          },
+          "customer": {
+            "type": "object",
+            "description": "Supplementary customer fields applied at customer creation time. Only honored on `lookup` operations that create a new customer — ignored for existing customers and for `refresh`/`override`. Use the Applications PATCH endpoint to update an existing customer's fields.",
+            "additionalProperties": true,
+            "example": {
+              "first_name": "Jane",
+              "last_name": "Doe",
+              "email": "jane@example.com",
+              "phone": "415-555-0100"
+            }
+          },
+          "customer_devices": {
+            "type": "array",
+            "description": "Supplementary device fields applied at device creation time, indexed positionally to `device_ids`. Only honored on `lookup` operations that create new customer devices — ignored for existing customers and for `refresh`/`override`. Each entry is partial; common fields include `purchase_price`, `purchase_date`, `installation_date`, `contractor_name`. Use the Applications PATCH endpoint to update existing device fields.",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "example": [
+              { "purchase_price": 1500, "installation_date": "2026-03-01" },
+              { "purchase_price": 2000 }
+            ]
           }
         }
       },
@@ -2275,7 +2467,9 @@
           "customer_id",
           "reference_id",
           "programs_evaluated",
-          "incentives"
+          "incentives",
+          "processing_summary",
+          "connect_url"
         ],
         "properties": {
           "utility": {
@@ -2300,14 +2494,18 @@
           },
           "address": {
             "type": "string",
-            "description": "Formatted address string",
-            "example": "123 Main St, San Francisco, CA 94102"
+            "description": "Formatted address string built from the request address fields",
+            "example": "123 Main St, Apt 4B, San Francisco, CA, 94102"
           },
           "possible_utilities": {
             "type": "array",
-            "description": "List of possible utilities that could serve this address",
+            "description": "All utilities whose service territory contains this address. The primary `utility` is selected from this list; the others are returned so partners can see when an address falls in an overlap region.",
             "items": {
               "type": "object",
+              "required": [
+                "eiaid",
+                "name"
+              ],
               "properties": {
                 "eiaid": {
                   "type": "string",
@@ -2324,7 +2522,7 @@
           },
           "building_type": {
             "type": "string",
-            "description": "The building type that was queried",
+            "description": "The building type that was used for the calculation",
             "enum": [
               "RESIDENTIAL",
               "MULTIFAMILY",
@@ -2335,22 +2533,22 @@
           },
           "customer_id": {
             "type": "integer",
-            "description": "The customer ID (created or found based on address)",
+            "description": "Leap's internal customer ID (created or found based on `reference_id` and address)",
             "example": 453
           },
           "reference_id": {
             "type": "string",
-            "description": "Your internal reference ID that was provided in the request",
-            "example": "ref-abc123"
+            "description": "Your internal reference ID that was provided in the request, echoed back for correlation",
+            "example": "external-ref-123"
           },
           "connect_url": {
             "type": "string",
-            "description": "URL to connect/apply for incentives (only returned if create_application=true)",
+            "description": "Branded Connect URL where the customer completes their application. Populated only when `create_application=true` AND `incentives.total_incentive_amount > 0`; otherwise returned as an empty string.",
             "example": "https://connect.incentives.leap.energy/your-company/refId/external-ref-123"
           },
           "programs_evaluated": {
             "type": "integer",
-            "description": "Number of programs that were evaluated",
+            "description": "Number of programs that were evaluated for this address + building type combination",
             "example": 2
           },
           "incentives": {
@@ -2364,7 +2562,7 @@
               "total_incentive_amount": {
                 "type": "number",
                 "format": "float",
-                "description": "Total incentive amount across all programs (in USD)",
+                "description": "Total incentive amount across all evaluated programs (in USD). Includes programs whose `processing_enabled` is currently false — use `processing_summary.incentive_amount` for the amount Leap is currently set up to process applications for.",
                 "example": 2250.0
               },
               "total_eligible_combinations": {
@@ -2374,10 +2572,34 @@
               },
               "by_program": {
                 "type": "array",
-                "description": "Breakdown of incentives by individual program",
+                "description": "Per-program breakdown of incentives and eligibility",
                 "items": {
                   "$ref": "#/components/schemas/ProgramIncentive"
                 }
+              }
+            }
+          },
+          "processing_summary": {
+            "type": "object",
+            "description": "Subset of `incentives` covering only programs that Leap is currently set up to process applications for (i.e. `by_program[].processing_enabled === true`). Use this to decide whether to surface the Connect URL and a concrete offer amount to the customer — programs that aren't processing-enabled may still be listed in `by_program` but Leap cannot complete the application for them today.",
+            "required": [
+              "program_ids",
+              "incentive_amount"
+            ],
+            "properties": {
+              "program_ids": {
+                "type": "array",
+                "description": "IDs of programs from `by_program` whose `processing_enabled` is true",
+                "items": {
+                  "type": "integer"
+                },
+                "example": [838]
+              },
+              "incentive_amount": {
+                "type": "number",
+                "format": "float",
+                "description": "Sum of `total_incentive` across processing-enabled programs (in USD)",
+                "example": 750.0
               }
             }
           },
@@ -2411,6 +2633,7 @@
           "program_name",
           "total_incentive",
           "eligible_combinations",
+          "processing_enabled",
           "device_tier_results"
         ],
         "properties": {
@@ -2428,12 +2651,17 @@
             "type": "number",
             "format": "float",
             "description": "Total incentive amount for this program (in USD)",
-            "example": 2250.0
+            "example": 750.0
           },
           "eligible_combinations": {
             "type": "integer",
             "description": "Number of eligible device-tier combinations for this program",
-            "example": 4
+            "example": 1
+          },
+          "processing_enabled": {
+            "type": "boolean",
+            "description": "Whether Leap is currently set up to process applications for this program. `true` when the program's form requirements have been fully captured; `false` when the program is still being onboarded. Eligibility and incentive amounts are still calculated when `false` \u2014 only the ability to submit an application is gated. Programs counted in `processing_summary` are exactly those with `processing_enabled = true`.",
+            "example": true
           },
           "device_tier_results": {
             "type": "array",
@@ -2491,7 +2719,7 @@
           },
           "calculation_details": {
             "type": "string",
-            "description": "Details about how the incentive was calculated",
+            "description": "Human-readable explanation of how the incentive amount was derived for this device-tier combination. Format varies per program — partners should treat this as opaque diagnostic text, not parse it.",
             "example": "Fixed rebate per device: $750"
           },
           "failed_requirements": {
@@ -2528,8 +2756,20 @@
         "properties": {
           "error": {
             "type": "string",
-            "description": "Description of the error",
-            "example": "Missing required parameters: street_1, postal_code, city, state_or_province_code, country_code, building_type, and device_ids or device_names"
+            "description": "Human-readable error message, suitable for logs or support tickets. The message may be revised over time — branch on `error_code` for stable matching.",
+            "example": "No utility found for this address"
+          },
+          "error_code": {
+            "type": "string",
+            "description": "Stable, typed identifier for the failure mode. Use this (not `error`) when building retry logic or branching. See the [Incentives API Guide](/incentives-guide#error-code-reference) for the full table of codes, status mappings, and retryability. A small number of legacy validation paths still return `4xx` without this field — fall back to matching on `error` when absent.",
+            "example": "no_utility_at_address"
+          },
+          "details": {
+            "description": "Optional diagnostic payload whose shape varies by `error_code`. Safe to log; never contains PII. For `upstream_*` codes, includes `upstream` (component name) and `upstream_status` (HTTP status) so Leap support can triage tickets without joining back to logs. For `device_names`-related failures, includes `unresolved_device_names`.",
+            "example": {
+              "upstream": "utility-programs-lookup",
+              "upstream_status": 404
+            }
           }
         }
       },

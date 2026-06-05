@@ -51,20 +51,18 @@ POST /incentives
 ```json
 {
   "utility": {
-    "eiaid": 14354,
+    "eiaid": "14354",
     "name": "PacifiCorp (Oregon)"
   },
-  "address": {
-    "street_1": "456 Main St",
-    "street_2": "Apt 2B",
-    "city": "Bend",
-    "state_or_province_code": "OR",
-    "postal_code": "97701",
-    "country_code": "US"
-  },
+  "possible_utilities": [
+    {
+      "eiaid": "14354",
+      "name": "PacifiCorp (Oregon)"
+    }
+  ],
+  "address": "456 Main St, Apt 2B, Bend, OR, 97701",
   "building_type": "RESIDENTIAL",
   "customer_id": 453,
-  "reference_id": "ref-12345",
   "programs_evaluated": 2,
   "incentives": {
     "total_incentive_amount": 750,
@@ -75,6 +73,7 @@ POST /incentives
         "program_name": "Pacific Power – Oregon \"Charge at Home\" EV Charger Rebate",
         "total_incentive": 750,
         "eligible_combinations": 1,
+        "processing_enabled": true,
         "device_tier_results": [
           {
             "device_id": 123,
@@ -83,21 +82,24 @@ POST /incentives
             "tier_name": "Standard Rebate",
             "eligible": true,
             "incentive_amount": 750,
-            "calculation_details": {
-              "base_amount": 750,
-              "calculation_method": "Fixed rebate per device"
-            },
+            "calculation_details": "Fixed rebate per device: $750",
             "failed_requirements": [],
             "ignored_requirements": [
               "Installation must be within 90 days of application",
               "Must use licensed contractor"
-            ]
+            ],
+            "completed_requirements": []
           }
         ]
       }
     ]
   },
-  "connect_url": "https://app.leap.energy/connect/abc123"
+  "processing_summary": {
+    "program_ids": [838],
+    "incentive_amount": 750
+  },
+  "connect_url": "https://connect.incentives.leap.energy/your-company/refId/ref-12345",
+  "reference_id": "ref-12345"
 }
 ```
 </Accordion>
@@ -106,20 +108,18 @@ POST /incentives
 ```json
 {
   "utility": {
-    "eiaid": 15248,
+    "eiaid": "15248",
     "name": "Portland General Electric Co"
   },
-  "address": {
-    "street_1": "100 SW Main St",
-    "street_2": "",
-    "city": "Portland",
-    "state_or_province_code": "OR",
-    "postal_code": "97204",
-    "country_code": "US"
-  },
+  "possible_utilities": [
+    {
+      "eiaid": "15248",
+      "name": "Portland General Electric Co"
+    }
+  ],
+  "address": "100 SW Main St, Portland, OR, 97204",
   "building_type": "RESIDENTIAL",
   "customer_id": 454,
-  "reference_id": "ref-67890",
   "programs_evaluated": 1,
   "incentives": {
     "total_incentive_amount": 0,
@@ -130,6 +130,7 @@ POST /incentives
         "program_name": "PGE Smart Charging – Tesla Telematics Path",
         "total_incentive": 0,
         "eligible_combinations": 0,
+        "processing_enabled": true,
         "device_tier_results": [
           {
             "device_id": 123,
@@ -138,17 +139,24 @@ POST /incentives
             "tier_name": "Smart Charger Tier",
             "eligible": false,
             "incentive_amount": 0,
-            "calculation_details": {},
+            "calculation_details": "Device does not meet tier requirements",
             "failed_requirements": [
               "Device not OCPP compliant",
               "Charger level must be at least LEVEL_2"
             ],
-            "ignored_requirements": []
+            "ignored_requirements": [],
+            "completed_requirements": []
           }
         ]
       }
     ]
-  }
+  },
+  "processing_summary": {
+    "program_ids": [],
+    "incentive_amount": 0
+  },
+  "connect_url": "",
+  "reference_id": "ref-67890"
 }
 ```
 </Accordion>
@@ -157,20 +165,18 @@ POST /incentives
 ```json
 {
   "utility": {
-    "eiaid": 17609,
+    "eiaid": "17609",
     "name": "Sacramento Municipal Util Dist"
   },
-  "address": {
-    "street_1": "789 Oak Avenue",
-    "street_2": "",
-    "city": "Sacramento",
-    "state_or_province_code": "CA",
-    "postal_code": "95814",
-    "country_code": "US"
-  },
+  "possible_utilities": [
+    {
+      "eiaid": "17609",
+      "name": "Sacramento Municipal Util Dist"
+    }
+  ],
+  "address": "789 Oak Avenue, Sacramento, CA, 95814",
   "building_type": "RESIDENTIAL",
   "customer_id": 455,
-  "reference_id": "ref-24680",
   "programs_evaluated": 2,
   "incentives": {
     "total_incentive_amount": 1250,
@@ -181,6 +187,7 @@ POST /incentives
         "program_name": "SMUD Charge@Home EV Rebates",
         "total_incentive": 500,
         "eligible_combinations": 1,
+        "processing_enabled": true,
         "device_tier_results": [
           {
             "device_id": 123,
@@ -189,13 +196,12 @@ POST /incentives
             "tier_name": "Standard Tier",
             "eligible": true,
             "incentive_amount": 500,
-            "calculation_details": {
-              "base_amount": 500
-            },
+            "calculation_details": "Fixed rebate per device: $500",
             "failed_requirements": [],
             "ignored_requirements": [
               "Installation must be within 90 days of application"
-            ]
+            ],
+            "completed_requirements": []
           }
         ]
       },
@@ -204,6 +210,7 @@ POST /incentives
         "program_name": "SMUD Go Electric Bonus – Residential Panel-Upgrade & Make-Ready Rebate",
         "total_incentive": 750,
         "eligible_combinations": 1,
+        "processing_enabled": false,
         "device_tier_results": [
           {
             "device_id": 456,
@@ -212,21 +219,28 @@ POST /incentives
             "tier_name": "Panel Make Ready",
             "eligible": true,
             "incentive_amount": 750,
-            "calculation_details": {
-              "base_amount": 750
-            },
+            "calculation_details": "Fixed rebate per device: $750",
             "failed_requirements": [],
             "ignored_requirements": [
               "Must use licensed contractor"
-            ]
+            ],
+            "completed_requirements": []
           }
         ]
       }
     ]
   },
-  "connect_url": "https://app.leap.energy/connect/ghi789"
+  "processing_summary": {
+    "program_ids": [1001],
+    "incentive_amount": 500
+  },
+  "connect_url": "https://connect.incentives.leap.energy/your-company/refId/ref-24680",
+  "reference_id": "ref-24680"
 }
 ```
+<Note>
+  In this example, two programs are evaluated but only `SMUD Charge@Home EV Rebates` has `processing_enabled: true`. The `processing_summary` reflects only that program — `incentive_amount: 500` — because that's the offer Leap can complete an application for today. The `incentives.total_incentive_amount: 1250` includes both programs and is useful for forecasting; the `processing_summary.incentive_amount` is what to surface to the customer right now.
+</Note>
 </Accordion>
 </AccordionGroup>
 

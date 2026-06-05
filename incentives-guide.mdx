@@ -75,9 +75,39 @@ Reference IDs are scoped to your account. The same `reference_id` can exist in d
 
 ## Creating Applications
 
-Set `create_application: true` in the Incentives request to automatically create application records. When enabled, the response includes a `connect_url` field with a link to the customer application portal.
+Set `create_application: true` in the Incentives request to automatically create application records. When the customer is eligible for at least one program and `create_application` is true, the response includes a `connect_url` field with a link to the customer application portal.
 
 This streamlines the workflow by combining incentive calculation and application creation in a single API call.
+
+<Note>
+`connect_url` is returned as an empty string when `total_incentive_amount` is `0` or when `create_application` was not requested. Check for a non-empty value before presenting the link to a customer.
+</Note>
+
+## Processing Status
+
+The response separates two ideas: what a customer is *eligible* for, and what Leap is currently able to *process an application for*.
+
+Each entry in `by_program` includes a `processing_enabled` boolean. It is `true` when the program's form requirements have been fully captured in Leap's system, meaning we can submit an application on the customer's behalf today. It is `false` when the program is still being onboarded — eligibility and incentive amounts are still calculated, but applications cannot yet be completed.
+
+The top-level `processing_summary` object summarizes the processing-enabled subset:
+
+```json
+{
+  "processing_summary": {
+    "program_ids": [838, 1001],
+    "incentive_amount": 1250
+  }
+}
+```
+
+- `program_ids` — IDs of the programs from `by_program` whose `processing_enabled` is `true`.
+- `incentive_amount` — sum of `total_incentive` across those programs, in USD.
+
+### How to use it
+
+- **Customer-facing offer amount**: use `processing_summary.incentive_amount`. This is what Leap can actually process today.
+- **Forecasting / pipeline reporting**: use `incentives.total_incentive_amount`. This includes programs still being onboarded.
+- **Hiding offers when nothing is processable**: when `processing_summary.program_ids` is empty, the `connect_url` will also be empty. Show a "coming soon" state rather than the Connect link.
 
 ## Device IDs
 
@@ -114,12 +144,13 @@ When the response includes a `warnings.unresolved_device_names` array, review th
 
 ### Example Response with Warnings
 
-When some device names cannot be resolved, the response includes a `warnings` object alongside the normal incentive results:
+When some device names cannot be resolved, the response includes a `warnings` object alongside the normal incentive results. All standard response fields (`processing_summary`, `connect_url`, etc.) are still present:
 
 ```json
 {
   "utility": { "eiaid": "14354", "name": "PacifiCorp (Oregon)" },
-  "address": "456 Oak Ave, Portland, OR 97201",
+  "possible_utilities": [{ "eiaid": "14354", "name": "PacifiCorp (Oregon)" }],
+  "address": "456 Oak Ave, Portland, OR, 97201",
   "building_type": "RESIDENTIAL",
   "customer_id": 790,
   "programs_evaluated": 2,
@@ -128,6 +159,11 @@ When some device names cannot be resolved, the response includes a `warnings` ob
     "total_eligible_combinations": 1,
     "by_program": [...]
   },
+  "processing_summary": {
+    "program_ids": [838],
+    "incentive_amount": 1500
+  },
+  "connect_url": "https://connect.incentives.leap.energy/your-company/refId/external-ref-456",
   "reference_id": "external-ref-456",
   "warnings": {
     "unresolved_device_names": ["Unknown Model XYZ"],

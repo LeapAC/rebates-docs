@@ -1,0 +1,355 @@
+---
+title: 'Embedding Incentives on Your Website'
+description: 'Best practices for showing real-time incentive eligibility next to a product, using the Comet EV charger storefront as a worked example.'
+---
+
+## Overview
+
+This guide covers how to embed the Incentives API directly into a product page or checkout flow so customers see their exact rebates and credits in real time — before they apply.
+
+The pattern works for any e-commerce or product configurator site. [Comet](https://cometev.io), a home EV charger retailer, uses this approach to show utility rebates and VPP enrollment earnings next to each charger model as soon as a customer enters their ZIP code.
+
+When to use this pattern vs. [batch lookups](/api-reference/endpoint/batch-create):
+
+| | Real-time embedding | Batch |
+|---|---|---|
+| **Trigger** | Customer enters ZIP | Scheduled job or post-purchase |
+| **Latency** | &lt;2 seconds (cached) | Async |
+| **Best for** | Product pages, checkout | Email campaigns, CRM enrichment |
+
+For endpoint details see the [Check Incentives reference](/api-reference/endpoint/check-incentives).
+
+---
+
+## Architecture
+
+The recommended three-layer architecture keeps credentials secure and the UI fast:
+
+```
+Customer enters ZIP
+  → Server-side proxy  (your backend — API key never leaves the server)
+    → Leap Incentives API  (POST /alpha/incentives)
+      → Client-side cache  (keyed by product, scoped to ZIP)
+        → UI components  (program list, price breakdown, skeleton loaders)
+```
+
+<Note>
+Never call the Incentives API directly from client-side JavaScript. Your `x-api-key` would be visible in the browser's network tab. Always route calls through a server-side function or API route.
+</Note>
+
+---
+
+## Prerequisites
+
+Before writing any code:
+
+1. **API key** — your `leap_live_...` key from the Leap dashboard. Set it as a server-side environment variable (e.g. `LEAP_API_KEY`).
+2. **Device IDs or device names** — the Leap device IDs (integers) for the products you sell, or string names matched to your organization's equipment map. See [Device IDs](/incentives-guide#device-ids) and [Device Names](/incentives-guide#device-names) in the Incentives Guide.
+3. **Reference ID strategy** — decide how to construct stable, unique reference IDs for your customers (see [Step 2](#step-2-build-the-request) below).
+
+---
+
+## Step 1 — Set Up a Server-Side Proxy
+
+Create one API route in your backend that accepts the customer's ZIP and product, calls Leap, and returns the result. This is the only place your API key is used.
+
+**Example — Next.js App Router (`app/api/incentives/route.ts`):**
+
+```typescript
+import { NextRequest, NextResponse } from "next/server"
+
+const API_KEY = process.env.LEAP_API_KEY ?? ""
+
+// Map your product IDs to Leap device IDs.
+// Get device IDs from the Leap dashboard or by calling the API with device_names.
+const DEVICE_IDS: Record<string, number[]> = {
+  "home-pro": [42],
+  "compact":  [42],
+  "business": [42],
+}
+
+export async function POST(req: NextRequest) {
+  const { zip, productId } = await req.json()
+
+  if (!zip || !productId) {
+    return NextResponse.json({ error: "zip and productId are required" }, { status: 400 })
+  }
+
+  if (!API_KEY) {
+    // Credentials not configured — tell the client to show fallback estimates
+    return NextResponse.json({ error: "not_configured" }, { status: 503 })
+  }
+
+  const deviceIds = DEVICE_IDS[productId]
+  if (!deviceIds) {
+    return NextResponse.json({ error: "unknown_product" }, { status: 404 })
+  }
+
+  try {
+    const res = await fetch("https://api.incentives.leap.energy/alpha/incentives", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": API_KEY,
+      },
+      body: JSON.stringify({
+        operation_type: "lookup",
+        reference_id: `comet-${zip}-${productId}`,
+        address: {
+          postal_code: zip,
+          country_code: "US",
+        },
+        building_type: "RESIDENTIAL",
+        device_ids: deviceIds,
+      }),
+      signal: AbortSignal.timeout(8000),
+    })
+
+    const data = await res.json()
+
+    if (!res.ok) {
+      return NextResponse.json(data, { status: res.status })
+    }
+
+    return NextResponse.json(data)
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "upstream error"
+    return NextResponse.json({ error: message }, { status: 502 })
+  }
+}
+```
+
+<Tip>
+Set an 8-second timeout (`AbortSignal.timeout(8000)`) on the upstream fetch. A slow Leap response should never block your checkout page from loading.
+</Tip>
+
+**How your proxy should respond to the client:**
+
+| Proxy status | Meaning | Client action |
+|---|---|---|
+| `200` | Real incentive data | Show live programs |
+| `503` not_configured | API key not set | Show fallback estimates |
+| `404` unknown_product | No device IDs mapped | Show fallback estimates |
+| `404` no_utility_at_address | Address not covered | Show "no programs in your area" |
+| `4xx` / `5xx` from Leap | API error | Show fallback estimates |
+| Timeout / network error | Upstream unavailable | Show fallback estimates |
+
+---
+
+## Step 2 — Build the Request
+
+### Reference ID
+
+The `reference_id` must be unique per customer and stable across repeat calls. A reliable pattern for storefront use is:
+
+```
+{your-brand}-{zip}-{product-id}
+```
+
+For example: `comet-94102-home-pro`
+
+This ensures:
+- **Same ZIP + same product** → reuses the existing customer record (fast `refresh` on repeat visits)
+- **ZIP changes** → different `reference_id`, so a new lookup is created rather than conflicting with the old one
+- **Different product** → separate record per product, so each one gets independently cached utility data
+
+<Note>
+If a customer returns with the same ZIP and product, use `operation_type: "refresh"` with just the `reference_id`. This skips geocoding and uses cached utility data — typically 3–5× faster than a fresh lookup.
+</Note>
+
+### Address
+
+For a ZIP-only flow (where you haven't collected a full street address yet), you can omit `street_1` and `city`. The geocoder resolves utility territory from the postal code alone.
+
+```json
+"address": {
+  "postal_code": "94102",
+  "country_code": "US"
+}
+```
+
+Add `street_1` and `city` later when the customer enters their shipping address — use an `override` operation at that point to update the record with the precise address.
+
+### Devices
+
+If your products map cleanly to Leap device IDs (integers), hardcode them in your proxy. If you sell many SKUs or your catalog changes often, use `device_names` and let the API resolve them through your equipment map:
+
+```json
+"device_names": ["Comet Home Pro EV Charger"]
+```
+
+Check the `warnings.unresolved_device_names` field in the response and work with Leap to keep your equipment map current.
+
+---
+
+## Step 3 — Cache Responses Client-Side
+
+Make one API call per product per ZIP, then cache the result for the rest of the session. This keeps the UI fast even when users browse multiple products or revisit the cart.
+
+**Caching rules:**
+
+- **Key**: `productId` (or SKU)
+- **Scope**: the current ZIP — clear the entire cache when ZIP changes
+- **On failure**: store `null` to mark "already tried, use fallback" — prevents infinite retries
+- **In-flight guard**: track which products are currently fetching to avoid duplicate requests
+
+**React context sketch:**
+
+```typescript
+const [cache, setCache] = useState<Record<string, IncentiveResult | null>>({})
+const [fetching, setFetching] = useState<Record<string, boolean>>({})
+
+const fetchIncentives = async (productId: string, zip: string) => {
+  if (cache[productId] !== undefined) return // already cached (value or null)
+  if (fetching[productId]) return            // in flight
+
+  setFetching(f => ({ ...f, [productId]: true }))
+  try {
+    const res = await fetch("/api/incentives", {
+      method: "POST",
+      body: JSON.stringify({ zip, productId }),
+    })
+    const data = res.ok ? await res.json() : null
+    setCache(c => ({ ...c, [productId]: data }))
+  } catch {
+    setCache(c => ({ ...c, [productId]: null }))
+  } finally {
+    setFetching(f => ({ ...f, [productId]: false }))
+  }
+}
+
+// Clear cache when ZIP changes
+useEffect(() => { setCache({}) }, [zip])
+```
+
+<Note>
+Keep the cache in memory for the session — no `localStorage` needed. If the user refreshes, a fresh lookup runs automatically.
+</Note>
+
+---
+
+## Step 4 — Trigger Lookups at the Right Moments
+
+Fetch incentives as soon as you have a ZIP and a product in view — not earlier, not on every render.
+
+**Product detail page** — fetch when the user applies a ZIP:
+
+```typescript
+useEffect(() => {
+  if (appliedZip) fetchIncentives(product.id, appliedZip)
+}, [appliedZip, product.id])
+```
+
+**Cart / checkout** — fetch for every item in the cart when ZIP is applied:
+
+```typescript
+useEffect(() => {
+  if (!appliedZip) return
+  cartItems.forEach(item => fetchIncentives(item.id, appliedZip))
+}, [appliedZip, cartItems])
+```
+
+<Warning>
+Gate fetches behind the "ZIP applied" boolean, not behind whether the ZIP field has a value. This prevents firing requests while the user is still typing.
+</Warning>
+
+---
+
+## Step 5 — Display Incentives in the UI
+
+Design for three states:
+
+### Before ZIP is entered
+
+Show a teaser that communicates there are savings available without showing a specific amount. A frosted or blurred overlay with a "Enter your ZIP to see savings" call to action works well.
+
+```
+┌────────────────────────────────┐
+│  [blur] Federal Tax Credit  $- │
+│  [blur] Utility Rebate      $- │
+│                                │
+│  Enter ZIP to unlock savings ▶ │
+└────────────────────────────────┘
+```
+
+### While loading
+
+Show a skeleton placeholder instead of a spinner. Two pulsing cards that match the shape of a program row signal "loading" without a disorienting layout shift.
+
+```typescript
+if (fetching[productId]) {
+  return (
+    <div className="flex flex-col gap-3">
+      {[0, 1].map(i => (
+        <div key={i} className="flex gap-4 p-4 rounded-xl border animate-pulse">
+          <div className="w-10 h-10 rounded-full bg-muted" />
+          <div className="flex-1 flex flex-col gap-2">
+            <div className="h-3 w-2/3 rounded bg-muted" />
+            <div className="h-3 w-full rounded bg-muted" />
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+```
+
+### After loading
+
+Render a program list from the response's `by_program` array. Map each `payment_type` to a customer-friendly label:
+
+| API `payment_type` | Display label | Price treatment |
+|---|---|---|
+| `UPFRONT` | Instant credit | Subtract from price at checkout |
+| `REBATE` | Rebate after install | Show as "+ back" after purchase |
+| `ONGOING` | Annual VPP earnings | Show as "$/yr" |
+
+<Tip>
+Cap instant credits at the product price: `Math.min(upfrontTotal, productPrice)`. This prevents showing a discount larger than what the customer is paying.
+</Tip>
+
+Add a **"Powered by Leap"** attribution line below the program list when showing live API data. Omit it when showing fallback estimates.
+
+---
+
+## Fallback Estimates
+
+Always have a fallback. If the API isn't configured, the address isn't covered, or the request times out, show hardcoded estimates rather than a blank section.
+
+```typescript
+const FALLBACK_INCENTIVES: Record<string, { upfront: number; rebate: number; vpp: number }> = {
+  "home-pro": { upfront: 1000, rebate: 500, vpp: 150 },
+  "compact":  { upfront: 750,  rebate: 400, vpp: 120 },
+}
+
+const incentives = cache[productId] ?? FALLBACK_INCENTIVES[productId]
+const isLive = cache[productId] != null
+```
+
+Label fallback estimates clearly — for example, "Estimated savings — enter ZIP for exact amounts" — so customers understand the number isn't confirmed for their specific address.
+
+---
+
+## Error Handling Reference
+
+Your proxy will surface Leap error codes to the client. Map them to client-side actions:
+
+| Leap `error_code` | HTTP | What to do |
+|---|---|---|
+| `no_utility_at_address` | 404 | Show "No programs available in your area" — don't retry |
+| `address_not_geocodable` | 422 | Prompt user to check their ZIP |
+| `upstream_transient` | 502 | Retry with exponential backoff (1s → 2s → 4s) |
+| `upstream_infra` | 502 | Retry with exponential backoff |
+| `internal_error` | 500 | Retry with exponential backoff |
+| Any other `4xx` | 4xx | Show fallback estimates — don't retry |
+
+For all error and timeout cases, show fallback estimates silently. Don't surface API errors to customers.
+
+---
+
+## Related Resources
+
+- [Check Incentives API Reference](/api-reference/endpoint/check-incentives)
+- [Incentives API Guide](/incentives-guide) — operation types, device IDs, reference IDs
+- [Quickstart](/quickstart) — minimal working integration in under 10 minutes
+- [API Authentication](/api-reference/guides/api-guide)

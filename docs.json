@@ -58,6 +58,7 @@
         "group": "Guides",
         "pages": [
           "incentives-guide",
+          "embedding-guide",
           "applications-guide",
           "setup-claimed-fields",
           "program-roadmap"

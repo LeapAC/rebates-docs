@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { filterOperations, retargetServers, ensureSecurity, findBrokenRefs, applyOperationTitles, applyTag } from './sync-openapi.mjs';
+import { filterOperations, retargetServers, ensureSecurity, findBrokenRefs, applyOperationTitles, applyTag, pruneUnusedComponents } from './sync-openapi.mjs';
 
 const sample = () => ({
   openapi: '3.0.0',
@@ -63,6 +63,28 @@ test('applyTag normalizes every operation to a single tag', () => {
   assert.deepEqual(spec.paths['/a'].get.tags, ['my-tag']);
   assert.deepEqual(spec.paths['/b'].post.tags, ['my-tag']);
   assert.deepEqual(spec.tags, [{ name: 'my-tag' }]);
+});
+
+test('pruneUnusedComponents keeps reachable (incl. transitive + discriminator), drops orphans', () => {
+  const spec = {
+    info: { title: 'x' },
+    paths: {
+      '/a': { get: { responses: { 200: { content: { 'application/json': { schema: { $ref: '#/components/schemas/Used' } } } } } } },
+    },
+    components: {
+      schemas: {
+        Used: { type: 'object', properties: { child: { $ref: '#/components/schemas/Transitive' } }, discriminator: { mapping: { x: '#/components/schemas/Mapped' } } },
+        Transitive: { type: 'string' },
+        Mapped: { type: 'object' },
+        Orphan: { type: 'object' },
+      },
+      securitySchemes: { BearerAuth: { type: 'http', scheme: 'bearer' } },
+    },
+  };
+  pruneUnusedComponents(spec);
+  const kept = Object.keys(spec.components.schemas).sort();
+  assert.deepEqual(kept, ['Mapped', 'Transitive', 'Used'], 'orphan removed; transitive + discriminator-mapped kept');
+  assert.ok(spec.components.securitySchemes.BearerAuth, 'securitySchemes always kept');
 });
 
 test('findBrokenRefs flags unresolved local refs only', () => {

@@ -99,6 +99,58 @@ export function ensureSecurity(spec, presetName) {
   return spec;
 }
 
+// Collect every component pointer ("#/components/...") that appears as a string
+// value anywhere in `obj` — catches `$ref` plus discriminator mappings and any
+// other string-embedded reference (conservative: over-collecting is safe here).
+function collectComponentRefs(obj) {
+  const out = [];
+  const walk = (n) => {
+    if (Array.isArray(n)) return n.forEach(walk);
+    if (n && typeof n === 'object') {
+      for (const v of Object.values(n)) {
+        if (typeof v === 'string' && v.startsWith('#/components/')) out.push(v);
+        else walk(v);
+      }
+    }
+  };
+  walk(obj);
+  return out;
+}
+
+// Remove components not transitively reachable from the (already-filtered)
+// operations or the top-level security. securitySchemes are always kept (they
+// are referenced by name in `security`, not via $ref).
+export function pruneUnusedComponents(spec) {
+  const comps = spec.components;
+  if (!comps || typeof comps !== 'object') return spec;
+  const resolve = (ref) => {
+    const parts = ref.slice(2).split('/').map((p) => p.replace(/~1/g, '/').replace(/~0/g, '~'));
+    let cur = spec;
+    for (const p of parts) {
+      if (cur && typeof cur === 'object' && p in cur) cur = cur[p];
+      else return undefined;
+    }
+    return cur;
+  };
+  const reachable = new Set();
+  const queue = collectComponentRefs({ paths: spec.paths, security: spec.security });
+  while (queue.length) {
+    const ref = queue.pop();
+    if (reachable.has(ref)) continue;
+    reachable.add(ref);
+    const target = resolve(ref);
+    if (target !== undefined) for (const r of collectComponentRefs(target)) if (!reachable.has(r)) queue.push(r);
+  }
+  for (const [type, group] of Object.entries(comps)) {
+    if (type === 'securitySchemes' || !group || typeof group !== 'object') continue;
+    for (const name of Object.keys(group)) {
+      if (!reachable.has(`#/components/${type}/${name}`)) delete group[name];
+    }
+    if (Object.keys(group).length === 0) delete comps[type];
+  }
+  return spec;
+}
+
 export function findBrokenRefs(spec) {
   const broken = [];
   const walk = (node) => {
@@ -160,6 +212,7 @@ function main() {
     if (s.tag) spec = applyTag(spec, s.tag);
     spec = retargetServers(spec, s.servers || cfg[s.serversRef]);
     spec = ensureSecurity(spec, s.security);
+    spec = pruneUnusedComponents(spec);
     spec.info = { ...(spec.info || {}), title: s.title };
 
     const broken = findBrokenRefs(spec);

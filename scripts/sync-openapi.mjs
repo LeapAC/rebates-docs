@@ -48,6 +48,36 @@ export function retargetServers(spec, servers) {
   return spec;
 }
 
+// Mintlify derives an endpoint page's URL slug, title, and nav label from the
+// operation `summary`. Override it with a short title (from the include entry)
+// for clean URLs like /incentives-lookups/look-up-incentives.
+export function applyOperationTitles(spec, include) {
+  if (!Array.isArray(include)) return spec;
+  const titles = new Map(include.filter((o) => o.title).map((o) => [`${o.method.toLowerCase()} ${o.path}`, o.title]));
+  for (const [p, ops] of Object.entries(spec.paths || {})) {
+    if (!ops || typeof ops !== 'object') continue;
+    for (const [m, op] of Object.entries(ops)) {
+      const t = titles.get(`${m.toLowerCase()} ${p}`);
+      if (t && op && typeof op === 'object') op.summary = t;
+    }
+  }
+  return spec;
+}
+
+// Mintlify derives an endpoint page's URL path prefix from the operation `tag`.
+// Normalize every operation to one tag so a section's URLs share a clean prefix.
+export function applyTag(spec, tag) {
+  if (!tag) return spec;
+  for (const ops of Object.values(spec.paths || {})) {
+    if (!ops || typeof ops !== 'object') continue;
+    for (const [m, op] of Object.entries(ops)) {
+      if (HTTP_METHODS.includes(m.toLowerCase()) && op && typeof op === 'object') op.tags = [tag];
+    }
+  }
+  spec.tags = [{ name: tag }];
+  return spec;
+}
+
 export function ensureSecurity(spec, presetName) {
   const preset = SECURITY_PRESETS[presetName];
   if (!preset) throw new Error(`Unknown security preset: ${presetName}`);
@@ -126,6 +156,8 @@ function main() {
 
     let spec = bundle(entry);
     if (s.include !== 'all') spec = filterOperations(spec, s.include, s.exclude);
+    spec = applyOperationTitles(spec, s.include);
+    if (s.tag) spec = applyTag(spec, s.tag);
     spec = retargetServers(spec, s.servers || cfg[s.serversRef]);
     spec = ensureSecurity(spec, s.security);
     spec.info = { ...(spec.info || {}), title: s.title };

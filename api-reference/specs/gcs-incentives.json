@@ -20,17 +20,16 @@
   ],
   "tags": [
     {
-      "name": "incentives",
-      "description": "Partner-facing incentive eligibility lookup."
+      "name": "incentives-lookups"
     }
   ],
   "paths": {
     "/v1.1/global-connect/incentives/lookups": {
       "post": {
         "tags": [
-          "incentives"
+          "incentives-lookups"
         ],
-        "summary": "Look up incentive eligibility for a customer at an address with one or more devices",
+        "summary": "Look up incentives",
         "description": "Pipeline: validate device IDs against the catalog → geocode the address (cached for 30 days per customer) → resolve serving utilities via PostGIS `ST_Covers` → upsert customer + customer_device rows + EAV attributes → filter candidate programs by (eiaid, customer_classification, device_category) → call the calc engine across all candidates → aggregate the per-program results into the partner-facing response. Persists one `incentive_lookup` audit row per call, sharing its `lookup_id` with the N `incentive_calculation` rows the engine writes for the same call.\n",
         "operationId": "lookupIncentives",
         "requestBody": {
@@ -84,9 +83,9 @@
     "/v1.1/global-connect/incentives/refreshes": {
       "post": {
         "tags": [
-          "incentives"
+          "incentives-lookups"
         ],
-        "summary": "Re-evaluate an existing customer's incentive eligibility against their stored devices",
+        "summary": "Refresh incentives",
         "description": "Loads the customer by `reference_id` (must already exist), reads the cached utility match + geocoded coordinates, and re-runs the calc engine against the customer's currently-stored `customer_device` rows. Does not create or update customers or devices. Does not re-geocode and does not re-resolve serving utilities — the cached values from the prior `/lookups` call are reused. Use this when programs, requirements, or spec versions have changed and you want fresh eligibility numbers for the same customer.\n",
         "operationId": "refreshIncentives",
         "requestBody": {
@@ -134,9 +133,9 @@
     "/v1.1/global-connect/incentives/overrides": {
       "post": {
         "tags": [
-          "incentives"
+          "incentives-lookups"
         ],
-        "summary": "Replace an existing customer's device set and re-evaluate eligibility",
+        "summary": "Override incentives",
         "description": "Loads the customer by `reference_id` (must already exist), deletes every existing `customer_device` row for that customer, inserts a new set from `customer_devices`, and re-runs the calc engine. Reuses the cached utility match + geocoded coordinates from the prior `/lookups` call. Use this when the partner needs to wholesale replace a customer's device set — for example, a partner-side migration that re-keys installs or a teardown / re-install cycle. The wipe is irreversible within a single call.\n",
         "operationId": "overrideIncentives",
         "requestBody": {

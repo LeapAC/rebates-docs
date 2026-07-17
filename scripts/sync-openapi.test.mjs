@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { filterOperations, retargetServers, ensureSecurity, findBrokenRefs } from './sync-openapi.mjs';
+import { filterOperations, retargetServers, ensureSecurity, findBrokenRefs, applyOperationTitles, applyTag } from './sync-openapi.mjs';
 
 const sample = () => ({
   openapi: '3.0.0',
@@ -49,6 +49,20 @@ test('ensureSecurity canonicalizes: drops source scheme, strips redundant op-sec
   assert.ok(!('security' in spec.paths['/a'].post), 'redundant op security removed');
   assert.deepEqual(spec.paths['/pub'].get.security, [], 'explicit public security preserved');
   assert.deepEqual(spec.security, [{ BearerAuth: [] }]);
+});
+
+test('applyOperationTitles overrides op.summary from include titles', () => {
+  const spec = sample();
+  applyOperationTitles(spec, [{ method: 'get', path: '/a', title: 'Short A' }]);
+  assert.equal(spec.paths['/a'].get.summary, 'Short A');
+  assert.ok(!('summary' in spec.paths['/b'].post), 'untitled ops untouched');
+});
+
+test('applyTag normalizes every operation to a single tag', () => {
+  const spec = applyTag(sample(), 'my-tag');
+  assert.deepEqual(spec.paths['/a'].get.tags, ['my-tag']);
+  assert.deepEqual(spec.paths['/b'].post.tags, ['my-tag']);
+  assert.deepEqual(spec.tags, [{ name: 'my-tag' }]);
 });
 
 test('findBrokenRefs flags unresolved local refs only', () => {

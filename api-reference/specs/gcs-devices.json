@@ -20,19 +20,7 @@
   ],
   "tags": [
     {
-      "name": "requirements"
-    },
-    {
-      "name": "programs"
-    },
-    {
-      "name": "components"
-    },
-    {
-      "name": "requirement-assignments"
-    },
-    {
-      "name": "partner-data-preferences"
+      "name": "devices"
     }
   ],
   "paths": {
@@ -41,7 +29,7 @@
         "tags": [
           "devices"
         ],
-        "summary": "List device catalog entries",
+        "summary": "List devices",
         "description": "Thin read for idempotency verification and ops. Optional manufacturer/model_number filters narrow to the matching catalog entry. Requires the MANAGE_INCENTIVE_DATA permission.\n",
         "operationId": "listDevices",
         "parameters": [
@@ -96,7 +84,7 @@
         "tags": [
           "devices"
         ],
-        "summary": "Partner-facing device catalog search",
+        "summary": "Search devices",
         "description": "Free-text search over the device catalog. `q` is split on whitespace; every token must appear (case-insensitive) in the device's searchable text, and results are ranked by trigram similarity. Requires the LOOKUP_INCENTIVES permission. Returns catalog device UUIDs suitable for POST /v1.1/global-connect/incentives/lookups.\n",
         "operationId": "searchDevices",
         "parameters": [
@@ -160,9 +148,9 @@
     "/v1.1/global-connect/programs/{programIdentifier}/approved-devices": {
       "get": {
         "tags": [
-          "approved-devices"
+          "devices"
         ],
-        "summary": "List approved devices for a program",
+        "summary": "List approved devices",
         "description": "Thin read for idempotency verification and ops. Requires the MANAGE_INCENTIVE_DATA permission.\n",
         "operationId": "listApprovedDevices",
         "parameters": [

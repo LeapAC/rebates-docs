@@ -18,6 +18,16 @@
         ]
       },
       {
+        "group": "Incentives Lookups",
+        "openapi": "api-reference/specs/gcs-incentives.json",
+        "pages": [
+          "api-reference/incentives-lookups/overview",
+          "POST /v1.1/global-connect/incentives/lookups",
+          "POST /v1.1/global-connect/incentives/refreshes",
+          "POST /v1.1/global-connect/incentives/overrides"
+        ]
+      },
+      {
         "group": "API Reference",
         "openapi": "api-reference/openapi.json",
         "pages": [

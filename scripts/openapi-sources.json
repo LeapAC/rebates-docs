@@ -14,11 +14,12 @@
       "title": "Leap Incentives — Lookups",
       "serversRef": "gcsServers",
       "security": "bearer",
+      "tag": "incentives-lookups",
       "source": { "repo": "LeapAC/global-connect-service", "entry": "src/main/resources/openapi/incentives.yaml", "deps": ["src/main/resources/openapi/common-schemas.yaml"] },
       "include": [
-        { "method": "post", "path": "/v1.1/global-connect/incentives/lookups" },
-        { "method": "post", "path": "/v1.1/global-connect/incentives/refreshes" },
-        { "method": "post", "path": "/v1.1/global-connect/incentives/overrides" }
+        { "method": "post", "path": "/v1.1/global-connect/incentives/lookups", "title": "Look up incentives" },
+        { "method": "post", "path": "/v1.1/global-connect/incentives/refreshes", "title": "Refresh incentives" },
+        { "method": "post", "path": "/v1.1/global-connect/incentives/overrides", "title": "Override incentives" }
       ]
     },
     {
@@ -26,20 +27,32 @@
       "title": "Leap Incentives — Reports",
       "serversRef": "gcsServers",
       "security": "bearer",
+      "tag": "reports",
       "source": { "repo": "LeapAC/global-connect-service", "entry": "src/main/resources/openapi/reports.yaml", "deps": [] },
-      "include": "all"
+      "include": [
+        { "method": "post", "path": "/v1.1/global-connect/reports", "title": "Create report" },
+        { "method": "get", "path": "/v1.1/global-connect/reports", "title": "List reports" },
+        { "method": "get", "path": "/v1.1/global-connect/reports/{report_id}", "title": "Get report" },
+        { "method": "patch", "path": "/v1.1/global-connect/reports/{report_id}", "title": "Update report" },
+        { "method": "delete", "path": "/v1.1/global-connect/reports/{report_id}", "title": "Delete report" },
+        { "method": "post", "path": "/v1.1/global-connect/reports/{report_id}/rows", "title": "Add report rows" },
+        { "method": "get", "path": "/v1.1/global-connect/reports/{report_id}/rows", "title": "List report rows" },
+        { "method": "get", "path": "/v1.1/global-connect/reports/{report_id}/rows/{row_id}", "title": "Get report row" },
+        { "method": "post", "path": "/v1.1/global-connect/reports/{report_id}/start", "title": "Start report" }
+      ]
     },
     {
       "output": "gcs-programs.json",
       "title": "Leap Incentives — Programs",
       "serversRef": "gcsServers",
       "security": "bearer",
+      "tag": "programs",
       "source": { "repo": "LeapAC/global-connect-service", "entry": "src/main/resources/openapi/programs.yaml", "deps": ["src/main/resources/openapi/common-schemas.yaml"] },
       "include": [
-        { "method": "get", "path": "/v1.1/global-connect/programs" },
-        { "method": "get", "path": "/v1.1/global-connect/programs/{program_id}" },
-        { "method": "get", "path": "/v1.1/global-connect/programs/{program_id}/requirements" },
-        { "method": "get", "path": "/v1.1/global-connect/programs/{program_id}/incentive-tiers" }
+        { "method": "get", "path": "/v1.1/global-connect/programs", "title": "List programs" },
+        { "method": "get", "path": "/v1.1/global-connect/programs/{program_id}", "title": "Get program" },
+        { "method": "get", "path": "/v1.1/global-connect/programs/{program_id}/requirements", "title": "Get program requirements" },
+        { "method": "get", "path": "/v1.1/global-connect/programs/{program_id}/incentive-tiers", "title": "List incentive tiers" }
       ]
     },
     {
@@ -47,11 +60,12 @@
       "title": "Leap Incentives — Devices",
       "serversRef": "gcsServers",
       "security": "bearer",
+      "tag": "devices",
       "source": { "repo": "LeapAC/global-connect-service", "entry": "src/main/resources/openapi/programs.yaml", "deps": ["src/main/resources/openapi/common-schemas.yaml"] },
       "include": [
-        { "method": "get", "path": "/v1.1/global-connect/incentives/devices" },
-        { "method": "get", "path": "/v1.1/global-connect/incentives/devices/search" },
-        { "method": "get", "path": "/v1.1/global-connect/programs/{programIdentifier}/approved-devices" }
+        { "method": "get", "path": "/v1.1/global-connect/incentives/devices", "title": "List devices" },
+        { "method": "get", "path": "/v1.1/global-connect/incentives/devices/search", "title": "Search devices" },
+        { "method": "get", "path": "/v1.1/global-connect/programs/{programIdentifier}/approved-devices", "title": "List approved devices" }
       ]
     },
     {

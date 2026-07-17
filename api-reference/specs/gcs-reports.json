@@ -20,8 +20,7 @@
   ],
   "tags": [
     {
-      "name": "reports",
-      "description": "Batch incentive lookups persisted as reports."
+      "name": "reports"
     }
   ],
   "paths": {
@@ -30,7 +29,7 @@
         "tags": [
           "reports"
         ],
-        "summary": "Create an empty report in CREATING status",
+        "summary": "Create report",
         "operationId": "createReport",
         "requestBody": {
           "required": true,
@@ -68,7 +67,7 @@
         "tags": [
           "reports"
         ],
-        "summary": "List the authenticated partner's reports, newest first",
+        "summary": "List reports",
         "operationId": "listReports",
         "parameters": [
           {
@@ -110,22 +109,11 @@
       }
     },
     "/v1.1/global-connect/reports/{report_id}": {
-      "parameters": [
-        {
-          "name": "report_id",
-          "in": "path",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "format": "uuid"
-          }
-        }
-      ],
       "get": {
         "tags": [
           "reports"
         ],
-        "summary": "Fetch a report with live progress counts",
+        "summary": "Get report",
         "operationId": "getReport",
         "responses": {
           "200": {
@@ -153,7 +141,7 @@
         "tags": [
           "reports"
         ],
-        "summary": "Rename a report",
+        "summary": "Update report",
         "operationId": "updateReport",
         "requestBody": {
           "required": true,
@@ -191,7 +179,7 @@
         "tags": [
           "reports"
         ],
-        "summary": "Delete a report and all of its rows",
+        "summary": "Delete report",
         "operationId": "deleteReport",
         "responses": {
           "204": {
@@ -207,9 +195,7 @@
             "$ref": "#/components/responses/NotFound"
           }
         }
-      }
-    },
-    "/v1.1/global-connect/reports/{report_id}/rows": {
+      },
       "parameters": [
         {
           "name": "report_id",
@@ -220,12 +206,14 @@
             "format": "uuid"
           }
         }
-      ],
+      ]
+    },
+    "/v1.1/global-connect/reports/{report_id}/rows": {
       "post": {
         "tags": [
           "reports"
         ],
-        "summary": "Append a chunk of rows to a CREATING report",
+        "summary": "Add report rows",
         "description": "Idempotent on `(report_id, csv_row_index)` — re-posting a chunk after a network failure is safe. Returns 409 once the report has been started.\n",
         "operationId": "addReportRows",
         "requestBody": {
@@ -270,7 +258,7 @@
         "tags": [
           "reports"
         ],
-        "summary": "Page through a report's rows by csv_row_index cursor",
+        "summary": "List report rows",
         "operationId": "listReportRows",
         "parameters": [
           {
@@ -331,9 +319,7 @@
             "$ref": "#/components/responses/NotFound"
           }
         }
-      }
-    },
-    "/v1.1/global-connect/reports/{report_id}/rows/{row_id}": {
+      },
       "parameters": [
         {
           "name": "report_id",
@@ -343,22 +329,15 @@
             "type": "string",
             "format": "uuid"
           }
-        },
-        {
-          "name": "row_id",
-          "in": "path",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "format": "uuid"
-          }
         }
-      ],
+      ]
+    },
+    "/v1.1/global-connect/reports/{report_id}/rows/{row_id}": {
       "get": {
         "tags": [
           "reports"
         ],
-        "summary": "Fetch a single row including its verbatim calc result",
+        "summary": "Get report row",
         "operationId": "getReportRow",
         "responses": {
           "200": {
@@ -381,9 +360,7 @@
             "$ref": "#/components/responses/NotFound"
           }
         }
-      }
-    },
-    "/v1.1/global-connect/reports/{report_id}/start": {
+      },
       "parameters": [
         {
           "name": "report_id",
@@ -393,13 +370,24 @@
             "type": "string",
             "format": "uuid"
           }
+        },
+        {
+          "name": "row_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
         }
-      ],
+      ]
+    },
+    "/v1.1/global-connect/reports/{report_id}/start": {
       "post": {
         "tags": [
           "reports"
         ],
-        "summary": "Transition CREATING → PROCESSING and enqueue all rows",
+        "summary": "Start report",
         "operationId": "startReport",
         "responses": {
           "200": {
@@ -428,7 +416,18 @@
             "$ref": "#/components/responses/Conflict"
           }
         }
-      }
+      },
+      "parameters": [
+        {
+          "name": "report_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ]
     }
   },
   "components": {

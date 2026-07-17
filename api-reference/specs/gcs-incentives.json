@@ -1,0 +1,787 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Leap Incentives — Lookups",
+    "description": "Partner-facing eligibility evaluation. Three operations, each its own sub-collection under the `incentives` resource:\n\n  * `POST /v1.1/global-connect/incentives/lookups` — first-touch.\n    Creates the customer if new, upserts devices, geocodes the address,\n    resolves serving utilities, and evaluates eligibility.\n  * `POST /v1.1/global-connect/incentives/refreshes` — re-evaluates an\n    existing customer against their already-stored devices and cached\n    utilities. No new customer or device rows.\n  * `POST /v1.1/global-connect/incentives/overrides` — replaces the\n    customer's device set with a new one (destructively wipes the\n    existing devices), then evaluates against the new set.\n\nThe legacy `POST /v1.1/global-connect/incentives` path is preserved as a deprecated alias for `/lookups` so partners on the original release keep working. New integrations should use the explicit `/lookups` sub-collection.\n`partner_id` is derived server-side from the authenticated principal's `leap-partnerid` header — it is intentionally not part of any request body. Accepting it from the client would turn these endpoints into an IDOR primitive over the customer / customer_device tables.\n",
+    "contact": {
+      "email": "apiteam@leap.energy"
+    },
+    "version": "0.1"
+  },
+  "servers": [
+    {
+      "url": "https://api.leap.energy",
+      "description": "Production"
+    },
+    {
+      "url": "https://api.staging.leap.energy",
+      "description": "Staging"
+    }
+  ],
+  "tags": [
+    {
+      "name": "incentives-lookups"
+    }
+  ],
+  "paths": {
+    "/v1.1/global-connect/incentives/lookups": {
+      "post": {
+        "tags": [
+          "incentives-lookups"
+        ],
+        "summary": "Look up incentives",
+        "description": "Pipeline: validate device IDs against the catalog → geocode the address (cached for 30 days per customer) → resolve serving utilities via PostGIS `ST_Covers` → upsert customer + customer_device rows + EAV attributes → filter candidate programs by (eiaid, customer_classification, device_category) → call the calc engine across all candidates → aggregate the per-program results into the partner-facing response. Persists one `incentive_lookup` audit row per call, sharing its `lookup_id` with the N `incentive_calculation` rows the engine writes for the same call.\n",
+        "operationId": "lookupIncentives",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EligibilityRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Eligibility resolved (programs may be empty if the customer matches no candidates).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EligibilityResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          },
+          "502": {
+            "$ref": "#/components/responses/BadGateway"
+          }
+        }
+      }
+    },
+    "/v1.1/global-connect/incentives/refreshes": {
+      "post": {
+        "tags": [
+          "incentives-lookups"
+        ],
+        "summary": "Refresh incentives",
+        "description": "Loads the customer by `reference_id` (must already exist), reads the cached utility match + geocoded coordinates, and re-runs the calc engine against the customer's currently-stored `customer_device` rows. Does not create or update customers or devices. Does not re-geocode and does not re-resolve serving utilities — the cached values from the prior `/lookups` call are reused. Use this when programs, requirements, or spec versions have changed and you want fresh eligibility numbers for the same customer.\n",
+        "operationId": "refreshIncentives",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshIncentivesRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Eligibility re-evaluated using the customer's stored state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EligibilityResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/v1.1/global-connect/incentives/overrides": {
+      "post": {
+        "tags": [
+          "incentives-lookups"
+        ],
+        "summary": "Override incentives",
+        "description": "Loads the customer by `reference_id` (must already exist), deletes every existing `customer_device` row for that customer, inserts a new set from `customer_devices`, and re-runs the calc engine. Reuses the cached utility match + geocoded coordinates from the prior `/lookups` call. Use this when the partner needs to wholesale replace a customer's device set — for example, a partner-side migration that re-keys installs or a teardown / re-install cycle. The wipe is irreversible within a single call.\n",
+        "operationId": "overrideIncentives",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OverrideIncentivesRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Devices replaced and eligibility re-evaluated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EligibilityResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "responses": {
+      "BadRequest": {
+        "description": "Malformed or invalid request",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "You are not authenticated",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "You do not have permission to perform this operation",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Address is not covered by any utility we have territory data for. This is a coverage gap, not an internal failure — the caller should not retry.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "Conflict": {
+        "description": "Conflict with existing customer state (e.g., reference_id already bound to a different address)",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "UnprocessableEntity": {
+        "description": "Request was syntactically valid but could not be processed (e.g., unknown device id, address could not be geocoded)",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "InternalServerError": {
+        "description": "An internal server error occurred",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "BadGateway": {
+        "description": "Upstream dependency (geocoder) is unavailable or rate-limited",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "ErrorResponse": {
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "object",
+            "required": [
+              "message"
+            ],
+            "properties": {
+              "message": {
+                "type": "string"
+              },
+              "details": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "error_code": {
+                      "type": "string",
+                      "description": "Stable wire code from `IncentivesErrorCode` (e.g., `INVALID_DEVICE_ID`, `GEOCODING_NO_RESULTS`, `NO_UTILITY_AT_ADDRESS`)."
+                    },
+                    "reason": {
+                      "type": "string",
+                      "description": "Human-readable explanation. Safe to surface to partners; no internal identifiers."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "EligibilityRequest": {
+        "type": "object",
+        "required": [
+          "reference_id",
+          "address",
+          "customer_devices",
+          "customer_classification"
+        ],
+        "properties": {
+          "reference_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "description": "Partner's stable identifier for the customer. The orchestrator uses this as the dedup key against `incentives.customer` scoped to the authenticated `partner_id`.\n"
+          },
+          "address": {
+            "$ref": "#/components/schemas/Address"
+          },
+          "customer_devices": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 50,
+            "description": "One entry per installation. Each carries the catalog `device_id` and an optional `partner_device_reference` that disambiguates two installs of the same catalog device. When omitted, the server assigns `\"1\"`, `\"2\"`, ... in request order, skipping any value already supplied by the partner. The inline `details` object accepts per-installation attributes (e.g. `customer_device.purchase_price`, `customer_device.installation_date`).\n",
+            "items": {
+              "$ref": "#/components/schemas/CustomerDeviceRef"
+            }
+          },
+          "customer_classification": {
+            "$ref": "#/components/schemas/CustomerClassification"
+          },
+          "eiaid": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Optional utility override. When supplied, the orchestrator bypasses both the geocoder and the geocode-driven territory (`ST_Covers`) utility lookup, and uses this EIA utility id directly to select candidate programs — useful when the partner already knows the serving utility and the address-based territory match is unavailable or ambiguous. On this path the address is NOT geocoded: the response `geocoding` block is omitted and the customer record's geocoded coordinates are left untouched. If no utility matches the supplied `eiaid`, the request fails the same way an un-served address does (404 `NO_UTILITY_AT_ADDRESS`).\n"
+          },
+          "customer_details": {
+            "type": "object",
+            "description": "Partner-supplied per-customer attributes keyed by `requirement.key` (e.g., `customer.email`, `customer.is_homeowner`). The orchestrator persists these against the customer record and the calc engine consumes them during eligibility evaluation. Absent or empty → no partner-supplied attributes. Maximum 100 entries.\n",
+            "maxProperties": 100,
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "RefreshIncentivesRequest": {
+        "type": "object",
+        "required": [
+          "reference_id"
+        ],
+        "properties": {
+          "reference_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "description": "Partner's stable identifier for the customer. Must match an existing customer scoped to the authenticated `partner_id`; unknown reference IDs return 404.\n"
+          },
+          "customer_details": {
+            "type": "object",
+            "description": "Optional partner-supplied per-customer attributes to upsert against the existing customer record before re-evaluation. Use this to update values like `customer.is_homeowner` without touching the device set. Empty or omitted = no attribute changes.\n",
+            "maxProperties": 100,
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "OverrideIncentivesRequest": {
+        "type": "object",
+        "required": [
+          "reference_id",
+          "customer_devices"
+        ],
+        "properties": {
+          "reference_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "description": "Partner's stable identifier for the customer. Must match an existing customer scoped to the authenticated `partner_id`; unknown reference IDs return 404.\n"
+          },
+          "customer_devices": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 50,
+            "description": "The new device set for the customer. Every existing `customer_device` row for this customer is deleted before these are inserted — there is no merge step. The same `partner_device_reference` rules from `/lookups` apply (one entry per installation, server-assigned positional defaults when blank, uniqueness enforced within the request).\n",
+            "items": {
+              "$ref": "#/components/schemas/CustomerDeviceRef"
+            }
+          },
+          "customer_details": {
+            "type": "object",
+            "description": "Optional partner-supplied per-customer attributes to upsert against the existing customer record. Same shape as on `/lookups`. Empty or omitted = no attribute changes.\n",
+            "maxProperties": 100,
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "CustomerDeviceRef": {
+        "type": "object",
+        "required": [
+          "device_id"
+        ],
+        "properties": {
+          "device_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Catalog `device.id`. Must exist in the device catalog or the request is rejected with 422 `INVALID_DEVICE_ID`.\n"
+          },
+          "partner_device_reference": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "description": "Partner-supplied per-installation identifier. Unique within the request. Echoed back in the response so partners can join their local records to the upserted `customer_device`. Server fills in `\"1\"`, `\"2\"`, ... in request order (skipping any value the partner already supplied) when omitted.\n"
+          },
+          "details": {
+            "type": "object",
+            "description": "Partner-supplied per-installation attributes keyed by `requirement.key` (e.g. `customer_device.purchase_price`). Maximum 50 entries.\n",
+            "maxProperties": 50,
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "CustomerDeviceRefEcho": {
+        "type": "object",
+        "required": [
+          "device_id",
+          "partner_device_reference",
+          "customer_device_id"
+        ],
+        "properties": {
+          "device_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "partner_device_reference": {
+            "type": "string",
+            "description": "Server-resolved value (echoed verbatim if the partner supplied one; assigned `\"1\"`, `\"2\"`, ... otherwise).\n"
+          },
+          "customer_device_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Upserted `incentives.customer_device.id` for this entry."
+          }
+        }
+      },
+      "Address": {
+        "type": "object",
+        "required": [
+          "address_line_1",
+          "city",
+          "state",
+          "zip_code"
+        ],
+        "properties": {
+          "address_line_1": {
+            "type": "string"
+          },
+          "address_line_2": {
+            "type": "string",
+            "nullable": true
+          },
+          "city": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string",
+            "description": "Two-letter US state abbreviation."
+          },
+          "zip_code": {
+            "type": "string"
+          },
+          "country_code": {
+            "type": "string",
+            "default": "US",
+            "description": "ISO-3166 alpha-2 country code. Defaults to `US`."
+          }
+        }
+      },
+      "EligibilityResult": {
+        "type": "object",
+        "required": [
+          "reference_id",
+          "customer_classification",
+          "customer_devices",
+          "connect_url",
+          "incentive_summary",
+          "utilities",
+          "program_details"
+        ],
+        "properties": {
+          "reference_id": {
+            "type": "string"
+          },
+          "customer_classification": {
+            "$ref": "#/components/schemas/CustomerClassification"
+          },
+          "customer_devices": {
+            "type": "array",
+            "description": "Per-installation echo. One entry per request entry, with the resolved (server-filled if absent) `partner_device_reference` and the upserted `customer_device.id`.\n",
+            "items": {
+              "$ref": "#/components/schemas/CustomerDeviceRefEcho"
+            }
+          },
+          "connect_url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Deep link the partner can hand to the customer to start the Connect flow. Encodes `reference_id` and (later) variant.\n"
+          },
+          "incentive_summary": {
+            "$ref": "#/components/schemas/IncentiveSummary"
+          },
+          "utilities": {
+            "$ref": "#/components/schemas/UtilityMatch"
+          },
+          "program_details": {
+            "type": "array",
+            "description": "One entry per eligible (or conditionally eligible) program. Empty when no candidate programs match the (utility, customer_classification, device_category) filter.",
+            "items": {
+              "$ref": "#/components/schemas/EligibleProgram"
+            }
+          },
+          "geocoding": {
+            "$ref": "#/components/schemas/Geocoding"
+          }
+        }
+      },
+      "IncentiveSummary": {
+        "type": "object",
+        "required": [
+          "upfront_amount",
+          "install_amount",
+          "ongoing_amount"
+        ],
+        "properties": {
+          "upfront_amount": {
+            "type": "number",
+            "description": "Always 0 in the current cut. Reserved for a future \"pre-install upfront\" payment kind."
+          },
+          "install_amount": {
+            "type": "number",
+            "description": "Sum across all eligible programs of incentives paid at install time. Maps from the engine's `up_front_total` per program."
+          },
+          "ongoing_amount": {
+            "type": "number",
+            "description": "Sum across all eligible programs of recurring incentives. Maps from the engine's `ongoing_total` per program."
+          }
+        }
+      },
+      "EligibleProgram": {
+        "type": "object",
+        "required": [
+          "name",
+          "tiers"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Human-readable program label, sourced from `program.label`."
+          },
+          "operator_name": {
+            "type": "string",
+            "nullable": true,
+            "description": "Name of the operating utility / agency. Currently null until the display source is wired in a follow-up.\n"
+          },
+          "device_category": {
+            "type": "string",
+            "nullable": true,
+            "description": "Category name (e.g., `EV_CHARGER`, `HEAT_PUMP`)."
+          },
+          "display_name": {
+            "type": "string",
+            "nullable": true,
+            "description": "Partner-branded display name for the program (PARTNER_OFFER rows only). Read from `program.metadata.display_name`. Null for non-offer programs.\n"
+          },
+          "logo_url": {
+            "type": "string",
+            "nullable": true,
+            "description": "URL to the partner's logo (PARTNER_OFFER rows only). Read from `program.metadata.logo_url`. Null for non-offer programs.\n"
+          },
+          "terms_url": {
+            "type": "string",
+            "nullable": true,
+            "description": "URL to the partner's terms-and-conditions page (PARTNER_OFFER rows only). Read from `program.metadata.terms_url`. Null for non-offer programs.\n"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true,
+            "description": "Free-form description shown to the customer (PARTNER_OFFER rows only). Read from `program.metadata.description`. Null for non-offer programs.\n"
+          },
+          "tiers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MatchedTier"
+            }
+          }
+        }
+      },
+      "MatchedTier": {
+        "type": "object",
+        "required": [
+          "tier_name",
+          "payment_type",
+          "incentive_amount",
+          "device_results"
+        ],
+        "properties": {
+          "tier_name": {
+            "type": "string"
+          },
+          "payment_type": {
+            "$ref": "#/components/schemas/PaymentType"
+          },
+          "incentive_amount": {
+            "type": "number",
+            "description": "Tier-level total across surviving devices. The calc engine produces a single scalar per (program, tier); per-device differentiation lives in `device_results[]`.\n"
+          },
+          "device_results": {
+            "type": "array",
+            "description": "One entry per `customer_device` evaluated for this tier. Each shows whether that install passed/failed/ignored the tier's requirements and the per-check details.\n",
+            "items": {
+              "$ref": "#/components/schemas/DeviceTierResult"
+            }
+          }
+        }
+      },
+      "DeviceTierResult": {
+        "type": "object",
+        "required": [
+          "partner_device_reference",
+          "customer_device_id",
+          "status",
+          "eligibility_details"
+        ],
+        "properties": {
+          "partner_device_reference": {
+            "type": "string",
+            "description": "Echoes the `partner_device_reference` from the request's `customer_devices[]` entry.\n"
+          },
+          "customer_device_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "description": "Per-device tier outcome (`COMPLETED`, `FAILED`, `IGNORED`)."
+          },
+          "eligibility_details": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EligibilityCheck"
+            }
+          }
+        }
+      },
+      "PaymentType": {
+        "type": "string",
+        "enum": [
+          "UPFRONT",
+          "INSTALL",
+          "ONGOING"
+        ]
+      },
+      "EligibilityCheck": {
+        "type": "object",
+        "required": [
+          "requirement",
+          "status",
+          "code",
+          "reason"
+        ],
+        "properties": {
+          "requirement": {
+            "type": "string",
+            "description": "Human-readable requirement label."
+          },
+          "status": {
+            "type": "string",
+            "description": "Engine outcome (e.g., `COMPLETED`, `FAILED`, `IGNORED`)."
+          },
+          "code": {
+            "type": "string",
+            "description": "Stable check code (e.g., `SMUD_TC`, `DEV-CL-001`)."
+          },
+          "reason": {
+            "type": "string",
+            "description": "Human-readable explanation of the outcome."
+          },
+          "source_program_identifier": {
+            "type": "string",
+            "nullable": true,
+            "description": "For Partner Offers, attributes the check to the program that produced it — the offer's `program_identifier` for offer-side checks, an underlying leap-defs program identifier for leap-side checks. Null on the existing rebate flow (INCENTIVES_DB programs).\n"
+          }
+        }
+      },
+      "UtilityMatch": {
+        "type": "object",
+        "required": [
+          "primary",
+          "possible_utilities"
+        ],
+        "properties": {
+          "primary": {
+            "$ref": "#/components/schemas/IncentiveUtility"
+          },
+          "possible_utilities": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IncentiveUtility"
+            }
+          }
+        }
+      },
+      "IncentiveUtility": {
+        "description": "EIA-keyed utility identity used in incentive eligibility responses. Distinct from `common-schemas.yaml#/components/schemas/Utility`, which carries Connect's UUID-based shape with logo + connection URL.\n",
+        "type": "object",
+        "required": [
+          "eiaid",
+          "name"
+        ],
+        "properties": {
+          "eiaid": {
+            "type": "string",
+            "description": "EIA utility identifier."
+          },
+          "name": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string",
+            "nullable": true,
+            "description": "Two-letter US state abbreviation."
+          }
+        }
+      },
+      "Geocoding": {
+        "type": "object",
+        "required": [
+          "latitude",
+          "longitude",
+          "formatted_address"
+        ],
+        "properties": {
+          "latitude": {
+            "type": "number",
+            "format": "double"
+          },
+          "longitude": {
+            "type": "number",
+            "format": "double"
+          },
+          "formatted_address": {
+            "type": "string"
+          }
+        }
+      },
+      "CustomerClassification": {
+        "description": "Customer/site classification used for incentive eligibility and flow routing.\nAligns with the leap-definitions canonical identifier `customer_classification`.\nRESIDENTIAL/COMMERCIAL are the historic values; MULTIFAMILY and MANUFACTURED_HOME\nare extensions for incentives eligibility (rebate qualification differs across\nsingle-family vs multifamily vs manufactured housing).\n",
+        "type": "string",
+        "enum": [
+          "RESIDENTIAL",
+          "MULTIFAMILY",
+          "MANUFACTURED_HOME",
+          "COMMERCIAL"
+        ]
+      }
+    },
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Your Leap API key as a Bearer token. Send it in the `Authorization` header: `Authorization: Bearer <api-key>`."
+      }
+    }
+  },
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ]
+}

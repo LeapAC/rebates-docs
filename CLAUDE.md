@@ -220,8 +220,8 @@ agent-browser close
 
 **Key pages to check after changes:**
 - Homepage: `http://localhost:3333/`
-- API endpoint (rich schemas + Try it): `http://localhost:3333/api-reference/endpoint/check-incentives`
-- Batch endpoint: `http://localhost:3333/api-reference/endpoint/batch-create`
+- Auto-generated GCS endpoint (rich schemas + Try it, Bearer auth): `http://localhost:3333/api-reference/incentives-lookups/look-up-incentives`
+- Curated Applications endpoint (rich schemas + Try it, x-api-key auth): `http://localhost:3333/api-reference/endpoint/search-applications`
 - Guides: `http://localhost:3333/incentives-guide`
 
 **What to verify on API endpoint pages:**

@@ -1,7 +1,7 @@
 {
   "openapi": "3.0.3",
   "info": {
-    "title": "Leap Energy API",
+    "title": "Leap Incentives — Applications",
     "description": "The Leap Energy API provides a unified interface for managing rebate incentives and applications.\n\n## Incentives API\nSearch for and calculate incentive amounts across multiple utility programs. Given a customer\naddress and building type, the API identifies applicable utility programs and calculates potential\nincentive amounts for various device and tier combinations. When your organization has a webhook URL\nconfigured (Webhook Config API), each successful lookup triggers a POST to your URL with the response\nand optional custom fields (`webhook_custom_fields`).\n\n## Applications API\nManage rebate applications on behalf of customers. Applications represent a customer's request\nfor a rebate under a specific utility program, including customer information, device details,\nand application metadata.",
     "version": "2.0.0",
     "contact": {
@@ -12,15 +12,21 @@
   "servers": [
     {
       "url": "https://api.incentives.leap.energy/alpha",
-      "description": "Production API"
+      "description": "Production"
+    },
+    {
+      "url": "https://api.staging.incentives.leap.energy/alpha",
+      "description": "Staging"
     }
   ],
   "security": [
     {
       "ApiKeyAuth": []
-    },
+    }
+  ],
+  "tags": [
     {
-      "BearerAuth": []
+      "name": "applications"
     }
   ],
   "paths": {
@@ -29,6 +35,9 @@
         "summary": "Search applications",
         "description": "Search and filter applications with optional pagination. Returns a list of applications\nmatching the specified criteria. All results are automatically filtered to applications belonging to your organization.\n\n**Authentication:**\nRequires API key authentication via `x-api-key` header.\n\n**Organization Scoping:**\nResults are automatically filtered by your organization ID. You can only access applications that belong to your organization.\n",
         "operationId": "searchApplications",
+        "tags": [
+          "applications"
+        ],
         "parameters": [
           {
             "name": "refId",
@@ -126,7 +135,7 @@
                           "status": "awaiting_partner",
                           "rebate_type": "instant",
                           "payee_type": "customer",
-                          "total_requested_amount": 150.0,
+                          "total_requested_amount": 150,
                           "created_at": "2025-01-10T15:30:00Z",
                           "updated_at": "2025-01-15T10:45:00Z",
                           "customer": {
@@ -179,517 +188,17 @@
           "500": {
             "$ref": "#/components/responses/InternalServerError"
           }
-        },
-        "x-hidden": true
-      }
-    },
-    "/incentives": {
-      "post": {
-        "summary": "Get aggregated incentives for a customer",
-        "description": "Retrieves and aggregates incentive calculations from multiple utility programs\nbased on the customer's address and building type.\n\nThe API automatically:\n1. Creates or finds the customer based on address components\n2. Links the customer to your organization using the `reference_id`\n3. Associates devices with the customer (via `device_ids` or `device_names`)\n4. Identifies the utility serving the address\n5. Finds all active programs for that utility and building type\n6. Calls each program's incentive calculation function\n7. Optionally creates application records (if `create_application=true` and customer is eligible)\n8. Aggregates and returns the results\n9. If your organization has a webhook URL configured (see Webhook Config API), sends a POST to that URL with the response plus any `webhook_custom_fields` you include in the request\n\n**Authentication:** Requires API key via `x-api-key` header.\n\n**Reference ID:** The `reference_id` is required and must be unique per organization. It's used to link customers to your organization and is returned in the response for your records. To update applications later, use the PATCH endpoint with `application_id` (requires API key authentication).\n\n**Device Identification:** You can specify devices using either `device_ids` (Leap device IDs) or `device_names` (your equipment/product names). When using `device_names`, the API resolves them to Leap device IDs via your organization's equipment map. If some names cannot be resolved, the API proceeds with the resolved devices and includes a `warnings` object in the response.\n\n**Operation Types:**\n- `lookup`: New calculation with geocoding (requires address and `device_ids` or `device_names`)\n- `refresh`: Re-calculate using cached utilities (`device_ids` optional, uses existing devices if not provided; `device_names` not supported)\n- `override`: Replace all customer devices with new ones, then refresh calculation\n",
-        "operationId": "getAggregatedIncentives",
-        "x-codeSamples": [
-          {
-            "lang": "curl",
-            "label": "cURL (device IDs)",
-            "source": "curl -X POST \\\n  \"https://api.incentives.leap.energy/alpha/incentives\" \\\n  -H \"x-api-key: leap_live_...\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"operation_type\": \"lookup\",\n    \"reference_id\": \"external-ref-123\",\n    \"address\": {\n      \"street_1\": \"123 Main St\",\n      \"street_2\": \"Apt 4B\",\n      \"city\": \"San Francisco\",\n      \"state_or_province_code\": \"CA\",\n      \"postal_code\": \"94102\",\n      \"country_code\": \"US\"\n    },\n    \"building_type\": \"RESIDENTIAL\",\n    \"device_ids\": [42],\n    \"create_application\": true\n  }'"
-          },
-          {
-            "lang": "curl",
-            "label": "cURL (device names)",
-            "source": "curl -X POST \\\n  \"https://api.incentives.leap.energy/alpha/incentives\" \\\n  -H \"x-api-key: leap_live_...\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"operation_type\": \"lookup\",\n    \"reference_id\": \"external-ref-456\",\n    \"address\": {\n      \"street_1\": \"456 Oak Ave\",\n      \"city\": \"Portland\",\n      \"state_or_province_code\": \"OR\",\n      \"postal_code\": \"97201\",\n      \"country_code\": \"US\"\n    },\n    \"building_type\": \"RESIDENTIAL\",\n    \"device_names\": [\"Mitsubishi Hyper-Heat MSZ-RXT09\", \"Rheem ProTerraDERA2060\"],\n    \"create_application\": true\n  }'"
-          },
-          {
-            "lang": "python",
-            "label": "Python",
-            "source": "import requests\n\nurl = \"https://api.incentives.leap.energy/alpha/incentives\"\n\npayload = {\n    \"operation_type\": \"lookup\",\n    \"reference_id\": \"external-ref-123\",\n    \"address\": {\n        \"street_1\": \"123 Main St\",\n        \"street_2\": \"Apt 4B\",\n        \"city\": \"San Francisco\",\n        \"state_or_province_code\": \"CA\",\n        \"postal_code\": \"94102\",\n        \"country_code\": \"US\"\n    },\n    \"building_type\": \"RESIDENTIAL\",\n    \"device_ids\": [42],\n    \"create_application\": True\n}\n\nheaders = {\n    \"x-api-key\": \"leap_live_...\",\n    \"Content-Type\": \"application/json\"\n}\n\nresponse = requests.post(url, json=payload, headers=headers)\nprint(response.json())"
-          },
-          {
-            "lang": "javascript",
-            "label": "JavaScript",
-            "source": "const response = await fetch(\n  'https://api.incentives.leap.energy/alpha/incentives',\n  {\n    method: 'POST',\n    headers: {\n      'x-api-key': 'leap_live_...',\n      'Content-Type': 'application/json'\n    },\n    body: JSON.stringify({\n      operation_type: 'lookup',\n      reference_id: 'external-ref-123',\n      address: {\n        street_1: '123 Main St',\n        street_2: 'Apt 4B',\n        city: 'San Francisco',\n        state_or_province_code: 'CA',\n        postal_code: '94102',\n        country_code: 'US'\n      },\n      building_type: 'RESIDENTIAL',\n      device_ids: [42],\n      create_application: true\n    })\n  }\n);\n\nconst data = await response.json();\nconsole.log(data);"
-          },
-          {
-            "lang": "php",
-            "label": "PHP",
-            "source": "<?php\n\n$url = 'https://api.incentives.leap.energy/alpha/incentives';\n\n$payload = [\n    'operation_type' => 'lookup',\n    'reference_id' => 'external-ref-123',\n    'address' => [\n        'street_1' => '123 Main St',\n        'street_2' => 'Apt 4B',\n        'city' => 'San Francisco',\n        'state_or_province_code' => 'CA',\n        'postal_code' => '94102',\n        'country_code' => 'US'\n    ],\n    'building_type' => 'RESIDENTIAL',\n    'device_ids' => [42],\n    'create_application' => true\n];\n\n$ch = curl_init($url);\ncurl_setopt($ch, CURLOPT_POST, true);\ncurl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));\ncurl_setopt($ch, CURLOPT_HTTPHEADER, [\n    'x-api-key: leap_live_...',\n    'Content-Type: application/json'\n]);\ncurl_setopt($ch, CURLOPT_RETURNTRANSFER, true);\n\n$response = curl_exec($ch);\ncurl_close($ch);\n\nprint_r(json_decode($response, true));"
-          },
-          {
-            "lang": "java",
-            "label": "Java",
-            "source": "import java.net.http.*;\nimport java.net.URI;\n\nHttpClient client = HttpClient.newHttpClient();\n\nString json = \"\"\"{\n  \"operation_type\": \"lookup\",\n  \"reference_id\": \"external-ref-123\",\n  \"address\": {\n    \"street_1\": \"123 Main St\",\n    \"street_2\": \"Apt 4B\",\n    \"city\": \"San Francisco\",\n    \"state_or_province_code\": \"CA\",\n    \"postal_code\": \"94102\",\n    \"country_code\": \"US\"\n  },\n  \"building_type\": \"RESIDENTIAL\",\n  \"device_ids\": [42],\n  \"create_application\": true\n}\"\"\";\n\nHttpRequest request = HttpRequest.newBuilder()\n    .uri(URI.create(\"https://api.incentives.leap.energy/alpha/incentives\"))\n    .header(\"x-api-key\", \"leap_live_...\")\n    .header(\"Content-Type\", \"application/json\")\n    .POST(HttpRequest.BodyPublishers.ofString(json))\n    .build();\n\nHttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());\nSystem.out.println(response.body());"
-          },
-          {
-            "lang": "ruby",
-            "label": "Ruby",
-            "source": "require 'net/http'\nrequire 'json'\n\nuri = URI('https://api.incentives.leap.energy/alpha/incentives')\n\npayload = {\n  operation_type: 'lookup',\n  reference_id: 'external-ref-123',\n  address: {\n    street_1: '123 Main St',\n    street_2: 'Apt 4B',\n    city: 'San Francisco',\n    state_or_province_code: 'CA',\n    postal_code: '94102',\n    country_code: 'US'\n  },\n  building_type: 'RESIDENTIAL',\n  device_ids: [42],\n  create_application: true\n}\n\nhttp = Net::HTTP.new(uri.host, uri.port)\nhttp.use_ssl = true\n\nrequest = Net::HTTP::Post.new(uri)\nrequest['x-api-key'] = 'leap_live_...'\nrequest['Content-Type'] = 'application/json'\nrequest.body = payload.to_json\n\nresponse = http.request(request)\nputs JSON.parse(response.body)"
-          },
-          {
-            "lang": "go",
-            "label": "Go",
-            "source": "package main\n\nimport (\n\t\"bytes\"\n\t\"encoding/json\"\n\t\"fmt\"\n\t\"net/http\"\n)\n\nfunc main() {\n\turl := \"https://api.incentives.leap.energy/alpha/incentives\"\n\n\tpayload := map[string]interface{}{\n\t\t\"operation_type\": \"lookup\",\n\t\t\"reference_id\":   \"external-ref-123\",\n\t\t\"address\": map[string]interface{}{\n\t\t\t\"street_1\":               \"123 Main St\",\n\t\t\t\"street_2\":               \"Apt 4B\",\n\t\t\t\"city\":                   \"San Francisco\",\n\t\t\t\"state_or_province_code\": \"CA\",\n\t\t\t\"postal_code\":            \"94102\",\n\t\t\t\"country_code\":           \"US\",\n\t\t},\n\t\t\"building_type\":      \"RESIDENTIAL\",\n\t\t\"device_ids\":          []int{42},\n\t\t\"create_application\": true,\n\t}\n\n\tjsonData, _ := json.Marshal(payload)\n\treq, _ := http.NewRequest(\"POST\", url, bytes.NewBuffer(jsonData))\n\treq.Header.Set(\"x-api-key\", \"leap_live_...\")\n\treq.Header.Set(\"Content-Type\", \"application/json\")\n\n\tclient := &http.Client{}\n\tresp, _ := client.Do(req)\n\tdefer resp.Body.Close()\n\n\tvar result map[string]interface{}\n\tjson.NewDecoder(resp.Body).Decode(&result)\n\tfmt.Println(result)\n}"
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "description": "Customer address, building type, and device information for incentive calculation",
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/IncentiveRequest"
-              },
-              "examples": {
-                "residential_request": {
-                  "summary": "Lookup operation - New incentive calculation",
-                  "value": {
-                    "operation_type": "lookup",
-                    "reference_id": "external-ref-123",
-                    "address": {
-                      "street_1": "123 Main St",
-                      "street_2": "Apt 4B",
-                      "city": "San Francisco",
-                      "state_or_province_code": "CA",
-                      "postal_code": "94102",
-                      "country_code": "US"
-                    },
-                    "building_type": "RESIDENTIAL",
-                    "device_ids": [
-                      42
-                    ],
-                    "create_application": true
-                  }
-                },
-                "refresh_request": {
-                  "summary": "Refresh operation - Using cached utilities (faster)",
-                  "value": {
-                    "operation_type": "refresh",
-                    "reference_id": "external-ref-123",
-                    "create_application": true
-                  }
-                },
-                "device_names_request": {
-                  "summary": "Lookup operation - Using equipment names instead of device IDs",
-                  "value": {
-                    "operation_type": "lookup",
-                    "reference_id": "external-ref-456",
-                    "address": {
-                      "street_1": "456 Oak Ave",
-                      "city": "Portland",
-                      "state_or_province_code": "OR",
-                      "postal_code": "97201",
-                      "country_code": "US"
-                    },
-                    "building_type": "RESIDENTIAL",
-                    "device_names": [
-                      "Mitsubishi Hyper-Heat MSZ-RXT09",
-                      "Rheem ProTerraDERA2060"
-                    ],
-                    "create_application": true
-                  }
-                },
-                "override_request": {
-                  "summary": "Override operation - Replace all customer devices",
-                  "value": {
-                    "operation_type": "override",
-                    "reference_id": "external-ref-123",
-                    "building_type": "RESIDENTIAL",
-                    "device_ids": [
-                      55,
-                      66,
-                      77
-                    ],
-                    "create_application": true
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful response with aggregated incentive data",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/IncentiveAggregationResponse"
-                },
-                "examples": {
-                  "successful_calculation": {
-                    "summary": "Eligible — single processing-enabled program",
-                    "value": {
-                      "utility": {
-                        "eiaid": "14354",
-                        "name": "PacifiCorp (Oregon)"
-                      },
-                      "possible_utilities": [
-                        {
-                          "eiaid": "14354",
-                          "name": "PacifiCorp (Oregon)"
-                        }
-                      ],
-                      "address": "123 Main St, Apt 4B, Bend, OR, 97701",
-                      "building_type": "RESIDENTIAL",
-                      "customer_id": 453,
-                      "programs_evaluated": 2,
-                      "incentives": {
-                        "total_incentive_amount": 750,
-                        "total_eligible_combinations": 1,
-                        "by_program": [
-                          {
-                            "program_id": 838,
-                            "program_name": "Pacific Power – Oregon \"Charge at Home\" EV Charger Rebate",
-                            "total_incentive": 750,
-                            "eligible_combinations": 1,
-                            "processing_enabled": true,
-                            "device_tier_results": [
-                              {
-                                "device_id": 42,
-                                "device_name": "Level 2 EV Charger",
-                                "tier_id": 456,
-                                "tier_name": "Standard Rebate",
-                                "eligible": true,
-                                "incentive_amount": 750,
-                                "calculation_details": "Fixed rebate per device: $750",
-                                "failed_requirements": [],
-                                "ignored_requirements": [
-                                  "Installation must be within 90 days of application",
-                                  "Must use licensed contractor"
-                                ],
-                                "completed_requirements": []
-                              }
-                            ]
-                          }
-                        ]
-                      },
-                      "processing_summary": {
-                        "program_ids": [838],
-                        "incentive_amount": 750
-                      },
-                      "connect_url": "https://connect.incentives.leap.energy/your-company/refId/external-ref-123",
-                      "reference_id": "external-ref-123"
-                    }
-                  },
-                  "processing_not_enabled": {
-                    "summary": "Eligible — program not yet processing-enabled",
-                    "value": {
-                      "utility": {
-                        "eiaid": "17609",
-                        "name": "Sacramento Municipal Util Dist"
-                      },
-                      "possible_utilities": [
-                        {
-                          "eiaid": "17609",
-                          "name": "Sacramento Municipal Util Dist"
-                        }
-                      ],
-                      "address": "789 Oak Avenue, Sacramento, CA, 95814",
-                      "building_type": "RESIDENTIAL",
-                      "customer_id": 455,
-                      "programs_evaluated": 1,
-                      "incentives": {
-                        "total_incentive_amount": 500,
-                        "total_eligible_combinations": 1,
-                        "by_program": [
-                          {
-                            "program_id": 1001,
-                            "program_name": "SMUD Charge@Home EV Rebates",
-                            "total_incentive": 500,
-                            "eligible_combinations": 1,
-                            "processing_enabled": false,
-                            "device_tier_results": [
-                              {
-                                "device_id": 42,
-                                "device_name": "Level 2 EV Charger",
-                                "tier_id": 789,
-                                "tier_name": "Standard Tier",
-                                "eligible": true,
-                                "incentive_amount": 500,
-                                "calculation_details": "Fixed rebate per device: $500",
-                                "failed_requirements": [],
-                                "ignored_requirements": [],
-                                "completed_requirements": []
-                              }
-                            ]
-                          }
-                        ]
-                      },
-                      "processing_summary": {
-                        "program_ids": [],
-                        "incentive_amount": 0
-                      },
-                      "connect_url": "",
-                      "reference_id": "external-ref-789"
-                    }
-                  },
-                  "no_eligible_programs": {
-                    "summary": "Ineligible — no incentive available",
-                    "value": {
-                      "utility": {
-                        "eiaid": "15248",
-                        "name": "Portland General Electric Co"
-                      },
-                      "possible_utilities": [
-                        {
-                          "eiaid": "15248",
-                          "name": "Portland General Electric Co"
-                        }
-                      ],
-                      "address": "100 SW Main St, Portland, OR, 97204",
-                      "building_type": "RESIDENTIAL",
-                      "customer_id": 454,
-                      "programs_evaluated": 1,
-                      "incentives": {
-                        "total_incentive_amount": 0,
-                        "total_eligible_combinations": 0,
-                        "by_program": [
-                          {
-                            "program_id": 900,
-                            "program_name": "PGE Smart Charging – Tesla Telematics Path",
-                            "total_incentive": 0,
-                            "eligible_combinations": 0,
-                            "processing_enabled": true,
-                            "device_tier_results": [
-                              {
-                                "device_id": 123,
-                                "device_name": "Dumb Level 1 Charger",
-                                "tier_id": 501,
-                                "tier_name": "Smart Charger Tier",
-                                "eligible": false,
-                                "incentive_amount": 0,
-                                "calculation_details": "Device does not meet tier requirements",
-                                "failed_requirements": [
-                                  "Device not OCPP compliant",
-                                  "Charger level must be at least LEVEL_2"
-                                ],
-                                "ignored_requirements": [],
-                                "completed_requirements": []
-                              }
-                            ]
-                          }
-                        ]
-                      },
-                      "processing_summary": {
-                        "program_ids": [],
-                        "incentive_amount": 0
-                      },
-                      "connect_url": "",
-                      "reference_id": "external-ref-456"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad request — request body or parameters could not be accepted",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                },
-                "examples": {
-                  "missing_devices": {
-                    "summary": "Missing device_ids / device_names",
-                    "value": {
-                      "error": "device_ids or device_names array is required and must contain at least one device for lookup and override operations",
-                      "error_code": "missing_devices"
-                    }
-                  },
-                  "mutually_exclusive_device_inputs": {
-                    "summary": "Both device_ids and device_names provided",
-                    "value": {
-                      "error": "Provide either device_ids or device_names, not both.",
-                      "error_code": "mutually_exclusive_device_inputs"
-                    }
-                  },
-                  "invalid_building_type": {
-                    "summary": "Invalid building_type",
-                    "value": {
-                      "error": "Invalid building_type",
-                      "error_code": "invalid_building_type"
-                    }
-                  },
-                  "device_names_on_refresh": {
-                    "summary": "device_names not supported for refresh",
-                    "value": {
-                      "error": "device_names is not supported for refresh operations. Use device_ids or omit devices entirely.",
-                      "error_code": "device_names_not_supported_for_refresh"
-                    }
-                  },
-                  "device_names_unresolved": {
-                    "summary": "No device names could be resolved",
-                    "value": {
-                      "error": "No device names could be resolved. Please update equipment map.",
-                      "error_code": "device_names_unresolved",
-                      "details": {
-                        "unresolved_device_names": [
-                          "Unknown Model ABC",
-                          "Unknown Model XYZ"
-                        ]
-                      }
-                    }
-                  },
-                  "invalid_json_body": {
-                    "summary": "Invalid JSON body",
-                    "value": {
-                      "error": "Invalid or empty JSON body",
-                      "error_code": "invalid_json_body"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized — missing or invalid API key",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                },
-                "example": {
-                  "error": "Authorization header required"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "No utility found for the provided address (territory gap or unmapped EIA ID)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                },
-                "examples": {
-                  "no_utility_at_address": {
-                    "summary": "No utility serves this address",
-                    "value": {
-                      "error": "No utility found for this address",
-                      "error_code": "no_utility_at_address",
-                      "details": {
-                        "upstream": "utility-programs-lookup",
-                        "upstream_status": 404
-                      }
-                    }
-                  },
-                  "no_valid_eiaid": {
-                    "summary": "Matched utilities are missing EIA IDs in our catalog",
-                    "value": {
-                      "error": "Utility matched but has no valid EIA ID in catalog",
-                      "error_code": "no_valid_eiaid"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Unprocessable entity — request was syntactically valid but the address or building type could not be resolved",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                },
-                "examples": {
-                  "address_not_geocodable": {
-                    "summary": "Address could not be geocoded",
-                    "value": {
-                      "error": "Address could not be geocoded",
-                      "error_code": "address_not_geocodable"
-                    }
-                  },
-                  "building_type_unresolved": {
-                    "summary": "Building type could not be resolved during refresh",
-                    "value": {
-                      "error": "Could not resolve building_type for this customer. Include building_type explicitly.",
-                      "error_code": "building_type_unresolved"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "405": {
-            "description": "Method not allowed",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                },
-                "example": {
-                  "error": "Method not allowed"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                },
-                "examples": {
-                  "internal_error": {
-                    "summary": "Unexpected server error",
-                    "value": {
-                      "error": "Internal server error",
-                      "error_code": "internal_error"
-                    }
-                  },
-                  "legacy_internal_error": {
-                    "summary": "Generic internal error",
-                    "value": {
-                      "error": "Internal server error"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "502": {
-            "description": "Bad gateway — upstream geocoder or programs service is unavailable. Safe to retry with exponential backoff.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                },
-                "examples": {
-                  "upstream_transient": {
-                    "summary": "Transient upstream failure",
-                    "value": {
-                      "error": "Upstream programs service returned a transient error",
-                      "error_code": "upstream_transient",
-                      "details": {
-                        "upstream": "utility-programs-lookup",
-                        "upstream_status": 503
-                      }
-                    }
-                  },
-                  "upstream_infra": {
-                    "summary": "Upstream infrastructure error",
-                    "value": {
-                      "error": "Upstream programs service returned an infrastructure error",
-                      "error_code": "upstream_infra",
-                      "details": {
-                        "upstream": "utility-programs-lookup",
-                        "upstream_status": 500
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "x-hidden": true
+        }
       }
     },
     "/applications/{application_id}": {
       "get": {
-        "summary": "Get an application by ID",
+        "summary": "Get application",
         "description": "Retrieves a complete application including customer information and all associated\ncustomer devices. The response includes nested customer and device data.\n\n**Authentication:**\nRequires API key authentication via `x-api-key` header.\n\n**Organization Verification:**\nThe application must belong to your organization. Returns 403 Forbidden if the application belongs to a different organization.\n",
         "operationId": "getApplication",
+        "tags": [
+          "applications"
+        ],
         "parameters": [
           {
             "name": "application_id",
@@ -748,7 +257,7 @@
                   "status": "in_progress",
                   "rebate_type": "instant",
                   "payee_type": "customer",
-                  "total_requested_amount": 150.0,
+                  "total_requested_amount": 150,
                   "agree_terms": true,
                   "customer_signature": true,
                   "customer_sig_date": "2025-01-15",
@@ -778,7 +287,7 @@
                         "device_id": 240,
                         "quantity": 1,
                         "purchase_price": 599.99,
-                        "installation_cost": 450.0,
+                        "installation_cost": 450,
                         "total_project_cost": 1049.99,
                         "purchase_date": "2025-01-05",
                         "installation_date": "2025-01-10",
@@ -792,7 +301,8 @@
                           "model_name": "Smart Splitter",
                           "manufacturer": "ChargePoint",
                           "manufacture_year": 2024,
-                          "device_category_name": "EV Charger"
+                          "device_category_name": "EV Charger",
+                          "device_subcategory": "SPLITTER"
                         }
                       }
                     ]
@@ -832,13 +342,15 @@
           "500": {
             "$ref": "#/components/responses/InternalServerError"
           }
-        },
-        "x-hidden": true
+        }
       },
       "patch": {
-        "summary": "Update application by application ID",
+        "summary": "Update application",
         "description": "Updates an application identified by application ID. Supports updating application fields, customer information, and customer devices.\n\n**Authentication:**\nRequires API key authentication via `x-api-key` header. The application must belong to your organization.\n\n**Application ID:**\nUse the `application_id` path parameter to identify which application to update. The API verifies the application belongs to your organization.\n\n**Request Structure:**\nMatches the GET `/applications/{id}` response structure (without protected fields):\n- Application fields at top level (e.g., `rebate_type`, `approval_date`)\n- `customer` (optional): Customer fields to update\n- `customer_devices` (optional): Array of devices to update (must include `id`)\n\n**Protected Fields:**\nThe following fields cannot be updated: `id`, `customer_id`, `organization_id`, `program_id`, `status`, `created_at`, `updated_at`\n\n**Dry Run:**\nSet `dryRun=true` as a query parameter to validate the request without applying changes.\n\n**Partial Update Behavior:**\n- Only include fields you want to change\n- Omitted fields will keep their current values\n- Set a field to `null` to clear its value (where nullable)\n\n**Customer Devices:**\n- Must include `id` (required) to identify the device\n- Missing `id` will return 400 Bad Request with error code `invalid_body`\n\n**Status Field:**\nThe `status` field is read-only for organizations and cannot be updated through this endpoint.\n\nAll updates are transactional - if any part fails, the entire operation is rolled back.\n",
         "operationId": "patchApplicationById",
+        "tags": [
+          "applications"
+        ],
         "parameters": [
           {
             "name": "application_id",
@@ -1137,8 +649,7 @@
             "label": "C#",
             "source": "using System;\nusing System.Net.Http;\nusing System.Text;\nusing System.Text.Json;\nusing System.Threading.Tasks;\n\nvar client = new HttpClient();\nvar url = \"https://api.incentives.leap.energy/alpha/applications/123\";\n\nvar payload = new {\n    approval_date = \"2025-01-25\",\n    customer = new {\n        email = \"newemail@example.com\"\n    }\n};\n\nvar content = new StringContent(\n    JsonSerializer.Serialize(payload),\n    Encoding.UTF8,\n    \"application/json\"\n);\n\nvar request = new HttpRequestMessage(new HttpMethod(\"PATCH\"), url) {\n    Content = content\n};\nrequest.Headers.Add(\"x-api-key\", \"leap_live_...\");\n\nvar response = await client.SendAsync(request);\nvar result = await response.Content.ReadAsStringAsync();\nConsole.WriteLine(result);"
           }
-        ],
-        "x-hidden": true
+        ]
       }
     },
     "/applications/attachments": {
@@ -1146,6 +657,9 @@
         "summary": "List attachments",
         "description": "List attachments for one or more applications.\n\n**Authentication:**\nRequires API key authentication via `x-api-key` header. The application must belong to your organization.\n\n**Query Parameters:**\n- Use `application_id` for a single application (requires `attachment_type`)\n- Use `application_ids` for bulk listing (comma-separated, `attachment_type` is optional)",
         "operationId": "listAttachments",
+        "tags": [
+          "applications"
+        ],
         "parameters": [
           {
             "name": "application_id",
@@ -1189,6 +703,7 @@
                 "VEHICLE_PURCHASE",
                 "UTILITY_BILL",
                 "VEHICLE_REGISTRATION",
+                "SIGNATURE",
                 "TARIFF_CONFIRMATION"
               ]
             },
@@ -1228,13 +743,15 @@
           "500": {
             "$ref": "#/components/responses/InternalServerError"
           }
-        },
-        "x-hidden": true
+        }
       },
       "post": {
-        "summary": "Create signed upload URL for attachment",
+        "summary": "Upload attachment",
         "description": "Creates a signed upload URL for uploading an attachment to the application. After receiving the signed URL, upload the file using a PUT request, then commit using the commit endpoint.\n\n**Authentication:**\nRequires API key authentication via `x-api-key` header. The application must belong to your organization.\n\n**Application ID:**\nUse the `application_id` query parameter to identify which application to attach the file to. The API verifies the application belongs to your organization.",
         "operationId": "createAttachmentUploadUrl",
+        "tags": [
+          "applications"
+        ],
         "x-codeSamples": [
           {
             "lang": "curl",
@@ -1315,6 +832,7 @@
                       "VEHICLE_PURCHASE",
                       "UTILITY_BILL",
                       "VEHICLE_REGISTRATION",
+                      "SIGNATURE",
                       "TARIFF_CONFIRMATION"
                     ],
                     "description": "Type of attachment being uploaded",
@@ -1388,8 +906,7 @@
           "500": {
             "$ref": "#/components/responses/InternalServerError"
           }
-        },
-        "x-hidden": true
+        }
       }
     },
     "/applications/attachments/{id}/download": {
@@ -1397,6 +914,9 @@
         "summary": "Download attachment",
         "description": "Get a signed download URL for an attachment. The URL is valid for 1 hour.\n\n**Authentication:**\nRequires API key authentication via `x-api-key` header. The application must belong to your organization.\n\nThe signed URL is valid for 1 hour. The response includes three fields (`downloadUrl`, `url`, `file_url`) all containing the same URL for compatibility.",
         "operationId": "downloadAttachment",
+        "tags": [
+          "applications"
+        ],
         "parameters": [
           {
             "name": "id",
@@ -1479,8 +999,7 @@
           "500": {
             "$ref": "#/components/responses/InternalServerError"
           }
-        },
-        "x-hidden": true
+        }
       }
     },
     "/applications/attachments/{id}": {
@@ -1488,6 +1007,9 @@
         "summary": "Delete attachment",
         "description": "Delete an attachment from storage and remove the database record.\n\n**Authentication:**\nRequires API key authentication via `x-api-key` header. The application must belong to your organization.\n\n**Warning:**\nThis operation is **permanent** and cannot be undone. The file will be deleted from storage and the database record will be removed.",
         "operationId": "deleteAttachment",
+        "tags": [
+          "applications"
+        ],
         "parameters": [
           {
             "name": "id",
@@ -1544,15 +1066,17 @@
           "500": {
             "$ref": "#/components/responses/InternalServerError"
           }
-        },
-        "x-hidden": true
+        }
       }
     },
     "/applications/attachments/commit": {
       "post": {
-        "summary": "Commit uploaded attachment",
+        "summary": "Commit attachment upload",
         "description": "Commits an attachment after the file has been successfully uploaded to the signed URL from the create endpoint.\n\n**Authentication:**\nRequires API key authentication via `x-api-key` header. The application must belong to your organization.\n\n**Application ID:**\nUse the `application_id` query parameter to identify which application the attachment belongs to. The API verifies the application belongs to your organization.\n\n**Path Format:**\nFor organization authentication, the path should use the `app-{application_id}/` prefix format (e.g., `app-123/uuid-filename.pdf`).",
         "operationId": "commitAttachment",
+        "tags": [
+          "applications"
+        ],
         "x-codeSamples": [
           {
             "lang": "curl",
@@ -1632,6 +1156,7 @@
                       "VEHICLE_PURCHASE",
                       "UTILITY_BILL",
                       "VEHICLE_REGISTRATION",
+                      "SIGNATURE",
                       "TARIFF_CONFIRMATION"
                     ],
                     "description": "Type of attachment",
@@ -1729,362 +1254,7 @@
           "500": {
             "$ref": "#/components/responses/InternalServerError"
           }
-        },
-        "x-hidden": true
-      }
-    },
-    "/batch-lookups": {
-      "post": {
-        "summary": "Create Batch Job",
-        "description": "Create a new batch job with multiple lookup items. Each item will be processed independently with its own device_ids.\n\n**Processing:**\n- Items are queued immediately with status `pending`\n- Background worker processes items automatically (every 5 minutes)\n- You can poll the job status or manually trigger the worker\n\n**Validation:**\n- All items are validated before job creation\n- Duplicate `reference_id` values within a batch are rejected\n- Invalid items are reported with specific error messages\n\n**Limits:**\n- Maximum 10,000 items per batch\n- Each item can have different `device_ids`\n- Each item can have different `create_application` setting",
-        "operationId": "createBatchJob",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateBatchRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Batch job created successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CreateBatchResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Validation error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BatchError"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized - missing or invalid authentication"
-          },
-          "500": {
-            "description": "Internal server error"
-          }
-        },
-        "x-codeSamples": [
-          {
-            "lang": "curl",
-            "label": "cURL",
-            "source": "curl -X POST \"https://api.incentives.leap.energy/alpha/batch-lookups\" -H \"x-api-key: leap_live_...\" -H \"Content-Type: application/json\" -d '{\"items\":[{\"reference_id\":\"deal-001\",\"address\":{\"street_1\":\"123 Main St\",\"city\":\"San Francisco\",\"state_or_province_code\":\"CA\",\"postal_code\":\"94102\",\"country_code\":\"US\"},\"building_type\":\"RESIDENTIAL\",\"device_ids\":[1]}]}'"
-          }
-        ],
-        "x-hidden": true
-      },
-      "get": {
-        "summary": "List Batch Jobs",
-        "description": "List all batch jobs for your organization with optional filtering and pagination.",
-        "operationId": "listBatchJobs",
-        "parameters": [
-          {
-            "name": "status",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "enum": [
-                "pending",
-                "processing",
-                "completed",
-                "failed",
-                "cancelled"
-              ]
-            }
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "default": 20,
-              "minimum": 1,
-              "maximum": 200
-            }
-          },
-          {
-            "name": "offset",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "default": 0,
-              "minimum": 0
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "List of batch jobs",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/JobListResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "500": {
-            "description": "Internal server error"
-          }
-        },
-        "x-hidden": true
-      }
-    },
-    "/batch-lookups/{job_id}": {
-      "get": {
-        "summary": "Get Batch Job Status",
-        "description": "Get detailed status and progress for a specific batch job.",
-        "operationId": "getBatchJob",
-        "parameters": [
-          {
-            "name": "job_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "include_items",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "boolean",
-              "default": false
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Job details",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BatchJob"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Job not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BatchError"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized"
-          }
-        },
-        "x-hidden": true
-      }
-    },
-    "/batch-lookups/{job_id}/items": {
-      "get": {
-        "summary": "Get Batch Job Items",
-        "description": "Get all items (lookups) for a batch job with optional filtering and pagination.",
-        "operationId": "getBatchJobItems",
-        "parameters": [
-          {
-            "name": "job_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "status",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "enum": [
-                "pending",
-                "processing",
-                "completed",
-                "failed"
-              ]
-            }
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "default": 50,
-              "minimum": 1,
-              "maximum": 500
-            }
-          },
-          {
-            "name": "offset",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "default": 0,
-              "minimum": 0
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "List of queue items",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ItemListResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Job not found"
-          },
-          "401": {
-            "description": "Unauthorized"
-          }
-        },
-        "x-hidden": true
-      }
-    },
-    "/batch-lookups/{job_id}/cancel": {
-      "post": {
-        "summary": "Cancel Batch Job",
-        "description": "Cancel a pending or processing batch job.",
-        "operationId": "cancelBatchJob",
-        "parameters": [
-          {
-            "name": "job_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Job cancelled successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CancelJobResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Cannot cancel job",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BatchError"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Job not found"
-          },
-          "401": {
-            "description": "Unauthorized"
-          }
-        },
-        "x-hidden": true
-      }
-    },
-    "/webhook-config": {
-      "get": {
-        "summary": "Get webhook configuration",
-        "description": "Return the authenticated organization's webhook URL and optional custom field names. If no webhook is configured, `url` is null.",
-        "operationId": "getWebhookConfig",
-        "responses": {
-          "200": {
-            "description": "Current webhook config",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/WebhookConfig"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized"
-          }
-        },
-        "x-hidden": true
-      },
-      "put": {
-        "summary": "Update webhook configuration",
-        "description": "Set or clear webhook URL and/or field names. Partial update: omit fields to leave them unchanged. Use `url: null` or empty string to clear. URL must use HTTPS.",
-        "operationId": "putWebhookConfig",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/WebhookConfigUpdate"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Config updated",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/WebhookConfig"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Validation error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/WebhookError"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "500": {
-            "description": "Failed to save webhook config"
-          }
-        },
-        "x-hidden": true
+        }
       }
     }
   },
@@ -2094,13 +1264,7 @@
         "type": "apiKey",
         "in": "header",
         "name": "x-api-key",
-        "description": "API key for authentication. Include your Leap API key in the `x-api-key` header: `x-api-key: leap_live_...`\n"
-      },
-      "BearerAuth": {
-        "type": "http",
-        "scheme": "bearer",
-        "bearerFormat": "JWT",
-        "description": "Clerk JWT token for portal authentication"
+        "description": "Your Leap API key. Send it in the `x-api-key` header: `x-api-key: leap_live_...`."
       }
     },
     "schemas": {
@@ -2202,7 +1366,7 @@
           "reference_id": {
             "type": "string",
             "nullable": true,
-            "description": "Your unique identifier for the customer in your system. Must be unique per customer within your organization and matches the value you use with the incentives API.",
+            "description": "Reference ID for the customer within the organization (from customer_organizations)",
             "example": "external-ref-123"
           },
           "customer_device_id": {
@@ -2252,7 +1416,7 @@
             "format": "decimal",
             "nullable": true,
             "description": "Total rebate amount being requested",
-            "example": 1500.0
+            "example": 1500
           },
           "status": {
             "type": "string",
@@ -2323,456 +1487,6 @@
           }
         }
       },
-      "IncentiveRequest": {
-        "type": "object",
-        "required": [
-          "operation_type",
-          "reference_id"
-        ],
-        "properties": {
-          "operation_type": {
-            "type": "string",
-            "description": "Operation type: 'lookup' for new calculations with geocoding, 'refresh' for using cached utility data (faster), 'override' for replacing all customer devices",
-            "enum": [
-              "lookup",
-              "refresh",
-              "override"
-            ],
-            "example": "lookup"
-          },
-          "reference_id": {
-            "type": "string",
-            "description": "Your internal reference ID for tracking this customer within your organization (unique per organization)",
-            "example": "external-ref-123"
-          },
-          "address": {
-            "type": "object",
-            "description": "Customer's address information. Required for 'lookup' operation, optional for 'refresh' and 'override' operations (uses stored address if not provided)",
-            "properties": {
-              "street_1": {
-                "type": "string",
-                "description": "Street address line 1 (primary street address). Required for 'lookup' operation.",
-                "example": "123 Main St"
-              },
-              "street_2": {
-                "type": "string",
-                "description": "Street address line 2 (apartment, suite, unit, etc.). Optional.",
-                "example": "Apt 4B"
-              },
-              "city": {
-                "type": "string",
-                "description": "City name. Required for 'lookup' operation.",
-                "example": "San Francisco"
-              },
-              "state_or_province_code": {
-                "type": "string",
-                "description": "State or province code (2-letter abbreviation). Required for 'lookup' operation.",
-                "example": "CA"
-              },
-              "postal_code": {
-                "type": "string",
-                "description": "Postal/ZIP code. Required for 'lookup' operation.",
-                "example": "94102"
-              },
-              "country_code": {
-                "type": "string",
-                "description": "Country code (2-letter ISO code). Required for 'lookup' operation.",
-                "example": "US"
-              }
-            }
-          },
-          "building_type": {
-            "type": "string",
-            "description": "Type of building for which to calculate incentives. Required for 'lookup' and 'override' operations, optional for 'refresh' (uses stored building_type_id if not provided)",
-            "enum": [
-              "RESIDENTIAL",
-              "MULTIFAMILY",
-              "MANUFACTURED_HOME",
-              "COMMERCIAL"
-            ],
-            "example": "RESIDENTIAL"
-          },
-          "device_ids": {
-            "type": "array",
-            "description": "Array of Leap device IDs to check incentives for. Required for 'lookup' and 'override' operations unless device_names is provided. Optional for 'refresh' (uses existing devices if not provided). Can contain duplicates. Cannot be combined with device_names.",
-            "items": {
-              "type": "integer"
-            },
-            "example": [
-              32,
-              44,
-              44,
-              44
-            ]
-          },
-          "device_names": {
-            "type": "array",
-            "description": "Array of your equipment/product names to check incentives for. The API resolves these to Leap device IDs using your organization's equipment map. Required for 'lookup' and 'override' operations unless device_ids is provided. Not supported for 'refresh' operations. Cannot be combined with device_ids.",
-            "items": {
-              "type": "string"
-            },
-            "example": [
-              "Mitsubishi Hyper-Heat MSZ-RXT09",
-              "Rheem ProTerraDERA2060"
-            ]
-          },
-          "create_application": {
-            "type": "boolean",
-            "description": "Whether to create/update application records and return a connect_url",
-            "example": true
-          },
-          "webhook_custom_fields": {
-            "type": "object",
-            "additionalProperties": {
-              "type": "string"
-            },
-            "description": "Optional custom fields to include in the webhook payload when your organization has a webhook URL configured (e.g. Project ID, Record ID). Only keys allowed by your org's webhook `field_names` config are merged into the POST body.",
-            "example": {
-              "Project ID": "proj-123",
-              "Record ID": "row-5"
-            }
-          },
-          "customer": {
-            "type": "object",
-            "description": "Supplementary customer fields applied at customer creation time. Only honored on `lookup` operations that create a new customer — ignored for existing customers and for `refresh`/`override`. Use the Applications PATCH endpoint to update an existing customer's fields.",
-            "additionalProperties": true,
-            "example": {
-              "first_name": "Jane",
-              "last_name": "Doe",
-              "email": "jane@example.com",
-              "phone": "415-555-0100"
-            }
-          },
-          "customer_devices": {
-            "type": "array",
-            "description": "Supplementary device fields applied at device creation time, indexed positionally to `device_ids`. Only honored on `lookup` operations that create new customer devices — ignored for existing customers and for `refresh`/`override`. Each entry is partial; common fields include `purchase_price`, `purchase_date`, `installation_date`, `contractor_name`. Use the Applications PATCH endpoint to update existing device fields.",
-            "items": {
-              "type": "object",
-              "additionalProperties": true
-            },
-            "example": [
-              { "purchase_price": 1500, "installation_date": "2026-03-01" },
-              { "purchase_price": 2000 }
-            ]
-          }
-        }
-      },
-      "IncentiveAggregationResponse": {
-        "type": "object",
-        "required": [
-          "utility",
-          "possible_utilities",
-          "address",
-          "building_type",
-          "customer_id",
-          "reference_id",
-          "programs_evaluated",
-          "incentives",
-          "processing_summary",
-          "connect_url"
-        ],
-        "properties": {
-          "utility": {
-            "type": "object",
-            "description": "Information about the utility serving the address",
-            "required": [
-              "eiaid",
-              "name"
-            ],
-            "properties": {
-              "eiaid": {
-                "type": "string",
-                "description": "EIA utility identification number",
-                "example": "14354"
-              },
-              "name": {
-                "type": "string",
-                "description": "Name of the utility company",
-                "example": "PacifiCorp (Oregon)"
-              }
-            }
-          },
-          "address": {
-            "type": "string",
-            "description": "Formatted address string built from the request address fields",
-            "example": "123 Main St, Apt 4B, San Francisco, CA, 94102"
-          },
-          "possible_utilities": {
-            "type": "array",
-            "description": "All utilities whose service territory contains this address. The primary `utility` is selected from this list; the others are returned so partners can see when an address falls in an overlap region.",
-            "items": {
-              "type": "object",
-              "required": [
-                "eiaid",
-                "name"
-              ],
-              "properties": {
-                "eiaid": {
-                  "type": "string",
-                  "description": "EIA utility identification number",
-                  "example": "14354"
-                },
-                "name": {
-                  "type": "string",
-                  "description": "Name of the utility company",
-                  "example": "PacifiCorp (Oregon)"
-                }
-              }
-            }
-          },
-          "building_type": {
-            "type": "string",
-            "description": "The building type that was used for the calculation",
-            "enum": [
-              "RESIDENTIAL",
-              "MULTIFAMILY",
-              "MANUFACTURED_HOME",
-              "COMMERCIAL"
-            ],
-            "example": "RESIDENTIAL"
-          },
-          "customer_id": {
-            "type": "integer",
-            "description": "Leap's internal customer ID (created or found based on `reference_id` and address)",
-            "example": 453
-          },
-          "reference_id": {
-            "type": "string",
-            "description": "Your internal reference ID that was provided in the request, echoed back for correlation",
-            "example": "external-ref-123"
-          },
-          "connect_url": {
-            "type": "string",
-            "description": "Branded Connect URL where the customer completes their application. Populated only when `create_application=true` AND `incentives.total_incentive_amount > 0`; otherwise returned as an empty string.",
-            "example": "https://connect.incentives.leap.energy/your-company/refId/external-ref-123"
-          },
-          "programs_evaluated": {
-            "type": "integer",
-            "description": "Number of programs that were evaluated for this address + building type combination",
-            "example": 2
-          },
-          "incentives": {
-            "type": "object",
-            "required": [
-              "total_incentive_amount",
-              "total_eligible_combinations",
-              "by_program"
-            ],
-            "properties": {
-              "total_incentive_amount": {
-                "type": "number",
-                "format": "float",
-                "description": "Total incentive amount across all evaluated programs (in USD). Includes programs whose `processing_enabled` is currently false — use `processing_summary.incentive_amount` for the amount Leap is currently set up to process applications for.",
-                "example": 2250.0
-              },
-              "total_eligible_combinations": {
-                "type": "integer",
-                "description": "Total number of eligible device-tier combinations across all programs",
-                "example": 4
-              },
-              "by_program": {
-                "type": "array",
-                "description": "Per-program breakdown of incentives and eligibility",
-                "items": {
-                  "$ref": "#/components/schemas/ProgramIncentive"
-                }
-              }
-            }
-          },
-          "processing_summary": {
-            "type": "object",
-            "description": "Subset of `incentives` covering only programs that Leap is currently set up to process applications for (i.e. `by_program[].processing_enabled === true`). Use this to decide whether to surface the Connect URL and a concrete offer amount to the customer — programs that aren't processing-enabled may still be listed in `by_program` but Leap cannot complete the application for them today.",
-            "required": [
-              "program_ids",
-              "incentive_amount"
-            ],
-            "properties": {
-              "program_ids": {
-                "type": "array",
-                "description": "IDs of programs from `by_program` whose `processing_enabled` is true",
-                "items": {
-                  "type": "integer"
-                },
-                "example": [838]
-              },
-              "incentive_amount": {
-                "type": "number",
-                "format": "float",
-                "description": "Sum of `total_incentive` across processing-enabled programs (in USD)",
-                "example": 750.0
-              }
-            }
-          },
-          "warnings": {
-            "type": "object",
-            "description": "Present when device_names was used and some names could not be resolved. The API proceeds with the resolved devices and reports unresolved names here.",
-            "properties": {
-              "unresolved_device_names": {
-                "type": "array",
-                "description": "Equipment names that could not be matched in your organization's equipment map",
-                "items": {
-                  "type": "string"
-                },
-                "example": [
-                  "Unknown Model XYZ"
-                ]
-              },
-              "message": {
-                "type": "string",
-                "description": "Human-readable summary of the warning",
-                "example": "1 device name(s) could not be resolved and were skipped."
-              }
-            }
-          }
-        }
-      },
-      "ProgramIncentive": {
-        "type": "object",
-        "required": [
-          "program_id",
-          "program_name",
-          "total_incentive",
-          "eligible_combinations",
-          "processing_enabled",
-          "device_tier_results"
-        ],
-        "properties": {
-          "program_id": {
-            "type": "integer",
-            "description": "Unique identifier for the program",
-            "example": 838
-          },
-          "program_name": {
-            "type": "string",
-            "description": "Name of the incentive program",
-            "example": "Pacific Power \u2013 Oregon \"Charge at Home\" EV Charger Rebate"
-          },
-          "total_incentive": {
-            "type": "number",
-            "format": "float",
-            "description": "Total incentive amount for this program (in USD)",
-            "example": 750.0
-          },
-          "eligible_combinations": {
-            "type": "integer",
-            "description": "Number of eligible device-tier combinations for this program",
-            "example": 1
-          },
-          "processing_enabled": {
-            "type": "boolean",
-            "description": "Whether Leap is currently set up to process applications for this program. `true` when the program's form requirements have been fully captured; `false` when the program is still being onboarded. Eligibility and incentive amounts are still calculated when `false` \u2014 only the ability to submit an application is gated. Programs counted in `processing_summary` are exactly those with `processing_enabled = true`.",
-            "example": true
-          },
-          "device_tier_results": {
-            "type": "array",
-            "description": "Detailed results for each device-tier combination",
-            "items": {
-              "$ref": "#/components/schemas/DeviceTierResult"
-            }
-          }
-        }
-      },
-      "DeviceTierResult": {
-        "type": "object",
-        "required": [
-          "device_id",
-          "device_name",
-          "tier_id",
-          "tier_name",
-          "eligible",
-          "incentive_amount",
-          "failed_requirements",
-          "ignored_requirements",
-          "completed_requirements"
-        ],
-        "properties": {
-          "device_id": {
-            "type": "integer",
-            "description": "Unique identifier for the device type",
-            "example": 123
-          },
-          "device_name": {
-            "type": "string",
-            "description": "Name of the device type",
-            "example": "Level 2 EV Charger"
-          },
-          "tier_id": {
-            "type": "integer",
-            "description": "Unique identifier for the incentive tier",
-            "example": 456
-          },
-          "tier_name": {
-            "type": "string",
-            "description": "Name of the incentive tier",
-            "example": "Standard Rebate"
-          },
-          "eligible": {
-            "type": "boolean",
-            "description": "Whether this device-tier combination is eligible for the customer.\nTrue if all eligibility checks passed and incentive amount > 0.\n",
-            "example": true
-          },
-          "incentive_amount": {
-            "type": "number",
-            "format": "float",
-            "description": "Incentive amount for this device-tier combination (in USD)",
-            "example": 750.0
-          },
-          "calculation_details": {
-            "type": "string",
-            "description": "Human-readable explanation of how the incentive amount was derived for this device-tier combination. Format varies per program — partners should treat this as opaque diagnostic text, not parse it.",
-            "example": "Fixed rebate per device: $750"
-          },
-          "failed_requirements": {
-            "type": "array",
-            "description": "List of eligibility requirements that failed for this combination.\nEmpty if eligible is true.\n",
-            "items": {
-              "type": "string"
-            },
-            "example": []
-          },
-          "ignored_requirements": {
-            "type": "array",
-            "description": "List of eligibility requirements that were ignored/skipped.\nProvided for transparency.\n",
-            "items": {
-              "type": "string"
-            },
-            "example": []
-          },
-          "completed_requirements": {
-            "type": "array",
-            "description": "List of eligibility requirements that were completed/passed.",
-            "items": {
-              "type": "string"
-            },
-            "example": []
-          }
-        }
-      },
-      "ErrorResponse": {
-        "type": "object",
-        "required": [
-          "error"
-        ],
-        "properties": {
-          "error": {
-            "type": "string",
-            "description": "Human-readable error message, suitable for logs or support tickets. The message may be revised over time — branch on `error_code` for stable matching.",
-            "example": "No utility found for this address"
-          },
-          "error_code": {
-            "type": "string",
-            "description": "Stable, typed identifier for the failure mode. Use this (not `error`) when building retry logic or branching. See the [Incentives API Guide](/incentives-guide#error-code-reference) for the full table of codes, status mappings, and retryability. A small number of legacy validation paths still return `4xx` without this field — fall back to matching on `error` when absent.",
-            "example": "no_utility_at_address"
-          },
-          "details": {
-            "description": "Optional diagnostic payload whose shape varies by `error_code`. Safe to log; never contains PII. For `upstream_*` codes, includes `upstream` (component name) and `upstream_status` (HTTP status) so Leap support can triage tickets without joining back to logs. For `device_names`-related failures, includes `unresolved_device_names`.",
-            "example": {
-              "upstream": "utility-programs-lookup",
-              "upstream_status": 404
-            }
-          }
-        }
-      },
       "Error": {
         "type": "object",
         "required": [
@@ -2830,7 +1544,7 @@
           "reference_id": {
             "type": "string",
             "nullable": true,
-            "description": "Your unique identifier for the customer in your system. Must be unique per customer within your organization and matches the value you use with the incentives API.",
+            "description": "Reference ID for the customer within the organization (from customer_organizations). Matches the reference_id used with the incentives API.",
             "example": "external-ref-123"
           },
           "customer_device_id": {
@@ -2880,7 +1594,7 @@
             "format": "decimal",
             "nullable": true,
             "description": "Total rebate amount being requested",
-            "example": 150.0
+            "example": 150
           },
           "recaptcha_token": {
             "type": "string",
@@ -3306,6 +2020,7 @@
               "VEHICLE_PURCHASE",
               "UTILITY_BILL",
               "VEHICLE_REGISTRATION",
+              "SIGNATURE",
               "TARIFF_CONFIRMATION"
             ],
             "description": "Type of attachment",
@@ -3388,7 +2103,7 @@
             "format": "decimal",
             "nullable": true,
             "description": "Cost of installation",
-            "example": 450.0
+            "example": 450
           },
           "total_project_cost": {
             "type": "number",
@@ -3482,12 +2197,6 @@
             "nullable": true,
             "description": "Permit number",
             "example": "PMT-2025-001"
-          },
-          "vehicle_year": {
-            "type": "integer",
-            "nullable": true,
-            "description": "Year of vehicle (for EV chargers)",
-            "example": 2023
           },
           "vehicle_vin": {
             "type": "string",
@@ -3639,6 +2348,12 @@
                 "nullable": true,
                 "description": "Name of the device category (e.g., EV Charger, HVAC, Water Heater)",
                 "example": "EV Charger"
+              },
+              "device_subcategory": {
+                "type": "string",
+                "nullable": true,
+                "description": "Subcategory of the device (e.g., SPLITTER, LEVEL_2)",
+                "example": "SPLITTER"
               }
             }
           },
@@ -3653,30 +2368,6 @@
             "format": "date-time",
             "description": "Timestamp when record was last updated",
             "example": "2025-01-15T14:30:00Z"
-          }
-        }
-      },
-      "ApplicationPatchRequest": {
-        "type": "object",
-        "description": "Request body for bulk updating applications via reference ID.\nAll top-level fields are optional - only include sections you want to modify.\n",
-        "properties": {
-          "customer": {
-            "$ref": "#/components/schemas/CustomerPatchRequest",
-            "description": "Customer fields to update (optional)"
-          },
-          "customer_devices": {
-            "type": "array",
-            "description": "Array of customer devices to update. Each device must include 'id' to identify the device.",
-            "items": {
-              "$ref": "#/components/schemas/CustomerDevicePatchRequest"
-            }
-          },
-          "applications": {
-            "type": "array",
-            "description": "Array of applications to update. Each application must include 'id' to identify it.",
-            "items": {
-              "$ref": "#/components/schemas/ApplicationFieldsUpdate"
-            }
           }
         }
       },
@@ -3752,176 +2443,6 @@
             "items": {
               "$ref": "#/components/schemas/CustomerDevicePatchRequest"
             }
-          }
-        }
-      },
-      "ApplicationFieldsUpdate": {
-        "type": "object",
-        "required": [
-          "id"
-        ],
-        "description": "Application fields to update. 'id' is required to identify which application to update.",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "description": "Application ID to update (required)",
-            "example": 123
-          },
-          "rebate_type": {
-            "type": "string",
-            "nullable": true,
-            "description": "Type of rebate being requested"
-          },
-          "payee_type": {
-            "type": "string",
-            "enum": [
-              "customer",
-              "contractor",
-              "instant"
-            ],
-            "nullable": true,
-            "description": "Who will receive the rebate payment"
-          },
-          "submission_date": {
-            "type": "string",
-            "format": "date",
-            "nullable": true,
-            "description": "Date the application was submitted",
-            "example": "2025-01-20"
-          },
-          "approval_date": {
-            "type": "string",
-            "format": "date",
-            "nullable": true,
-            "description": "Date the application was approved",
-            "example": "2025-01-25"
-          },
-          "total_requested_amount": {
-            "type": "number",
-            "format": "decimal",
-            "nullable": true,
-            "description": "Total rebate amount being requested"
-          },
-          "recaptcha_token": {
-            "type": "string",
-            "nullable": true,
-            "description": "reCAPTCHA token for bot prevention"
-          },
-          "agree_terms": {
-            "type": "boolean",
-            "nullable": true,
-            "description": "Whether customer agreed to terms and conditions"
-          },
-          "customer_signature": {
-            "type": "boolean",
-            "nullable": true,
-            "description": "Whether customer has signed the application"
-          },
-          "customer_sig_date": {
-            "type": "string",
-            "format": "date",
-            "nullable": true,
-            "description": "Date of customer signature"
-          },
-          "contractor_signature": {
-            "type": "boolean",
-            "nullable": true,
-            "description": "Whether contractor has signed the application"
-          },
-          "contractor_sig_date": {
-            "type": "string",
-            "nullable": true,
-            "description": "Date of contractor signature"
-          },
-          "project_name": {
-            "type": "string",
-            "maxLength": 255,
-            "nullable": true,
-            "description": "Name/description of the project"
-          },
-          "eligibility_category": {
-            "type": "string",
-            "enum": [
-              "1A",
-              "1B",
-              "1C",
-              "2"
-            ],
-            "nullable": true,
-            "description": "Eligibility category for tiered programs"
-          },
-          "income_backup_onfile": {
-            "type": "boolean",
-            "nullable": true,
-            "description": "Whether income verification documentation is on file"
-          },
-          "neat_sir_verified": {
-            "type": "boolean",
-            "nullable": true,
-            "description": "Whether NEAT/SIR verification is complete"
-          },
-          "proposed_measures": {
-            "type": "object",
-            "nullable": true,
-            "description": "JSONB object containing proposed energy efficiency measures"
-          },
-          "prepay_amount": {
-            "type": "number",
-            "format": "decimal",
-            "nullable": true,
-            "description": "Amount to be prepaid to contractor"
-          },
-          "authorize_contractor": {
-            "type": "boolean",
-            "nullable": true,
-            "description": "Authorization to pay contractor directly"
-          },
-          "authorize_payee": {
-            "type": "boolean",
-            "nullable": true,
-            "description": "Authorization to pay specified payee"
-          },
-          "utility_account_attestation": {
-            "type": "boolean",
-            "nullable": true,
-            "description": "Attestation that applicant is utility account holder"
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "not_started",
-              "in_progress",
-              "awaiting_customer",
-              "awaiting_partner",
-              "completed",
-              "submitted",
-              "approved",
-              "rejected"
-            ],
-            "description": "Current status of the application"
-          },
-          "equipment_complete": {
-            "type": "boolean",
-            "nullable": true,
-            "description": "Whether all equipment documentation is complete"
-          },
-          "permit_complete": {
-            "type": "boolean",
-            "nullable": true,
-            "description": "Whether all permit documentation is complete"
-          },
-          "utility_complete": {
-            "type": "boolean",
-            "nullable": true,
-            "description": "Whether all utility documentation is complete"
-          },
-          "customer_device_id": {
-            "type": "array",
-            "items": {
-              "type": "integer"
-            },
-            "nullable": true,
-            "description": "Array of customer device IDs associated with this application"
           }
         }
       },
@@ -4178,10 +2699,6 @@
             "type": "string",
             "nullable": true
           },
-          "vehicle_year": {
-            "type": "integer",
-            "nullable": true
-          },
           "vehicle_vin": {
             "type": "string",
             "nullable": true
@@ -4263,439 +2780,6 @@
           "coil_make_model": {
             "type": "string",
             "nullable": true
-          }
-        }
-      },
-      "BatchError": {
-        "type": "object",
-        "properties": {
-          "error": {
-            "type": "string",
-            "description": "Error message"
-          },
-          "invalid_items": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "index": {
-                  "type": "integer"
-                },
-                "error": {
-                  "type": "string"
-                }
-              }
-            },
-            "description": "Details about invalid items (when creating batch)"
-          },
-          "duplicates": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Duplicate reference_ids found (when creating batch)"
-          }
-        }
-      },
-      "Address": {
-        "type": "object",
-        "required": [
-          "street_1",
-          "city",
-          "state_or_province_code",
-          "postal_code",
-          "country_code"
-        ],
-        "properties": {
-          "street_1": {
-            "type": "string",
-            "example": "123 Main Street"
-          },
-          "street_2": {
-            "type": "string",
-            "example": "Apt 4B"
-          },
-          "city": {
-            "type": "string",
-            "example": "San Francisco"
-          },
-          "state_or_province_code": {
-            "type": "string",
-            "example": "CA"
-          },
-          "postal_code": {
-            "type": "string",
-            "example": "94102"
-          },
-          "country_code": {
-            "type": "string",
-            "example": "US"
-          }
-        }
-      },
-      "BatchLookupItem": {
-        "type": "object",
-        "required": [
-          "reference_id",
-          "address",
-          "building_type",
-          "device_ids"
-        ],
-        "properties": {
-          "reference_id": {
-            "type": "string",
-            "example": "deal-12345"
-          },
-          "address": {
-            "$ref": "#/components/schemas/Address"
-          },
-          "building_type": {
-            "type": "string",
-            "enum": [
-              "RESIDENTIAL",
-              "COMMERCIAL",
-              "MULTIFAMILY"
-            ],
-            "example": "RESIDENTIAL"
-          },
-          "device_ids": {
-            "type": "array",
-            "items": {
-              "type": "integer"
-            },
-            "minItems": 1,
-            "example": [
-              1,
-              2
-            ]
-          },
-          "create_application": {
-            "type": "boolean",
-            "default": false,
-            "example": false
-          },
-          "webhook_custom_fields": {
-            "type": "object",
-            "additionalProperties": {
-              "type": "string"
-            },
-            "description": "Optional per-item custom fields for webhook payload"
-          }
-        }
-      },
-      "CreateBatchRequest": {
-        "type": "object",
-        "required": [
-          "items"
-        ],
-        "properties": {
-          "items": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/BatchLookupItem"
-            },
-            "minItems": 1,
-            "maxItems": 10000
-          }
-        }
-      },
-      "CreateBatchResponse": {
-        "type": "object",
-        "properties": {
-          "job_id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "pending"
-            ]
-          },
-          "total_items": {
-            "type": "integer"
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "report": {
-            "type": "object",
-            "properties": {
-              "id": {
-                "type": "string",
-                "format": "uuid"
-              },
-              "name": {
-                "type": "string"
-              },
-              "description": {
-                "type": "string",
-                "nullable": true
-              },
-              "status": {
-                "type": "string",
-                "enum": [
-                  "processing"
-                ]
-              },
-              "report_type": {
-                "type": "string",
-                "enum": [
-                  "bulk_lookup"
-                ]
-              },
-              "total_sites": {
-                "type": "integer"
-              },
-              "created_at": {
-                "type": "string",
-                "format": "date-time"
-              }
-            },
-            "required": [
-              "id",
-              "name",
-              "status",
-              "report_type",
-              "total_sites",
-              "created_at"
-            ]
-          },
-          "message": {
-            "type": "string"
-          }
-        }
-      },
-      "BatchJob": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "organization_id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "pending",
-              "processing",
-              "completed",
-              "failed",
-              "cancelled"
-            ]
-          },
-          "total_items": {
-            "type": "integer"
-          },
-          "processed_items": {
-            "type": "integer"
-          },
-          "failed_items": {
-            "type": "integer"
-          },
-          "report_id": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "started_at": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
-          },
-          "completed_at": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
-          },
-          "item_counts": {
-            "type": "object",
-            "properties": {
-              "pending": {
-                "type": "integer"
-              },
-              "processing": {
-                "type": "integer"
-              },
-              "completed": {
-                "type": "integer"
-              },
-              "failed": {
-                "type": "integer"
-              }
-            }
-          }
-        }
-      },
-      "QueueItem": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "job_id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "pending",
-              "processing",
-              "completed",
-              "failed"
-            ]
-          },
-          "reference_id": {
-            "type": "string"
-          },
-          "address": {
-            "$ref": "#/components/schemas/Address"
-          },
-          "building_type": {
-            "type": "string",
-            "enum": [
-              "RESIDENTIAL",
-              "COMMERCIAL",
-              "MULTIFAMILY"
-            ]
-          },
-          "device_ids": {
-            "type": "array",
-            "items": {
-              "type": "integer"
-            }
-          },
-          "result": {
-            "type": "object",
-            "nullable": true
-          },
-          "error_message": {
-            "type": "string",
-            "nullable": true
-          },
-          "retry_count": {
-            "type": "integer"
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "processed_at": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
-          }
-        }
-      },
-      "JobListResponse": {
-        "type": "object",
-        "properties": {
-          "jobs": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/BatchJob"
-            }
-          },
-          "total": {
-            "type": "integer"
-          },
-          "limit": {
-            "type": "integer"
-          },
-          "offset": {
-            "type": "integer"
-          }
-        }
-      },
-      "ItemListResponse": {
-        "type": "object",
-        "properties": {
-          "items": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/QueueItem"
-            }
-          },
-          "total": {
-            "type": "integer"
-          },
-          "limit": {
-            "type": "integer"
-          },
-          "offset": {
-            "type": "integer"
-          }
-        }
-      },
-      "CancelJobResponse": {
-        "type": "object",
-        "properties": {
-          "message": {
-            "type": "string",
-            "example": "Job cancelled successfully"
-          },
-          "job_id": {
-            "type": "string",
-            "format": "uuid"
-          }
-        }
-      },
-      "WebhookConfig": {
-        "type": "object",
-        "description": "Current webhook configuration for the authenticated organization",
-        "properties": {
-          "url": {
-            "type": "string",
-            "format": "uri",
-            "nullable": true,
-            "description": "Webhook URL; POST is sent here after each successful lookup."
-          },
-          "field_names": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "example": [
-              "Project ID",
-              "Record ID"
-            ]
-          }
-        }
-      },
-      "WebhookConfigUpdate": {
-        "type": "object",
-        "description": "Partial update; all fields optional.",
-        "properties": {
-          "url": {
-            "type": "string",
-            "format": "uri",
-            "nullable": true,
-            "description": "Set webhook URL (HTTPS required). Use null or empty to clear."
-          },
-          "field_names": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        }
-      },
-      "WebhookError": {
-        "type": "object",
-        "properties": {
-          "error": {
-            "type": "string",
-            "description": "Error message (e.g. Webhook URL must use HTTPS, Invalid URL format)"
           }
         }
       }

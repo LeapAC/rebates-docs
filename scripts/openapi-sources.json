@@ -1,0 +1,47 @@
+{
+  "specsDir": "api-reference/specs",
+  "repos": {
+    "LeapAC/global-connect-service": { "localEnv": "GCS_REPO", "localDefault": "/Users/sean/Code/global-connect-service" },
+    "LeapAC/incentives-service": { "localEnv": "INCENTIVES_REPO", "localDefault": "/Users/sean/Code/incentives-service" }
+  },
+  "gcsServers": [
+    { "url": "https://api.leap.energy", "description": "Production" },
+    { "url": "https://api.staging.leap.energy", "description": "Staging" }
+  ],
+  "specs": [
+    {
+      "output": "gcs-incentives.json",
+      "title": "Leap Incentives — Lookups",
+      "serversRef": "gcsServers",
+      "security": "bearer",
+      "tag": "incentives-lookups",
+      "source": { "repo": "LeapAC/global-connect-service", "entry": "src/main/resources/openapi/incentives.yaml", "deps": ["src/main/resources/openapi/common-schemas.yaml"] },
+      "include": [
+        { "method": "post", "path": "/v1.1/global-connect/incentives/lookups", "title": "Look up incentives" },
+        { "method": "post", "path": "/v1.1/global-connect/incentives/refreshes", "title": "Refresh incentives" },
+        { "method": "post", "path": "/v1.1/global-connect/incentives/overrides", "title": "Override incentives" }
+      ]
+    },
+    {
+      "output": "incentives-applications.json",
+      "title": "Leap Incentives — Applications",
+      "servers": [
+        { "url": "https://api.incentives.leap.energy/alpha", "description": "Production" },
+        { "url": "https://api.staging.incentives.leap.energy/alpha", "description": "Staging" }
+      ],
+      "security": "apikey",
+      "tag": "applications",
+      "source": { "repo": "LeapAC/incentives-service", "entry": "supabase/functions/applications/openapi.json", "deps": [] },
+      "include": [
+        { "method": "get", "path": "/applications", "title": "Search applications" },
+        { "method": "get", "path": "/applications/{application_id}", "title": "Get application" },
+        { "method": "patch", "path": "/applications/{application_id}", "title": "Update application" },
+        { "method": "get", "path": "/applications/attachments", "title": "List attachments" },
+        { "method": "post", "path": "/applications/attachments", "title": "Upload attachment" },
+        { "method": "post", "path": "/applications/attachments/commit", "title": "Commit attachment upload" },
+        { "method": "get", "path": "/applications/attachments/{id}/download", "title": "Download attachment" },
+        { "method": "delete", "path": "/applications/attachments/{id}", "title": "Delete attachment" }
+      ]
+    }
+  ]
+}

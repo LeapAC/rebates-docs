@@ -25,7 +25,10 @@
     {
       "output": "incentives-applications.json",
       "title": "Leap Incentives — Applications",
-      "servers": [ { "url": "https://api.incentives.leap.energy/alpha", "description": "Production" } ],
+      "servers": [
+        { "url": "https://api.incentives.leap.energy/alpha", "description": "Production" },
+        { "url": "https://api.staging.incentives.leap.energy/alpha", "description": "Staging" }
+      ],
       "security": "apikey",
       "tag": "applications",
       "source": { "repo": "LeapAC/incentives-service", "entry": "supabase/functions/applications/openapi.json", "deps": [] },

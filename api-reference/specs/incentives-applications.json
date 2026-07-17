@@ -13,6 +13,10 @@
     {
       "url": "https://api.incentives.leap.energy/alpha",
       "description": "Production"
+    },
+    {
+      "url": "https://api.staging.incentives.leap.energy/alpha",
+      "description": "Staging"
     }
   ],
   "security": [

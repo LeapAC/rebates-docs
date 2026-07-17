@@ -23,58 +23,22 @@
       ]
     },
     {
-      "output": "gcs-reports.json",
-      "title": "Leap Incentives — Reports",
-      "serversRef": "gcsServers",
-      "security": "bearer",
-      "tag": "reports",
-      "source": { "repo": "LeapAC/global-connect-service", "entry": "src/main/resources/openapi/reports.yaml", "deps": [] },
-      "include": [
-        { "method": "post", "path": "/v1.1/global-connect/reports", "title": "Create report" },
-        { "method": "get", "path": "/v1.1/global-connect/reports", "title": "List reports" },
-        { "method": "get", "path": "/v1.1/global-connect/reports/{report_id}", "title": "Get report" },
-        { "method": "patch", "path": "/v1.1/global-connect/reports/{report_id}", "title": "Update report" },
-        { "method": "delete", "path": "/v1.1/global-connect/reports/{report_id}", "title": "Delete report" },
-        { "method": "post", "path": "/v1.1/global-connect/reports/{report_id}/rows", "title": "Add report rows" },
-        { "method": "get", "path": "/v1.1/global-connect/reports/{report_id}/rows", "title": "List report rows" },
-        { "method": "get", "path": "/v1.1/global-connect/reports/{report_id}/rows/{row_id}", "title": "Get report row" },
-        { "method": "post", "path": "/v1.1/global-connect/reports/{report_id}/start", "title": "Start report" }
-      ]
-    },
-    {
-      "output": "gcs-programs.json",
-      "title": "Leap Incentives — Programs",
-      "serversRef": "gcsServers",
-      "security": "bearer",
-      "tag": "programs",
-      "source": { "repo": "LeapAC/global-connect-service", "entry": "src/main/resources/openapi/programs.yaml", "deps": ["src/main/resources/openapi/common-schemas.yaml"] },
-      "include": [
-        { "method": "get", "path": "/v1.1/global-connect/programs", "title": "List programs" },
-        { "method": "get", "path": "/v1.1/global-connect/programs/{program_id}", "title": "Get program" },
-        { "method": "get", "path": "/v1.1/global-connect/programs/{program_id}/requirements", "title": "Get program requirements" },
-        { "method": "get", "path": "/v1.1/global-connect/programs/{program_id}/incentive-tiers", "title": "List incentive tiers" }
-      ]
-    },
-    {
-      "output": "gcs-devices.json",
-      "title": "Leap Incentives — Devices",
-      "serversRef": "gcsServers",
-      "security": "bearer",
-      "tag": "devices",
-      "source": { "repo": "LeapAC/global-connect-service", "entry": "src/main/resources/openapi/programs.yaml", "deps": ["src/main/resources/openapi/common-schemas.yaml"] },
-      "include": [
-        { "method": "get", "path": "/v1.1/global-connect/incentives/devices", "title": "List devices" },
-        { "method": "get", "path": "/v1.1/global-connect/incentives/devices/search", "title": "Search devices" },
-        { "method": "get", "path": "/v1.1/global-connect/programs/{programIdentifier}/approved-devices", "title": "List approved devices" }
-      ]
-    },
-    {
       "output": "incentives-applications.json",
       "title": "Leap Incentives — Applications",
       "servers": [ { "url": "https://api.incentives.leap.energy/alpha", "description": "Production" } ],
       "security": "apikey",
+      "tag": "applications",
       "source": { "repo": "LeapAC/incentives-service", "entry": "supabase/functions/applications/openapi.json", "deps": [] },
-      "exclude": [ { "method": "post", "path": "/incentives" } ]
+      "include": [
+        { "method": "get", "path": "/applications", "title": "Search applications" },
+        { "method": "get", "path": "/applications/{application_id}", "title": "Get application" },
+        { "method": "patch", "path": "/applications/{application_id}", "title": "Update application" },
+        { "method": "get", "path": "/applications/attachments", "title": "List attachments" },
+        { "method": "post", "path": "/applications/attachments", "title": "Upload attachment" },
+        { "method": "post", "path": "/applications/attachments/commit", "title": "Commit attachment upload" },
+        { "method": "get", "path": "/applications/attachments/{id}/download", "title": "Download attachment" },
+        { "method": "delete", "path": "/applications/attachments/{id}", "title": "Delete attachment" }
+      ]
     }
   ]
 }

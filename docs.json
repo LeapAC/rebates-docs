@@ -11,84 +11,33 @@
   "navigation": {
     "groups": [
       {
-        "group": "Getting Started",
-        "pages": [
-          "index",
-          "quickstart"
-        ]
-      },
-      {
         "group": "Incentives Lookups",
         "openapi": "api-reference/specs/gcs-incentives.json",
         "pages": [
           "api-reference/incentives-lookups/overview",
           "POST /v1.1/global-connect/incentives/lookups",
           "POST /v1.1/global-connect/incentives/refreshes",
-          "POST /v1.1/global-connect/incentives/overrides",
-          {
-            "group": "Reports",
-            "openapi": "api-reference/specs/gcs-reports.json",
-            "pages": [
-              "POST /v1.1/global-connect/reports",
-              "GET /v1.1/global-connect/reports",
-              "GET /v1.1/global-connect/reports/{report_id}",
-              "PATCH /v1.1/global-connect/reports/{report_id}",
-              "DELETE /v1.1/global-connect/reports/{report_id}",
-              "POST /v1.1/global-connect/reports/{report_id}/rows",
-              "GET /v1.1/global-connect/reports/{report_id}/rows",
-              "GET /v1.1/global-connect/reports/{report_id}/rows/{row_id}",
-              "POST /v1.1/global-connect/reports/{report_id}/start"
-            ]
-          }
-        ]
-      },
-      {
-        "group": "Programs",
-        "openapi": "api-reference/specs/gcs-programs.json",
-        "pages": [
-          "api-reference/programs/overview",
-          "GET /v1.1/global-connect/programs",
-          "GET /v1.1/global-connect/programs/{program_id}",
-          "GET /v1.1/global-connect/programs/{program_id}/requirements",
-          "GET /v1.1/global-connect/programs/{program_id}/incentive-tiers"
-        ]
-      },
-      {
-        "group": "Devices",
-        "openapi": "api-reference/specs/gcs-devices.json",
-        "pages": [
-          "api-reference/devices/overview",
-          "GET /v1.1/global-connect/incentives/devices",
-          "GET /v1.1/global-connect/incentives/devices/search",
-          "GET /v1.1/global-connect/programs/{programIdentifier}/approved-devices"
+          "POST /v1.1/global-connect/incentives/overrides"
         ]
       },
       {
         "group": "Applications",
         "openapi": "api-reference/specs/incentives-applications.json",
         "pages": [
-          "api-reference/guides/api-guide",
-          "api-reference/endpoint/search-applications",
-          "api-reference/endpoint/get-application",
-          "api-reference/endpoint/update-application",
+          "api-reference/applications/overview",
+          "GET /applications",
+          "GET /applications/{application_id}",
+          "PATCH /applications/{application_id}",
           {
             "group": "Attachments",
             "pages": [
-              "api-reference/endpoint/attachments",
-              "api-reference/endpoint/list-attachments",
-              "api-reference/endpoint/download-attachment",
-              "api-reference/endpoint/delete-attachment"
+              "GET /applications/attachments",
+              "POST /applications/attachments",
+              "POST /applications/attachments/commit",
+              "GET /applications/attachments/{id}/download",
+              "DELETE /applications/attachments/{id}"
             ]
           }
-        ]
-      },
-      {
-        "group": "Guides",
-        "pages": [
-          "incentives-guide",
-          "applications-guide",
-          "setup-claimed-fields",
-          "program-roadmap"
         ]
       }
     ]

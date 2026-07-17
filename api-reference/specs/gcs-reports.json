@@ -1,0 +1,849 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Leap Incentives — Reports",
+    "description": "Partner-facing batch incentive lookups persisted as reports. A report is created empty, rows are appended in chunks (each row is one `EligibilityRequest` body, exactly as accepted by `POST /v1.1/global-connect/incentives/lookups`), and `start` enqueues the rows for asynchronous processing by the reports worker. Progress is polled via `GET /reports/{report_id}`.\n`partner_id` is derived server-side from the authenticated principal's `leap-partnerid` header — never from the request body. All endpoints require the `LOOKUP_INCENTIVES` permission and are scoped to the owning partner.\n",
+    "contact": {
+      "email": "apiteam@leap.energy"
+    },
+    "version": "0.1"
+  },
+  "servers": [
+    {
+      "url": "https://api.leap.energy",
+      "description": "Production"
+    },
+    {
+      "url": "https://api.staging.leap.energy",
+      "description": "Staging"
+    }
+  ],
+  "tags": [
+    {
+      "name": "reports",
+      "description": "Batch incentive lookups persisted as reports."
+    }
+  ],
+  "paths": {
+    "/v1.1/global-connect/reports": {
+      "post": {
+        "tags": [
+          "reports"
+        ],
+        "summary": "Create an empty report in CREATING status",
+        "operationId": "createReport",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateReportRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Report created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "reports"
+        ],
+        "summary": "List the authenticated partner's reports, newest first",
+        "operationId": "listReports",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 50,
+              "maximum": 200
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Page of reports.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportPage"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/v1.1/global-connect/reports/{report_id}": {
+      "parameters": [
+        {
+          "name": "report_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "reports"
+        ],
+        "summary": "Fetch a report with live progress counts",
+        "operationId": "getReport",
+        "responses": {
+          "200": {
+            "description": "The report.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "reports"
+        ],
+        "summary": "Rename a report",
+        "operationId": "updateReport",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateReportRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated report.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "reports"
+        ],
+        "summary": "Delete a report and all of its rows",
+        "operationId": "deleteReport",
+        "responses": {
+          "204": {
+            "description": "Deleted."
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/v1.1/global-connect/reports/{report_id}/rows": {
+      "parameters": [
+        {
+          "name": "report_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "post": {
+        "tags": [
+          "reports"
+        ],
+        "summary": "Append a chunk of rows to a CREATING report",
+        "description": "Idempotent on `(report_id, csv_row_index)` — re-posting a chunk after a network failure is safe. Returns 409 once the report has been started.\n",
+        "operationId": "addReportRows",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddReportRowsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Acceptance summary; malformed rows are itemized in `rejected`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AddReportRowsResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "reports"
+        ],
+        "summary": "Page through a report's rows by csv_row_index cursor",
+        "operationId": "listReportRows",
+        "parameters": [
+          {
+            "name": "after_index",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 50,
+              "maximum": 500
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PENDING",
+                "IN_PROGRESS",
+                "COMPLETED",
+                "FAILED"
+              ]
+            }
+          },
+          {
+            "name": "eligible",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Page of rows (without verbatim calc results).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportRowPage"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/v1.1/global-connect/reports/{report_id}/rows/{row_id}": {
+      "parameters": [
+        {
+          "name": "report_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "row_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "reports"
+        ],
+        "summary": "Fetch a single row including its verbatim calc result",
+        "operationId": "getReportRow",
+        "responses": {
+          "200": {
+            "description": "The row.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportRowResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/v1.1/global-connect/reports/{report_id}/start": {
+      "parameters": [
+        {
+          "name": "report_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "post": {
+        "tags": [
+          "reports"
+        ],
+        "summary": "Transition CREATING → PROCESSING and enqueue all rows",
+        "operationId": "startReport",
+        "responses": {
+          "200": {
+            "description": "The report, now PROCESSING.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "responses": {
+      "BadRequest": {
+        "description": "Malformed or invalid request",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "You are not authenticated",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "You do not have permission to perform this operation",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "The report or row does not exist (or belongs to another partner)",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "Conflict": {
+        "description": "The report is not in a state that allows this operation",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "ErrorResponse": {
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "object",
+            "required": [
+              "message"
+            ],
+            "properties": {
+              "message": {
+                "type": "string"
+              },
+              "details": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "error_code": {
+                      "type": "string",
+                      "description": "Stable wire code from `IncentivesErrorCode` (e.g., `INVALID_DEVICE_ID`, `GEOCODING_NO_RESULTS`, `NO_UTILITY_AT_ADDRESS`)."
+                    },
+                    "reason": {
+                      "type": "string",
+                      "description": "Human-readable explanation. Safe to surface to partners; no internal identifiers."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "CreateReportRequest": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          }
+        }
+      },
+      "UpdateReportRequest": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          }
+        }
+      },
+      "ReportRowInput": {
+        "type": "object",
+        "required": [
+          "csv_row_index",
+          "lookup_request"
+        ],
+        "properties": {
+          "csv_row_index": {
+            "type": "integer"
+          },
+          "lookup_request": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "An EligibilityRequest body, exactly as accepted by POST /v1.1/global-connect/incentives/lookups.\n"
+          }
+        }
+      },
+      "AddReportRowsRequest": {
+        "type": "object",
+        "required": [
+          "rows"
+        ],
+        "properties": {
+          "rows": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 500,
+            "items": {
+              "$ref": "#/components/schemas/ReportRowInput"
+            }
+          }
+        }
+      },
+      "ReportProgress": {
+        "type": "object",
+        "required": [
+          "pending",
+          "in_progress",
+          "completed",
+          "failed"
+        ],
+        "properties": {
+          "pending": {
+            "type": "integer"
+          },
+          "in_progress": {
+            "type": "integer"
+          },
+          "completed": {
+            "type": "integer"
+          },
+          "failed": {
+            "type": "integer"
+          },
+          "eta_seconds": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Rough time-to-completion projected from the recent completion rate. Null unless the report is PROCESSING with measurable throughput.\n"
+          }
+        }
+      },
+      "ReportResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "status",
+          "total_rows",
+          "eligible_rows",
+          "total_upfront",
+          "total_install",
+          "total_ongoing",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "CREATING",
+              "PROCESSING",
+              "COMPLETED",
+              "COMPLETED_WITH_ERRORS",
+              "FAILED"
+            ]
+          },
+          "error_message": {
+            "type": "string",
+            "nullable": true
+          },
+          "total_rows": {
+            "type": "integer"
+          },
+          "eligible_rows": {
+            "type": "integer"
+          },
+          "total_upfront": {
+            "type": "number"
+          },
+          "total_install": {
+            "type": "number"
+          },
+          "total_ongoing": {
+            "type": "number"
+          },
+          "incentive_summary": {
+            "type": "object",
+            "additionalProperties": true,
+            "nullable": true,
+            "description": "Populated at COMPLETED/COMPLETED_WITH_ERRORS — section totals + program_breakdown."
+          },
+          "progress": {
+            "$ref": "#/components/schemas/ReportProgress"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "finalized_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        }
+      },
+      "ReportPage": {
+        "type": "object",
+        "required": [
+          "reports",
+          "total"
+        ],
+        "properties": {
+          "reports": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReportResponse"
+            }
+          },
+          "total": {
+            "type": "integer"
+          }
+        }
+      },
+      "RejectedReportRow": {
+        "type": "object",
+        "required": [
+          "csv_row_index",
+          "message"
+        ],
+        "properties": {
+          "csv_row_index": {
+            "type": "integer"
+          },
+          "problem_field": {
+            "type": "string",
+            "nullable": true
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "AddReportRowsResult": {
+        "type": "object",
+        "required": [
+          "accepted",
+          "rejected"
+        ],
+        "properties": {
+          "accepted": {
+            "type": "integer"
+          },
+          "rejected": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RejectedReportRow"
+            }
+          }
+        }
+      },
+      "ReportRowResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "report_id",
+          "csv_row_index",
+          "status",
+          "upfront_incentive",
+          "install_incentive",
+          "ongoing_incentive",
+          "is_eligible"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "report_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "csv_row_index": {
+            "type": "integer"
+          },
+          "reference_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "IN_PROGRESS",
+              "COMPLETED",
+              "FAILED"
+            ]
+          },
+          "formatted_address": {
+            "type": "string",
+            "nullable": true
+          },
+          "utility_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "utility_eiaid": {
+            "type": "string",
+            "nullable": true
+          },
+          "upfront_incentive": {
+            "type": "number"
+          },
+          "install_incentive": {
+            "type": "number"
+          },
+          "ongoing_incentive": {
+            "type": "number"
+          },
+          "is_eligible": {
+            "type": "boolean"
+          },
+          "connect_url": {
+            "type": "string",
+            "nullable": true
+          },
+          "error_message": {
+            "type": "string",
+            "nullable": true
+          },
+          "calc_result": {
+            "type": "object",
+            "additionalProperties": true,
+            "nullable": true,
+            "description": "Verbatim EligibilityResult. Populated only on the single-row endpoint."
+          }
+        }
+      },
+      "ReportRowPage": {
+        "type": "object",
+        "required": [
+          "rows"
+        ],
+        "properties": {
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReportRowResponse"
+            }
+          },
+          "next_after_index": {
+            "type": "integer",
+            "nullable": true
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Your Leap API key as a Bearer token. Send it in the `Authorization` header: `Authorization: Bearer <api-key>`."
+      }
+    }
+  },
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ]
+}

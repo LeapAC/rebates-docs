@@ -1,0 +1,1896 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Leap Incentives — Devices",
+    "description": "API for managing program definitions, requirement catalog, field groups, and partner data preferences",
+    "contact": {
+      "email": "apiteam@leap.energy"
+    },
+    "version": "0.1"
+  },
+  "servers": [
+    {
+      "url": "https://api.leap.energy",
+      "description": "Production"
+    },
+    {
+      "url": "https://api.staging.leap.energy",
+      "description": "Staging"
+    }
+  ],
+  "tags": [
+    {
+      "name": "requirements"
+    },
+    {
+      "name": "programs"
+    },
+    {
+      "name": "components"
+    },
+    {
+      "name": "requirement-assignments"
+    },
+    {
+      "name": "partner-data-preferences"
+    }
+  ],
+  "paths": {
+    "/v1.1/global-connect/incentives/devices": {
+      "get": {
+        "tags": [
+          "devices"
+        ],
+        "summary": "List device catalog entries",
+        "description": "Thin read for idempotency verification and ops. Optional manufacturer/model_number filters narrow to the matching catalog entry. Requires the MANAGE_INCENTIVE_DATA permission.\n",
+        "operationId": "listDevices",
+        "parameters": [
+          {
+            "name": "manufacturer",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "model_number",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Matching device catalog entries",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DeviceResponse"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/v1.1/global-connect/incentives/devices/search": {
+      "get": {
+        "tags": [
+          "devices"
+        ],
+        "summary": "Partner-facing device catalog search",
+        "description": "Free-text search over the device catalog. `q` is split on whitespace; every token must appear (case-insensitive) in the device's searchable text, and results are ranked by trigram similarity. Requires the LOOKUP_INCENTIVES permission. Returns catalog device UUIDs suitable for POST /v1.1/global-connect/incentives/lookups.\n",
+        "operationId": "searchDevices",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "minimum": 1,
+              "maximum": 50
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ranked page of matching devices.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceSearchResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/v1.1/global-connect/programs/{programIdentifier}/approved-devices": {
+      "get": {
+        "tags": [
+          "approved-devices"
+        ],
+        "summary": "List approved devices for a program",
+        "description": "Thin read for idempotency verification and ops. Requires the MANAGE_INCENTIVE_DATA permission.\n",
+        "operationId": "listApprovedDevices",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProgramIdentifier"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Approved devices for the program",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProgramApprovedDeviceResponse"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "RequirementId": {
+        "name": "requirement_id",
+        "in": "path",
+        "required": true,
+        "description": "UUID of the requirement",
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "ProgramId": {
+        "name": "program_id",
+        "in": "path",
+        "required": true,
+        "description": "Identifier of the program",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "ProgramIdentifier": {
+        "name": "programIdentifier",
+        "in": "path",
+        "required": true,
+        "description": "Unique program identifier",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "AssignmentId": {
+        "name": "assignment_id",
+        "in": "path",
+        "required": true,
+        "description": "UUID of the requirement assignment",
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "TierId": {
+        "name": "tier_id",
+        "in": "path",
+        "required": true,
+        "description": "UUID of the incentive tier",
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "PageToken": {
+        "name": "page_token",
+        "in": "query",
+        "required": false,
+        "description": "Token for cursor-based pagination",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "PageSize": {
+        "name": "page_size",
+        "in": "query",
+        "required": false,
+        "description": "Number of items per page (default 50)",
+        "schema": {
+          "type": "integer",
+          "default": 50
+        }
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Malformed or invalid request",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "You are not authorized to perform this operation",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "You do not have permission to perform this operation",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "The requested resource was not found",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "Conflict": {
+        "description": "Conflict with existing resource (duplicate key or version mismatch)",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "UnprocessableEntity": {
+        "description": "Valid request but invalid data (e.g., non-APPROVED requirement)",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "InternalServerError": {
+        "description": "An internal server error occurred",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "RequirementType": {
+        "type": "string",
+        "enum": [
+          "FIELD",
+          "AGREEMENT",
+          "ATTACHMENT",
+          "CHECKLIST_CHECK"
+        ]
+      },
+      "ProgramFieldType": {
+        "type": "string",
+        "enum": [
+          "STRING",
+          "NUMBER",
+          "BOOLEAN",
+          "DATE",
+          "ENUM",
+          "PHONE"
+        ]
+      },
+      "RequirementOwner": {
+        "type": "string",
+        "enum": [
+          "UTILITY",
+          "END_USER",
+          "PARTNER",
+          "LEAP"
+        ]
+      },
+      "RequirementStatus": {
+        "type": "string",
+        "enum": [
+          "PROPOSED",
+          "APPROVED",
+          "DEPRECATED"
+        ]
+      },
+      "RequirementSource": {
+        "type": "string",
+        "enum": [
+          "LEAP_DEFINITIONS",
+          "INCENTIVES_DB",
+          "PARTNER_OFFER"
+        ]
+      },
+      "CalculationMethod": {
+        "type": "string",
+        "enum": [
+          "FLAT_RATE",
+          "PERCENTAGE",
+          "FORMULA",
+          "PER_UNIT"
+        ]
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "object",
+            "required": [
+              "message"
+            ],
+            "properties": {
+              "message": {
+                "type": "string"
+              },
+              "details": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "error_code": {
+                      "type": "string"
+                    },
+                    "reason": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "CreateRequirementRequest": {
+        "type": "object",
+        "required": [
+          "key",
+          "type",
+          "label"
+        ],
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "Unique key identifier for the requirement (e.g., customer.email)"
+          },
+          "type": {
+            "$ref": "#/components/schemas/RequirementType"
+          },
+          "data_type": {
+            "$ref": "#/components/schemas/ProgramFieldType"
+          },
+          "label": {
+            "type": "string",
+            "description": "Human-readable label"
+          },
+          "description": {
+            "type": "string"
+          },
+          "placeholder": {
+            "type": "string"
+          },
+          "validation_rules": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Validation rules for the field (e.g., min, max, pattern)"
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Available options for ENUM fields"
+          },
+          "status": {
+            "$ref": "#/components/schemas/RequirementStatus"
+          },
+          "agreement_template_id": {
+            "type": "string",
+            "description": "Template ID for AGREEMENT type requirements"
+          },
+          "agreement_url": {
+            "type": "string",
+            "description": "URL for the agreement document"
+          },
+          "attachment_template_id": {
+            "type": "string",
+            "description": "Template ID for ATTACHMENT type requirements"
+          },
+          "attachment_sample_label": {
+            "type": "string",
+            "description": "Label for the attachment sample"
+          },
+          "check_identifier": {
+            "type": "string",
+            "description": "Identifier for CHECKLIST_CHECK type requirements"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Arbitrary metadata"
+          }
+        }
+      },
+      "UpdateRequirementRequest": {
+        "type": "object",
+        "required": [
+          "version"
+        ],
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/RequirementType"
+          },
+          "data_type": {
+            "$ref": "#/components/schemas/ProgramFieldType"
+          },
+          "label": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "placeholder": {
+            "type": "string"
+          },
+          "validation_rules": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "$ref": "#/components/schemas/RequirementStatus"
+          },
+          "version": {
+            "type": "integer",
+            "description": "Optimistic concurrency version; must match current version"
+          },
+          "agreement_template_id": {
+            "type": "string"
+          },
+          "agreement_url": {
+            "type": "string"
+          },
+          "attachment_template_id": {
+            "type": "string"
+          },
+          "attachment_sample_label": {
+            "type": "string"
+          },
+          "check_identifier": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "UpdateRequirementStatusRequest": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/RequirementStatus"
+          }
+        }
+      },
+      "RequirementResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "key": {
+            "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/RequirementType"
+          },
+          "data_type": {
+            "$ref": "#/components/schemas/ProgramFieldType"
+          },
+          "label": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "placeholder": {
+            "type": "string"
+          },
+          "validation_rules": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "$ref": "#/components/schemas/RequirementStatus"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "reference_source": {
+            "$ref": "#/components/schemas/RequirementSource"
+          },
+          "agreement_template_id": {
+            "type": "string"
+          },
+          "agreement_url": {
+            "type": "string"
+          },
+          "attachment_template_id": {
+            "type": "string"
+          },
+          "attachment_sample_label": {
+            "type": "string"
+          },
+          "check_identifier": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "RequirementListResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RequirementResponse"
+            }
+          },
+          "next_page_token": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateProgramRequest": {
+        "type": "object",
+        "required": [
+          "program_identifier",
+          "label",
+          "program_type",
+          "transmission_region"
+        ],
+        "properties": {
+          "program_identifier": {
+            "type": "string",
+            "description": "Unique program identifier (e.g., caiso-dr-residential)"
+          },
+          "label": {
+            "type": "string",
+            "description": "Human-readable label"
+          },
+          "description": {
+            "type": "string"
+          },
+          "program_type": {
+            "type": "string",
+            "description": "Type of the program (e.g., demand-response)"
+          },
+          "transmission_region": {
+            "$ref": "#/components/schemas/TransmissionRegion"
+          },
+          "enabled": {
+            "type": "boolean",
+            "default": true
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "eiaid": {
+            "type": "string"
+          },
+          "program_year": {
+            "type": "integer"
+          },
+          "start_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "end_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "application_deadline_days": {
+            "type": "integer"
+          },
+          "max_rebates_per_customer": {
+            "type": "integer"
+          },
+          "max_rebates_per_address": {
+            "type": "integer"
+          },
+          "min_building_age_years": {
+            "type": "integer"
+          },
+          "customer_classification": {
+            "$ref": "#/components/schemas/CustomerClassification"
+          },
+          "requires_homeowner": {
+            "type": "boolean"
+          },
+          "requires_income_qualification": {
+            "type": "boolean"
+          },
+          "requires_contractor_participation": {
+            "type": "boolean"
+          },
+          "requires_permits": {
+            "type": "boolean"
+          },
+          "requires_inspection": {
+            "type": "boolean"
+          },
+          "new_construction_eligible": {
+            "type": "boolean"
+          },
+          "prohibits_fossil_backup": {
+            "type": "boolean"
+          },
+          "device_category": {
+            "type": "string"
+          }
+        }
+      },
+      "UpdateProgramRequest": {
+        "type": "object",
+        "description": "Partial update for PUT /programs/{id}. Every field is optional; only the\nfields present in the body are changed. No `enabled` default — omitting it\nleaves the current value untouched.\n",
+        "properties": {
+          "program_identifier": {
+            "type": "string",
+            "description": "If present, must match the path segment."
+          },
+          "label": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "program_type": {
+            "type": "string"
+          },
+          "transmission_region": {
+            "$ref": "#/components/schemas/TransmissionRegion"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "eiaid": {
+            "type": "string"
+          },
+          "program_year": {
+            "type": "integer"
+          },
+          "start_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "end_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "application_deadline_days": {
+            "type": "integer"
+          },
+          "max_rebates_per_customer": {
+            "type": "integer"
+          },
+          "max_rebates_per_address": {
+            "type": "integer"
+          },
+          "min_building_age_years": {
+            "type": "integer"
+          },
+          "customer_classification": {
+            "$ref": "#/components/schemas/CustomerClassification"
+          },
+          "requires_homeowner": {
+            "type": "boolean"
+          },
+          "requires_income_qualification": {
+            "type": "boolean"
+          },
+          "requires_contractor_participation": {
+            "type": "boolean"
+          },
+          "requires_permits": {
+            "type": "boolean"
+          },
+          "requires_inspection": {
+            "type": "boolean"
+          },
+          "new_construction_eligible": {
+            "type": "boolean"
+          },
+          "prohibits_fossil_backup": {
+            "type": "boolean"
+          },
+          "device_category": {
+            "type": "string"
+          }
+        }
+      },
+      "ProgramResponse": {
+        "type": "object",
+        "properties": {
+          "program_identifier": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "program_type": {
+            "type": "string"
+          },
+          "transmission_region": {
+            "$ref": "#/components/schemas/TransmissionRegion"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "source": {
+            "$ref": "#/components/schemas/RequirementSource"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "eiaid": {
+            "type": "string"
+          },
+          "eiaids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The program's full set of eligible EIA utility ids (candidate-selection set). Supersedes the single `eiaid` for matching; a customer whose resolved utility eiaid overlaps this set is a candidate."
+          },
+          "program_year": {
+            "type": "integer"
+          },
+          "start_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "end_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "application_deadline_days": {
+            "type": "integer"
+          },
+          "max_rebates_per_customer": {
+            "type": "integer"
+          },
+          "max_rebates_per_address": {
+            "type": "integer"
+          },
+          "min_building_age_years": {
+            "type": "integer"
+          },
+          "customer_classification": {
+            "$ref": "#/components/schemas/CustomerClassification"
+          },
+          "requires_homeowner": {
+            "type": "boolean"
+          },
+          "requires_income_qualification": {
+            "type": "boolean"
+          },
+          "requires_contractor_participation": {
+            "type": "boolean"
+          },
+          "requires_permits": {
+            "type": "boolean"
+          },
+          "requires_inspection": {
+            "type": "boolean"
+          },
+          "new_construction_eligible": {
+            "type": "boolean"
+          },
+          "prohibits_fossil_backup": {
+            "type": "boolean"
+          },
+          "device_category": {
+            "type": "string"
+          }
+        }
+      },
+      "ProgramListResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProgramResponse"
+            }
+          },
+          "next_page_token": {
+            "type": "string"
+          }
+        }
+      },
+      "ProgramRequirementsResponse": {
+        "type": "object",
+        "properties": {
+          "program_identifier": {
+            "type": "string"
+          },
+          "field_groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FieldGroupResponse"
+            }
+          }
+        }
+      },
+      "FieldGroupResponse": {
+        "type": "object",
+        "properties": {
+          "component_id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "sort_order": {
+            "type": "integer"
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProgramFieldResponse"
+            }
+          }
+        }
+      },
+      "ProgramFieldResponse": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "description": "Flat field type: STRING, NUMBER, BOOLEAN, DATE, ENUM, PHONE, AGREEMENT, ATTACHMENT, CHECKLIST_CHECK\n",
+            "enum": [
+              "STRING",
+              "NUMBER",
+              "BOOLEAN",
+              "DATE",
+              "ENUM",
+              "PHONE",
+              "AGREEMENT",
+              "ATTACHMENT",
+              "CHECKLIST_CHECK"
+            ]
+          },
+          "label": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "placeholder": {
+            "type": "string"
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "owner": {
+            "$ref": "#/components/schemas/RequirementOwner"
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Available options (ENUM fields only)"
+          },
+          "validation_rules": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "agreement_template_id": {
+            "type": "string",
+            "description": "Present for AGREEMENT type only"
+          },
+          "agreement_url": {
+            "type": "string",
+            "description": "Present for AGREEMENT type only"
+          },
+          "attachment_template_id": {
+            "type": "string",
+            "description": "Present for ATTACHMENT type only"
+          },
+          "attachment_sample_label": {
+            "type": "string",
+            "description": "Present for ATTACHMENT type only"
+          },
+          "check_identifier": {
+            "type": "string",
+            "description": "Present for CHECKLIST_CHECK type only"
+          }
+        }
+      },
+      "DefineFieldGroupRequest": {
+        "type": "object",
+        "required": [
+          "component_id",
+          "component_label",
+          "sort_order"
+        ],
+        "properties": {
+          "component_id": {
+            "type": "string",
+            "description": "Unique identifier for the field group component"
+          },
+          "component_label": {
+            "type": "string",
+            "description": "Human-readable label for the field group"
+          },
+          "sort_order": {
+            "type": "integer",
+            "description": "Display order of the field group"
+          },
+          "provides": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of requirement keys this component provides"
+          }
+        }
+      },
+      "FieldGroupDefinitionResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "component_id": {
+            "type": "string"
+          },
+          "component_label": {
+            "type": "string"
+          },
+          "sort_order": {
+            "type": "integer"
+          },
+          "provides": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "AssignRequirementRequest": {
+        "type": "object",
+        "required": [
+          "requirement_id"
+        ],
+        "properties": {
+          "requirement_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "UUID of the requirement to assign"
+          },
+          "variant_id": {
+            "type": "string",
+            "description": "Optional variant identifier"
+          },
+          "required": {
+            "type": "boolean",
+            "default": true,
+            "description": "Whether this requirement is mandatory"
+          },
+          "default_owner": {
+            "$ref": "#/components/schemas/RequirementOwner"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "UpdateAssignmentRequest": {
+        "type": "object",
+        "properties": {
+          "variant_id": {
+            "type": "string"
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "default_owner": {
+            "$ref": "#/components/schemas/RequirementOwner"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "ProgramRequirementAssignmentResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "program_identifier": {
+            "type": "string"
+          },
+          "requirement_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "variant_id": {
+            "type": "string"
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "default_owner": {
+            "$ref": "#/components/schemas/RequirementOwner"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "UpsertPartnerDataPreferenceRequest": {
+        "type": "object",
+        "required": [
+          "partner_uuid",
+          "field_identifier",
+          "field_source",
+          "preferred_source"
+        ],
+        "properties": {
+          "partner_uuid": {
+            "type": "string",
+            "format": "uuid",
+            "description": "UUID of the partner"
+          },
+          "program_identifier": {
+            "type": "string",
+            "description": "Optional program identifier to scope the preference"
+          },
+          "field_identifier": {
+            "type": "string",
+            "description": "Identifier of the field this preference applies to"
+          },
+          "field_source": {
+            "$ref": "#/components/schemas/RequirementSource"
+          },
+          "preferred_source": {
+            "$ref": "#/components/schemas/RequirementOwner"
+          }
+        }
+      },
+      "PartnerDataPreferenceResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "partner_uuid": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "program_identifier": {
+            "type": "string"
+          },
+          "field_identifier": {
+            "type": "string"
+          },
+          "field_source": {
+            "$ref": "#/components/schemas/RequirementSource"
+          },
+          "preferred_source": {
+            "$ref": "#/components/schemas/RequirementOwner"
+          }
+        }
+      },
+      "PartnerDataPreferenceListResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PartnerDataPreferenceResponse"
+            }
+          },
+          "next_page_token": {
+            "type": "string"
+          }
+        }
+      },
+      "IncentiveTierRequest": {
+        "type": "object",
+        "required": [
+          "tier_name",
+          "tier_order",
+          "calculation_method"
+        ],
+        "properties": {
+          "tier_name": {
+            "type": "string"
+          },
+          "source_id": {
+            "type": "integer",
+            "description": "Optional Supabase PK for traceability. Stored, never keyed on."
+          },
+          "tier_order": {
+            "type": "integer"
+          },
+          "calculation_method": {
+            "$ref": "#/components/schemas/CalculationMethod"
+          },
+          "flat_rate_amount": {
+            "type": "number"
+          },
+          "per_unit_rate": {
+            "type": "number"
+          },
+          "percentage_rate": {
+            "type": "number"
+          },
+          "max_incentive_amount": {
+            "type": "number"
+          },
+          "min_incentive_amount": {
+            "type": "number"
+          },
+          "income_qualified_multiplier": {
+            "type": "number"
+          },
+          "geographic_bonus_multiplier": {
+            "type": "number"
+          },
+          "min_seer2": {
+            "type": "number"
+          },
+          "max_seer2": {
+            "type": "number"
+          },
+          "min_eer2": {
+            "type": "number"
+          },
+          "max_eer2": {
+            "type": "number"
+          },
+          "min_hspf2": {
+            "type": "number"
+          },
+          "max_hspf2": {
+            "type": "number"
+          },
+          "min_ceer": {
+            "type": "number"
+          },
+          "max_ceer": {
+            "type": "number"
+          },
+          "min_capacity_tons": {
+            "type": "number"
+          },
+          "max_capacity_tons": {
+            "type": "number"
+          },
+          "min_capacity_btu": {
+            "type": "integer"
+          },
+          "max_capacity_btu": {
+            "type": "integer"
+          },
+          "min_capacity_kw": {
+            "type": "number"
+          },
+          "max_capacity_kw": {
+            "type": "number"
+          },
+          "requires_early_replacement": {
+            "type": "boolean"
+          },
+          "requires_bundled_measures": {
+            "type": "boolean"
+          }
+        }
+      },
+      "IncentiveTierResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "source_id": {
+            "type": "integer"
+          },
+          "program_identifier": {
+            "type": "string"
+          },
+          "tier_name": {
+            "type": "string"
+          },
+          "tier_order": {
+            "type": "integer"
+          },
+          "calculation_method": {
+            "$ref": "#/components/schemas/CalculationMethod"
+          },
+          "flat_rate_amount": {
+            "type": "number"
+          },
+          "per_unit_rate": {
+            "type": "number"
+          },
+          "percentage_rate": {
+            "type": "number"
+          },
+          "max_incentive_amount": {
+            "type": "number"
+          },
+          "min_incentive_amount": {
+            "type": "number"
+          },
+          "income_qualified_multiplier": {
+            "type": "number"
+          },
+          "geographic_bonus_multiplier": {
+            "type": "number"
+          },
+          "min_seer2": {
+            "type": "number"
+          },
+          "max_seer2": {
+            "type": "number"
+          },
+          "min_eer2": {
+            "type": "number"
+          },
+          "max_eer2": {
+            "type": "number"
+          },
+          "min_hspf2": {
+            "type": "number"
+          },
+          "max_hspf2": {
+            "type": "number"
+          },
+          "min_ceer": {
+            "type": "number"
+          },
+          "max_ceer": {
+            "type": "number"
+          },
+          "min_capacity_tons": {
+            "type": "number"
+          },
+          "max_capacity_tons": {
+            "type": "number"
+          },
+          "min_capacity_btu": {
+            "type": "integer"
+          },
+          "max_capacity_btu": {
+            "type": "integer"
+          },
+          "min_capacity_kw": {
+            "type": "number"
+          },
+          "max_capacity_kw": {
+            "type": "number"
+          },
+          "requires_early_replacement": {
+            "type": "boolean"
+          },
+          "requires_bundled_measures": {
+            "type": "boolean"
+          }
+        }
+      },
+      "DeviceUpsertRequest": {
+        "type": "object",
+        "description": "Upsert a device catalog entry by its natural key (manufacturer, model_number), matched case-insensitively. device_category is resolved by name to a category_id; an unknown name is a 422. source_id is stored for traceability but never keyed on.\n",
+        "required": [
+          "manufacturer",
+          "model_number",
+          "device_category"
+        ],
+        "properties": {
+          "manufacturer": {
+            "type": "string"
+          },
+          "model_number": {
+            "type": "string"
+          },
+          "device_category": {
+            "type": "string",
+            "description": "Device category name (resolved to category_id; 422 if unknown)."
+          },
+          "model_name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "subcategory": {
+            "type": "string"
+          },
+          "is_active": {
+            "type": "boolean",
+            "default": true
+          },
+          "date_available": {
+            "type": "string",
+            "format": "date"
+          },
+          "date_discontinued": {
+            "type": "string",
+            "format": "date"
+          },
+          "manufacture_year": {
+            "type": "integer"
+          },
+          "is_test": {
+            "type": "boolean",
+            "default": false
+          },
+          "is_customer_submitted": {
+            "type": "boolean",
+            "default": false
+          },
+          "source_id": {
+            "type": "integer",
+            "description": "Optional Supabase PK for traceability. Stored, never keyed on."
+          },
+          "charger_level": {
+            "type": "string"
+          },
+          "charging_power_kw": {
+            "type": "number"
+          },
+          "connector_types": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "seer2_rating": {
+            "type": "number"
+          },
+          "eer2_rating": {
+            "type": "number"
+          },
+          "hspf2_rating": {
+            "type": "number"
+          },
+          "ceer_rating": {
+            "type": "number"
+          },
+          "capacity_tons": {
+            "type": "number"
+          },
+          "capacity_btu": {
+            "type": "integer"
+          },
+          "capacity_kw": {
+            "type": "number"
+          },
+          "msrp": {
+            "type": "number"
+          },
+          "is_energy_star_certified": {
+            "type": "boolean"
+          },
+          "is_ul_listed": {
+            "type": "boolean"
+          },
+          "is_networked": {
+            "type": "boolean"
+          },
+          "is_ocpp_compliant": {
+            "type": "boolean"
+          },
+          "battery_capacity_kwh": {
+            "type": "number"
+          },
+          "battery_chemistry": {
+            "type": "string"
+          },
+          "is_mobile_plugin_charger": {
+            "type": "boolean",
+            "default": false
+          },
+          "msrp_updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "msrp_source": {
+            "type": "string"
+          },
+          "msrp_confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        }
+      },
+      "DeviceResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "source_id": {
+            "type": "integer"
+          },
+          "device_category_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "manufacturer": {
+            "type": "string"
+          },
+          "model_number": {
+            "type": "string"
+          },
+          "model_name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "subcategory": {
+            "type": "string"
+          },
+          "is_active": {
+            "type": "boolean"
+          },
+          "date_available": {
+            "type": "string",
+            "format": "date"
+          },
+          "date_discontinued": {
+            "type": "string",
+            "format": "date"
+          },
+          "manufacture_year": {
+            "type": "integer"
+          },
+          "is_test": {
+            "type": "boolean"
+          },
+          "is_customer_submitted": {
+            "type": "boolean"
+          },
+          "charger_level": {
+            "type": "string"
+          },
+          "charging_power_kw": {
+            "type": "number"
+          },
+          "connector_types": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "seer2_rating": {
+            "type": "number"
+          },
+          "eer2_rating": {
+            "type": "number"
+          },
+          "hspf2_rating": {
+            "type": "number"
+          },
+          "ceer_rating": {
+            "type": "number"
+          },
+          "capacity_tons": {
+            "type": "number"
+          },
+          "capacity_btu": {
+            "type": "integer"
+          },
+          "capacity_kw": {
+            "type": "number"
+          },
+          "msrp": {
+            "type": "number"
+          },
+          "is_energy_star_certified": {
+            "type": "boolean"
+          },
+          "is_ul_listed": {
+            "type": "boolean"
+          },
+          "is_networked": {
+            "type": "boolean"
+          },
+          "is_ocpp_compliant": {
+            "type": "boolean"
+          },
+          "battery_capacity_kwh": {
+            "type": "number"
+          },
+          "battery_chemistry": {
+            "type": "string"
+          },
+          "is_mobile_plugin_charger": {
+            "type": "boolean"
+          },
+          "msrp_updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "msrp_source": {
+            "type": "string"
+          },
+          "msrp_confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        }
+      },
+      "DeviceSearchResponse": {
+        "type": "object",
+        "required": [
+          "results"
+        ],
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DeviceResponse"
+            }
+          },
+          "next_offset": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Offset for the next page, or null when this is the last page."
+          }
+        }
+      },
+      "UtilityUpsertRequest": {
+        "type": "object",
+        "description": "Upsert a utility catalog row keyed by EIA utility id. This is the parent record utility territories reference by eiaid.\n",
+        "required": [
+          "eiaid",
+          "name"
+        ],
+        "properties": {
+          "eiaid": {
+            "type": "string",
+            "description": "EIA utility identifier."
+          },
+          "name": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "ownership": {
+            "type": "string"
+          },
+          "customer_count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "sales_mwh": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "UtilityResponse": {
+        "type": "object",
+        "properties": {
+          "eiaid": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "ownership": {
+            "type": "string"
+          },
+          "customer_count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "sales_mwh": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "UtilityTerritoryUpsertRequest": {
+        "type": "object",
+        "description": "Upsert a utility territory by source_id from incentives-service Supabase. boundary_geometry_ewkb_hex must encode a Polygon or MultiPolygon in SRID 4326; the server normalizes it to MultiPolygon.\n",
+        "required": [
+          "source_id",
+          "eiaid",
+          "boundary_geometry_ewkb_hex"
+        ],
+        "properties": {
+          "source_id": {
+            "type": "integer",
+            "description": "Supabase utility_territories.id. Used as the idempotency key."
+          },
+          "eiaid": {
+            "type": "string",
+            "description": "Utility EIA ID. Must reference an existing utility row."
+          },
+          "state": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "zip_code": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "boundary_geometry_ewkb_hex": {
+            "type": "string",
+            "description": "EWKB hex geometry payload from PostGIS ST_AsEWKB."
+          }
+        }
+      },
+      "UtilityTerritoryResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "source_id": {
+            "type": "integer"
+          },
+          "eiaid": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "zip_code": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "boundary_geometry_ewkb_hex": {
+            "type": "string",
+            "description": "Present only when include_geometry=true."
+          }
+        }
+      },
+      "ApprovedDeviceUpsertRequest": {
+        "type": "object",
+        "description": "Upsert an Approved Product List (APL) entry linking a program to a catalogued device. The device is referenced by natural key (manufacturer, model_number) and resolved to device_id; 422 if it is not in the catalog. tier_name, when present, is resolved against this program's tiers; 422 if unknown.\n",
+        "required": [
+          "manufacturer",
+          "model_number"
+        ],
+        "properties": {
+          "manufacturer": {
+            "type": "string"
+          },
+          "model_number": {
+            "type": "string"
+          },
+          "tier_name": {
+            "type": "string",
+            "description": "Optional tier reference resolved to tier_id within this program; 422 if unknown."
+          },
+          "apl_source": {
+            "type": "string"
+          },
+          "apl_version": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
+      },
+      "ProgramApprovedDeviceResponse": {
+        "type": "object",
+        "properties": {
+          "program_identifier": {
+            "type": "string"
+          },
+          "device_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tier_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "apl_source": {
+            "type": "string"
+          },
+          "apl_version": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
+      },
+      "TransmissionRegion": {
+        "type": "string",
+        "enum": [
+          "CAISO",
+          "ERCOT",
+          "NYISO",
+          "ISONE",
+          "PJM",
+          "SERC",
+          "WECC_SW",
+          "WECC_PC"
+        ]
+      },
+      "CustomerClassification": {
+        "description": "Customer/site classification used for incentive eligibility and flow routing.\nAligns with the leap-definitions canonical identifier `customer_classification`.\nRESIDENTIAL/COMMERCIAL are the historic values; MULTIFAMILY and MANUFACTURED_HOME\nare extensions for incentives eligibility (rebate qualification differs across\nsingle-family vs multifamily vs manufactured housing).\n",
+        "type": "string",
+        "enum": [
+          "RESIDENTIAL",
+          "MULTIFAMILY",
+          "MANUFACTURED_HOME",
+          "COMMERCIAL"
+        ]
+      }
+    },
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Your Leap API key as a Bearer token. Send it in the `Authorization` header: `Authorization: Bearer <api-key>`."
+      }
+    }
+  },
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ]
+}

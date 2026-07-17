@@ -1,0 +1,66 @@
+{
+  "specsDir": "api-reference/specs",
+  "repos": {
+    "LeapAC/global-connect-service": { "localEnv": "GCS_REPO", "localDefault": "/Users/sean/Code/global-connect-service" },
+    "LeapAC/incentives-service": { "localEnv": "INCENTIVES_REPO", "localDefault": "/Users/sean/Code/incentives-service" }
+  },
+  "gcsServers": [
+    { "url": "https://api.leap.energy", "description": "Production" },
+    { "url": "https://api.staging.leap.energy", "description": "Staging" }
+  ],
+  "specs": [
+    {
+      "output": "gcs-incentives.json",
+      "title": "Leap Incentives — Lookups",
+      "serversRef": "gcsServers",
+      "security": "bearer",
+      "source": { "repo": "LeapAC/global-connect-service", "entry": "src/main/resources/openapi/incentives.yaml", "deps": ["src/main/resources/openapi/common-schemas.yaml"] },
+      "include": [
+        { "method": "post", "path": "/v1.1/global-connect/incentives/lookups" },
+        { "method": "post", "path": "/v1.1/global-connect/incentives/refreshes" },
+        { "method": "post", "path": "/v1.1/global-connect/incentives/overrides" }
+      ]
+    },
+    {
+      "output": "gcs-reports.json",
+      "title": "Leap Incentives — Reports",
+      "serversRef": "gcsServers",
+      "security": "bearer",
+      "source": { "repo": "LeapAC/global-connect-service", "entry": "src/main/resources/openapi/reports.yaml", "deps": [] },
+      "include": "all"
+    },
+    {
+      "output": "gcs-programs.json",
+      "title": "Leap Incentives — Programs",
+      "serversRef": "gcsServers",
+      "security": "bearer",
+      "source": { "repo": "LeapAC/global-connect-service", "entry": "src/main/resources/openapi/programs.yaml", "deps": ["src/main/resources/openapi/common-schemas.yaml"] },
+      "include": [
+        { "method": "get", "path": "/v1.1/global-connect/programs" },
+        { "method": "get", "path": "/v1.1/global-connect/programs/{program_id}" },
+        { "method": "get", "path": "/v1.1/global-connect/programs/{program_id}/requirements" },
+        { "method": "get", "path": "/v1.1/global-connect/programs/{program_id}/incentive-tiers" }
+      ]
+    },
+    {
+      "output": "gcs-devices.json",
+      "title": "Leap Incentives — Devices",
+      "serversRef": "gcsServers",
+      "security": "bearer",
+      "source": { "repo": "LeapAC/global-connect-service", "entry": "src/main/resources/openapi/programs.yaml", "deps": ["src/main/resources/openapi/common-schemas.yaml"] },
+      "include": [
+        { "method": "get", "path": "/v1.1/global-connect/incentives/devices" },
+        { "method": "get", "path": "/v1.1/global-connect/incentives/devices/search" },
+        { "method": "get", "path": "/v1.1/global-connect/programs/{programIdentifier}/approved-devices" }
+      ]
+    },
+    {
+      "output": "incentives-applications.json",
+      "title": "Leap Incentives — Applications",
+      "servers": [ { "url": "https://api.incentives.leap.energy/alpha", "description": "Production" } ],
+      "security": "apikey",
+      "source": { "repo": "LeapAC/incentives-service", "entry": "supabase/functions/applications/openapi.json", "deps": [] },
+      "exclude": [ { "method": "post", "path": "/incentives" } ]
+    }
+  ]
+}

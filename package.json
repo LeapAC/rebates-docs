@@ -1,0 +1,12 @@
+{
+  "name": "rebates-docs-tooling",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "sync:openapi": "node scripts/sync-openapi.mjs",
+    "test:sync": "node --test scripts/*.test.mjs"
+  },
+  "devDependencies": {
+    "@redocly/cli": "^1.25.0"
+  }
+}

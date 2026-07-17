@@ -1,2 +1,4 @@
 .DS_Store
 .mcp.json
+node_modules/
+api-reference/specs/*.bundled.json

@@ -24,7 +24,43 @@
           "api-reference/incentives-lookups/overview",
           "POST /v1.1/global-connect/incentives/lookups",
           "POST /v1.1/global-connect/incentives/refreshes",
-          "POST /v1.1/global-connect/incentives/overrides"
+          "POST /v1.1/global-connect/incentives/overrides",
+          {
+            "group": "Reports",
+            "openapi": "api-reference/specs/gcs-reports.json",
+            "pages": [
+              "POST /v1.1/global-connect/reports",
+              "GET /v1.1/global-connect/reports",
+              "GET /v1.1/global-connect/reports/{report_id}",
+              "PATCH /v1.1/global-connect/reports/{report_id}",
+              "DELETE /v1.1/global-connect/reports/{report_id}",
+              "POST /v1.1/global-connect/reports/{report_id}/rows",
+              "GET /v1.1/global-connect/reports/{report_id}/rows",
+              "GET /v1.1/global-connect/reports/{report_id}/rows/{row_id}",
+              "POST /v1.1/global-connect/reports/{report_id}/start"
+            ]
+          }
+        ]
+      },
+      {
+        "group": "Programs",
+        "openapi": "api-reference/specs/gcs-programs.json",
+        "pages": [
+          "api-reference/programs/overview",
+          "GET /v1.1/global-connect/programs",
+          "GET /v1.1/global-connect/programs/{program_id}",
+          "GET /v1.1/global-connect/programs/{program_id}/requirements",
+          "GET /v1.1/global-connect/programs/{program_id}/incentive-tiers"
+        ]
+      },
+      {
+        "group": "Devices",
+        "openapi": "api-reference/specs/gcs-devices.json",
+        "pages": [
+          "api-reference/devices/overview",
+          "GET /v1.1/global-connect/incentives/devices",
+          "GET /v1.1/global-connect/incentives/devices/search",
+          "GET /v1.1/global-connect/programs/{programIdentifier}/approved-devices"
         ]
       },
       {

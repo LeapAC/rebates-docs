@@ -1,13 +1,33 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "willow",
-  "name": "Leap Rebates",
+  "theme": "palm",
+  "name": "Leap Incentives",
   "colors": {
-    "primary": "#004EFC",
-    "light": "#004EFC",
-    "dark": "#7E00FC"
+    "primary": "#7C3AED",
+    "light": "#A855F7",
+    "dark": "#6D28D9"
   },
-  "favicon": "/favicon.png",
+  "appearance": {
+    "default": "dark",
+    "strict": false
+  },
+  "fonts": {
+    "family": "Geist"
+  },
+  "background": {
+    "decoration": "grid",
+    "color": {
+      "light": "#FFFFFF",
+      "dark": "#0A0A0B"
+    }
+  },
+  "styling": {
+    "codeblocks": "dark"
+  },
+  "icons": {
+    "library": "lucide"
+  },
+  "favicon": "/favicon.svg",
   "navigation": {
     "groups": [
       {

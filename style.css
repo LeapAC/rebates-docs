@@ -1,4 +1,4 @@
-/* Leap Incentives — docs.incentives.leap.energy
+/* Incentives Gateway — docs.incentives.leap.energy
    Graphite foundation + restrained electric-violet. Monochrome-first:
    color is signal, never decoration. Quiet confidence, proof over persuasion.
    Auto-detected by Mintlify (any .css in the content dir loads on every page). */
@@ -11,7 +11,7 @@
   --leap-graphite: #0a0a0b;
 }
 
-/* Everything that IS data reads as monospace with tabular figures —
+/* ── Type: everything that IS data reads as monospace with tabular figures ──
    endpoints, code, keys, amounts. Mintlify exposes no font.code slot. */
 code,
 pre,
@@ -23,7 +23,38 @@ kbd,
   font-feature-settings: 'zero' 1;
 }
 
-/* Violet as signal: links, focus, selection — not fills or washes. */
+/* ── Engineering grid ──
+   A faint structural lattice on the fixed backmost layer (#background-color:
+   position:fixed, inset:0, z-index:-10). Kept barely-there so it reads as
+   texture in the margins without touching text legibility. */
+.dark #background-color {
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+  background-size: 44px 44px;
+}
+.light #background-color {
+  background-image:
+    linear-gradient(to right, rgba(10, 10, 11, 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(10, 10, 11, 0.06) 1px, transparent 1px);
+  background-size: 44px 44px;
+}
+
+/* ── Violet as signal ──
+   Brand chrome (primary CTA, active nav pill) is violet, not the stock
+   method-blue #3064E3 that Mintlify hardcodes. Verb pills (translucent
+   blue/green/orange) are left alone — that color-coding aids scanning. */
+.tryit-button,
+[class*='bg-[#3064E3]'] {
+  background-color: var(--leap-violet-deep) !important;
+  color: #fff !important;
+}
+.tryit-button:hover {
+  background-color: var(--leap-violet) !important;
+  opacity: 1;
+}
+
+/* Links, focus, selection — signal, not fills or washes. */
 a {
   transition: color 150ms ease-out;
 }
@@ -39,14 +70,14 @@ a:hover {
   background: color-mix(in oklab, var(--leap-violet) 28%, transparent);
 }
 
-/* Flat hairline chrome over glow/shadow — infrastructure, not marketing. */
+/* ── Flat hairline chrome over glow/shadow — infrastructure, not marketing. ── */
 #navbar,
 #sidebar,
 #footer {
   border-color: rgba(255, 255, 255, 0.08);
 }
 
-/* Quiet confidence in motion — honor reduced-motion. */
+/* ── Quiet confidence in motion — honor reduced-motion. ── */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

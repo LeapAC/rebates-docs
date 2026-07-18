@@ -31,7 +31,14 @@
   "navigation": {
     "groups": [
       {
-        "group": "Incentives Lookups",
+        "group": "Get Started",
+        "pages": [
+          "index",
+          "quickstart"
+        ]
+      },
+      {
+        "group": "Incentives",
         "openapi": "api-reference/specs/gcs-incentives.json",
         "pages": [
           "api-reference/incentives-lookups/overview",
@@ -69,10 +76,15 @@
   "navbar": {
     "links": [
       {
-        "label": "Support",
-        "href": "mailto:sean@leap.energy"
+        "label": "Log in",
+        "href": "https://partner.incentives.leap.energy/sign-in"
       }
-    ]
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Get Started",
+      "href": "https://partner.incentives.leap.energy/sign-up"
+    }
   },
   "contextual": {
     "options": [

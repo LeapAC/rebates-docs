@@ -17,9 +17,9 @@
       "tag": "incentives-lookups",
       "source": { "repo": "LeapAC/global-connect-service", "entry": "src/main/resources/openapi/incentives.yaml", "deps": ["src/main/resources/openapi/common-schemas.yaml"] },
       "include": [
-        { "method": "post", "path": "/v1.1/global-connect/incentives/lookups", "title": "Look up incentives" },
-        { "method": "post", "path": "/v1.1/global-connect/incentives/refreshes", "title": "Refresh incentives" },
-        { "method": "post", "path": "/v1.1/global-connect/incentives/overrides", "title": "Override incentives" }
+        { "method": "post", "path": "/v1.1/global-connect/incentives/lookups", "title": "Look up incentives", "description": "Check which rebate programs a customer qualifies for. Send the customer's address, classification, and devices; Leap returns the total incentive amount, a per-program breakdown, and a Connect URL the customer can use to apply." },
+        { "method": "post", "path": "/v1.1/global-connect/incentives/refreshes", "title": "Refresh incentives", "description": "Re-run eligibility for a customer you've already looked up, using their stored address and devices — no need to resend them. Use this to pick up newly launched programs or updated incentive amounts." },
+        { "method": "post", "path": "/v1.1/global-connect/incentives/overrides", "title": "Override incentives", "description": "Replace an existing customer's device list, then re-run eligibility. Use this when a customer's equipment has changed. The previous device set is discarded." }
       ]
     },
     {
@@ -33,14 +33,14 @@
       "tag": "applications",
       "source": { "repo": "LeapAC/incentives-service", "entry": "supabase/functions/applications/openapi.json", "deps": [] },
       "include": [
-        { "method": "get", "path": "/applications", "title": "Search applications" },
-        { "method": "get", "path": "/applications/{application_id}", "title": "Get application" },
-        { "method": "patch", "path": "/applications/{application_id}", "title": "Update application" },
-        { "method": "get", "path": "/applications/attachments", "title": "List attachments" },
-        { "method": "post", "path": "/applications/attachments", "title": "Upload attachment" },
-        { "method": "post", "path": "/applications/attachments/commit", "title": "Commit attachment upload" },
-        { "method": "get", "path": "/applications/attachments/{id}/download", "title": "Download attachment" },
-        { "method": "delete", "path": "/applications/attachments/{id}", "title": "Delete attachment" }
+        { "method": "get", "path": "/applications", "title": "Search applications", "description": "Search and filter the applications you're tracking. Returns a paginated list, filterable by reference ID or status." },
+        { "method": "get", "path": "/applications/{application_id}", "title": "Get application", "description": "Retrieve a single application in full, including customer information and device details." },
+        { "method": "patch", "path": "/applications/{application_id}", "title": "Update application", "description": "Provide the information you're supplying on behalf of the customer — customer details, device data, purchase and installation dates, contractor info. Only include the fields you want to change; omitted fields keep their current values.\n\nStatuses, dates, and identifiers are read-only and can't be changed here." },
+        { "method": "get", "path": "/applications/attachments", "title": "List attachments", "description": "List the attachments on one or more applications. Pass `application_id` (with an `attachment_type`) for a single application, or `application_ids` (comma-separated) for several." },
+        { "method": "post", "path": "/applications/attachments", "title": "Upload attachment", "description": "Create a signed URL for uploading an attachment. Upload the file to that URL with a PUT request, then confirm it with the commit endpoint." },
+        { "method": "post", "path": "/applications/attachments/commit", "title": "Commit attachment upload", "description": "Confirm an attachment after the file has been uploaded to its signed URL. This finalizes the attachment on the application." },
+        { "method": "get", "path": "/applications/attachments/{id}/download", "title": "Download attachment", "description": "Get a signed URL for downloading an attachment. The URL is valid for one hour." },
+        { "method": "delete", "path": "/applications/attachments/{id}", "title": "Delete attachment", "description": "Permanently delete an attachment. This removes the file and its record and can't be undone." }
       ]
     }
   ]

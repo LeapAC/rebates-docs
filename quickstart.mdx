@@ -1,355 +1,164 @@
 ---
 title: "Quickstart"
-description: "Embed an offer for customers to claim incentives after purchase and installation"
+description: "Look up a customer's incentives, share a Connect URL, and provide data on their behalf"
 ---
+
+Leap Incentives lets you check a customer's rebate eligibility, hand them a Connect URL to apply, and submit supporting data on their behalf. Two APIs are involved:
+
+- **Incentives Lookups** — `https://api.leap.energy`, authenticated with a **Bearer token**.
+- **Applications** — `https://api.incentives.leap.energy/alpha`, authenticated with an **`x-api-key`** header.
 
 ## Setup
 
 <Steps>
-<Step title="Create your API Key">
-  Leap will share an API Key for authenticating requests. 
+<Step title="Create your API keys">
+  You'll use two keys — a **Bearer token** for the Incentives Lookups API and an **`x-api-key`** for the Applications API. Generate both in the [Incentives Portal](https://partner.incentives.leap.energy).
 </Step>
 
-<Step title="Map devices to your system">
-  Send your list of devices and Leap will return the list with `device_id` mapped for your API requests. 
+<Step title="Get device IDs">
+  In the [Incentives Portal](https://partner.incentives.leap.energy), map your product catalog to Leap's device catalog. Each mapping returns a `device_id` you pass in lookup requests.
 </Step>
 
-<Step title="Set up Claimed Fields (Optional)">
-  Define which data fields your system will provide vs. what customers will enter directly.
+<Step title="Set up data preferences">
+  Choose which application fields you'll provide on behalf of customers. Fields you claim are removed from the customer-facing form and become yours to supply. Configure these in the [Incentives Portal](https://partner.incentives.leap.energy).
 </Step>
 </Steps>
 
-## Check Eligibility & Get URL
+## Check eligibility and get a Connect URL
 
-Check a customer's eligibility for incentives. Leap will return a Connect URL which customers use to submit applications across all eligible programs.
+Send the customer's address, classification, and devices to the **Look up incentives** endpoint. Leap returns the total incentive, a per-program breakdown, and a `connect_url` the customer uses to apply.
 
 ### Request
 
-```json
-POST /incentives
-{
-  "operation_type": "lookup",
-  "reference_id": "ref-12345",
-  "address": {
-    "street_1": "456 Main St",
-    "street_2": "Apt 2B",
-    "city": "Bend",
-    "state_or_province_code": "OR",
-    "postal_code": "97701",
-    "country_code": "US"
-  },
-  "building_type": "RESIDENTIAL",
-  "device_ids": [123],
-  "create_application": true
-}
+```bash
+curl -X POST "https://api.leap.energy/v1.1/global-connect/incentives/lookups" \
+  -H "Authorization: Bearer <your-api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "reference_id": "customer-123",
+    "customer_classification": "RESIDENTIAL",
+    "address": {
+      "address_line_1": "456 Main St",
+      "city": "Bend",
+      "state": "OR",
+      "zip_code": "97701"
+    },
+    "customer_devices": [
+      { "device_id": "123", "partner_device_reference": "order-9001" }
+    ]
+  }'
 ```
 
-### Response Examples
+### Response
 
-<AccordionGroup>
-<Accordion title="Eligible Customer">
 ```json
 {
-  "utility": {
-    "eiaid": "14354",
-    "name": "PacifiCorp (Oregon)"
+  "reference_id": "customer-123",
+  "customer_classification": "RESIDENTIAL",
+  "connect_url": "https://connect.incentives.leap.energy/your-company/refId/customer-123",
+  "incentive_summary": {
+    "upfront_amount": 0,
+    "install_amount": 750,
+    "ongoing_amount": 0
   },
-  "possible_utilities": [
+  "utilities": {
+    "primary": { "eiaid": "14354", "name": "PacifiCorp (Oregon)", "state": "OR" }
+  },
+  "program_details": [
     {
-      "eiaid": "14354",
-      "name": "PacifiCorp (Oregon)"
+      "name": "Pacific Power – Oregon \"Charge at Home\" EV Charger Rebate",
+      "device_category": "EV_CHARGER",
+      "tiers": [
+        { "tier_name": "Standard Rebate", "incentive_amount": 750 }
+      ]
     }
   ],
-  "address": "456 Main St, Apt 2B, Bend, OR, 97701",
-  "building_type": "RESIDENTIAL",
-  "customer_id": 453,
-  "programs_evaluated": 2,
-  "incentives": {
-    "total_incentive_amount": 750,
-    "total_eligible_combinations": 1,
-    "by_program": [
-      {
-        "program_id": 838,
-        "program_name": "Pacific Power – Oregon \"Charge at Home\" EV Charger Rebate",
-        "total_incentive": 750,
-        "eligible_combinations": 1,
-        "processing_enabled": true,
-        "device_tier_results": [
-          {
-            "device_id": 123,
-            "device_name": "Level 2 EV Charger",
-            "tier_id": 456,
-            "tier_name": "Standard Rebate",
-            "eligible": true,
-            "incentive_amount": 750,
-            "calculation_details": "Fixed rebate per device: $750",
-            "failed_requirements": [],
-            "ignored_requirements": [
-              "Installation must be within 90 days of application",
-              "Must use licensed contractor"
-            ],
-            "completed_requirements": []
-          }
-        ]
-      }
-    ]
-  },
-  "processing_summary": {
-    "program_ids": [838],
-    "incentive_amount": 750
-  },
-  "connect_url": "https://connect.incentives.leap.energy/your-company/refId/ref-12345",
-  "reference_id": "ref-12345"
-}
-```
-</Accordion>
-
-<Accordion title="Ineligible Customer">
-```json
-{
-  "utility": {
-    "eiaid": "15248",
-    "name": "Portland General Electric Co"
-  },
-  "possible_utilities": [
-    {
-      "eiaid": "15248",
-      "name": "Portland General Electric Co"
-    }
-  ],
-  "address": "100 SW Main St, Portland, OR, 97204",
-  "building_type": "RESIDENTIAL",
-  "customer_id": 454,
-  "programs_evaluated": 1,
-  "incentives": {
-    "total_incentive_amount": 0,
-    "total_eligible_combinations": 0,
-    "by_program": [
-      {
-        "program_id": 900,
-        "program_name": "PGE Smart Charging – Tesla Telematics Path",
-        "total_incentive": 0,
-        "eligible_combinations": 0,
-        "processing_enabled": true,
-        "device_tier_results": [
-          {
-            "device_id": 123,
-            "device_name": "Dumb Level 1 Charger",
-            "tier_id": 501,
-            "tier_name": "Smart Charger Tier",
-            "eligible": false,
-            "incentive_amount": 0,
-            "calculation_details": "Device does not meet tier requirements",
-            "failed_requirements": [
-              "Device not OCPP compliant",
-              "Charger level must be at least LEVEL_2"
-            ],
-            "ignored_requirements": [],
-            "completed_requirements": []
-          }
-        ]
-      }
-    ]
-  },
-  "processing_summary": {
-    "program_ids": [],
-    "incentive_amount": 0
-  },
-  "connect_url": "",
-  "reference_id": "ref-67890"
-}
-```
-</Accordion>
-
-<Accordion title="Multiple Programs">
-```json
-{
-  "utility": {
-    "eiaid": "17609",
-    "name": "Sacramento Municipal Util Dist"
-  },
-  "possible_utilities": [
-    {
-      "eiaid": "17609",
-      "name": "Sacramento Municipal Util Dist"
-    }
-  ],
-  "address": "789 Oak Avenue, Sacramento, CA, 95814",
-  "building_type": "RESIDENTIAL",
-  "customer_id": 455,
-  "programs_evaluated": 2,
-  "incentives": {
-    "total_incentive_amount": 1250,
-    "total_eligible_combinations": 2,
-    "by_program": [
-      {
-        "program_id": 1001,
-        "program_name": "SMUD Charge@Home EV Rebates",
-        "total_incentive": 500,
-        "eligible_combinations": 1,
-        "processing_enabled": true,
-        "device_tier_results": [
-          {
-            "device_id": 123,
-            "device_name": "Level 2 EV Charger",
-            "tier_id": 789,
-            "tier_name": "Standard Tier",
-            "eligible": true,
-            "incentive_amount": 500,
-            "calculation_details": "Fixed rebate per device: $500",
-            "failed_requirements": [],
-            "ignored_requirements": [
-              "Installation must be within 90 days of application"
-            ],
-            "completed_requirements": []
-          }
-        ]
-      },
-      {
-        "program_id": 1002,
-        "program_name": "SMUD Go Electric Bonus – Residential Panel-Upgrade & Make-Ready Rebate",
-        "total_incentive": 750,
-        "eligible_combinations": 1,
-        "processing_enabled": false,
-        "device_tier_results": [
-          {
-            "device_id": 456,
-            "device_name": "Electric Panel Upgrade",
-            "tier_id": 790,
-            "tier_name": "Panel Make Ready",
-            "eligible": true,
-            "incentive_amount": 750,
-            "calculation_details": "Fixed rebate per device: $750",
-            "failed_requirements": [],
-            "ignored_requirements": [
-              "Must use licensed contractor"
-            ],
-            "completed_requirements": []
-          }
-        ]
-      }
-    ]
-  },
-  "processing_summary": {
-    "program_ids": [1001],
-    "incentive_amount": 500
-  },
-  "connect_url": "https://connect.incentives.leap.energy/your-company/refId/ref-24680",
-  "reference_id": "ref-24680"
-}
-```
-<Note>
-  In this example, two programs are evaluated but only `SMUD Charge@Home EV Rebates` has `processing_enabled: true`. The `processing_summary` reflects only that program — `incentive_amount: 500` — because that's the offer Leap can complete an application for today. The `incentives.total_incentive_amount: 1250` includes both programs and is useful for forecasting; the `processing_summary.incentive_amount` is what to surface to the customer right now.
-</Note>
-</Accordion>
-</AccordionGroup>
-
-## Place in Your App Flow
-
-Place the offer to Claim Incentives inside your customer journey.
-
-<CardGroup cols={3}>
-<Card title="Post Purchase Email" icon="envelope">
-  Send the incentive link in your order confirmation or follow-up emails
-</Card>
-
-<Card title="Order Confirmation" icon="check-circle">
-  Display immediately after purchase completion
-</Card>
-
-<Card title="App Setup" icon="mobile">
-  Integrate into your product setup or onboarding flow
-</Card>
-</CardGroup>
-
-## Customer Fills the Application
-
-Customer completes the application in Leap Connect. After completion, application_status is updated to `awaiting_partner` or `completed`.
-
-<Note>
-  The customer will provide required documentation and consent for data sharing during this step.
-</Note>
-
-## Upload Claimed Fields
-
-Provide information to complete the customer's application.
-
-### Step 1: Search for Applications
-
-Search for applications in `awaiting_partner` status. Applications are automatically filtered to your organization.
-
-```http
-GET /applications?application_status=awaiting_partner
-x-api-key: YOUR_API_KEY
-```
-
-**Response:**
-```json
-{
-  "next_page_token": null,
-  "results": [
-    {
-      "id": 123,
-      "program_id": 339,
-      "customer_id": 609,
-      "customer_device_id": [45],
-      "status": "awaiting_partner",
-      "rebate_type": "instant",
-      "payee_type": "customer",
-      "total_requested_amount": 1500.00,
-      "created_at": "2025-01-10T15:30:00Z",
-      "updated_at": "2025-01-15T10:45:00Z",
-      "customer": {
-        "id": 609,
-        "first_name": "John",
-        "last_name": "Doe",
-        "email": "john.doe@example.com",
-        "phone": "555-123-4567",
-        "address_line1": "123 Main St",
-        "city": "Atlanta",
-        "state": "GA",
-        "zip_code": "30303"
-      }
-    }
-  ]
-}
-```
-
-### Step 2: Update Application
-
-Upload partner data using the application ID from the search results.
-
-```http
-PATCH /applications/123
-x-api-key: YOUR_API_KEY
-```
-
-**Request:**
-```json
-{
-  "status": "completed",
-  "customer": {
-    "first_name": "John",
-    "last_name": "Doe",
-    "email": "john@example.com",
-    "phone": "555-1234"
-  },
   "customer_devices": [
     {
-      "id": 45,
-      "purchase_date": "2025-01-15",
-      "installation_date": "2025-01-20",
-      "contractor_name": "ABC Electric",
-      "contractor_license": "EC-12345"
+      "device_id": "123",
+      "partner_device_reference": "order-9001",
+      "customer_device_id": "88123"
     }
   ]
 }
 ```
 
 <Note>
-This endpoint requires API key authentication via `x-api-key` header. The application must belong to your organization.
+  `connect_url` is empty when no eligible program can be processed yet. Check for a non-empty value before showing the link to a customer.
 </Note>
 
 <Tip>
-  The PATCH endpoint supports partial updates - only include fields you want to modify. Application fields can be updated at the top level (e.g., `status`, `approval_date`), and customer/devices can be updated in nested objects.
+  Returning customer? Use [Refresh incentives](/api-reference/incentives-lookups/refresh-incentives) to re-evaluate with their stored data — no need to resend address and devices. Use [Override incentives](/api-reference/incentives-lookups/override-incentives) when their equipment has changed.
 </Tip>
+
+## Place the offer in your flow
+
+Surface the Connect URL wherever it fits your customer journey.
+
+<CardGroup cols={3}>
+<Card title="Post-purchase email" icon="mail">
+  Include the link in order confirmation or follow-up emails.
+</Card>
+<Card title="Order confirmation" icon="circle-check">
+  Show it immediately after checkout.
+</Card>
+<Card title="App or onboarding" icon="smartphone">
+  Embed it in your product setup flow.
+</Card>
+</CardGroup>
+
+## Provide data on the customer's behalf
+
+Once an application exists, supply the fields you claimed so the customer doesn't have to. Find the application, then update it.
+
+### Find the application
+
+```bash
+curl -X GET "https://api.incentives.leap.energy/alpha/applications?refId=customer-123" \
+  -H "x-api-key: leap_live_..."
+```
+
+Filter by `refId` (your reference ID) or `application_status`. See [Search applications](/api-reference/applications/search-applications) for the full response.
+
+### Update the application
+
+Send the data you're providing on behalf of the customer, using the application `id` from the search results.
+
+```bash
+curl -X PATCH "https://api.incentives.leap.energy/alpha/applications/123" \
+  -H "x-api-key: leap_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "customer": {
+      "first_name": "John",
+      "last_name": "Doe",
+      "email": "john.doe@example.com",
+      "phone": "555-123-4567"
+    },
+    "customer_devices": [
+      {
+        "id": 45,
+        "purchase_date": "2026-01-15",
+        "installation_date": "2026-01-20",
+        "purchase_price": 699.00,
+        "contractor_name": "ABC Electric",
+        "contractor_license": "EC-12345"
+      }
+    ]
+  }'
+```
+
+<Note>
+  Only include the fields you want to change — omitted fields keep their current values. Statuses, dates, and identifiers are read-only and can't be modified here.
+</Note>
+
+## Next steps
+
+<CardGroup cols={2}>
+<Card title="Incentives Guide" icon="zap" href="/api-reference/incentives-lookups/overview">
+  Full reference for the lookup, refresh, and override endpoints.
+</Card>
+<Card title="Applications Guide" icon="file-text" href="/api-reference/applications/overview">
+  Search, update, and attach documentation to applications.
+</Card>
+</CardGroup>

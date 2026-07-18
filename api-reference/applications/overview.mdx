@@ -1,15 +1,25 @@
 ---
-title: Applications
-description: Create, track, and attach documentation to rebate applications.
+title: Applications Guide
+description: Search, update, and attach documentation to the rebate applications you track.
 ---
 
-<Info>
-  **Base URL:** `https://api.incentives.leap.energy/alpha`
+Applications are the rebate submissions you track through processing. Search and update them, and manage supporting attachments — invoices, permits, and photos.
 
-  **Authentication:** send your Leap API key in the `x-api-key` header —
-  `x-api-key: leap_live_...`.
-</Info>
+## Base URL
 
-Applications represent rebate submissions you track through processing. Search
-and update them, and manage supporting **Attachments** (invoices, permits,
-photos) via the two-step upload → commit flow.
+| Environment | URL |
+| ----------- | --- |
+| Production  | `https://api.incentives.leap.energy/alpha` |
+| Staging     | `https://api.staging.incentives.leap.energy/alpha` |
+
+## Authentication
+
+Send your Leap API key in the `x-api-key` header:
+
+```http
+x-api-key: leap_live_...
+```
+
+## Attachments
+
+Manage supporting documents with a two-step **upload → commit** flow: request a signed URL, `PUT` the file to it, then commit. See the **Attachments** endpoints below.

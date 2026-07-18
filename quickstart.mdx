@@ -3,7 +3,7 @@ title: "Quickstart"
 description: "Look up a customer's incentives, share a Connect URL, and provide data on their behalf"
 ---
 
-Leap Incentives lets you check a customer's rebate eligibility, hand them a Connect URL to apply, and submit supporting data on their behalf. Two APIs are involved:
+Leap Incentives lets you check a customer's incentive eligibility, hand them a Connect URL to apply, and submit supporting data on their behalf. Two APIs are involved:
 
 - **Incentives Lookups** — `https://api.leap.energy`, authenticated with a **Bearer token**.
 - **Applications** — `https://api.incentives.leap.energy/alpha`, authenticated with an **`x-api-key`** header.
@@ -21,6 +21,10 @@ Leap Incentives lets you check a customer's rebate eligibility, hand them a Conn
 
 <Step title="Set up data preferences">
   Choose which application fields you'll provide on behalf of customers. Fields you claim are removed from the customer-facing form and become yours to supply. Configure these in the [Incentives Portal](https://partner.incentives.leap.energy).
+</Step>
+
+<Step title="Configure a partner offer (optional)">
+  Running your own program — for example a virtual power plant — that you want to offer customers? Set it up as a partner offer in the [Incentives Portal](https://partner.incentives.leap.energy), and it surfaces in lookups alongside utility programs.
 </Step>
 </Steps>
 
@@ -44,7 +48,7 @@ curl -X POST "https://api.leap.energy/v1.1/global-connect/incentives/lookups" \
       "zip_code": "97701"
     },
     "customer_devices": [
-      { "device_id": "123", "partner_device_reference": "order-9001" }
+      { "device_id": "d290f1ee-6c54-4b01-90e6-d701748f0851", "partner_device_reference": "order-9001" }
     ]
   }'
 ```
@@ -75,9 +79,9 @@ curl -X POST "https://api.leap.energy/v1.1/global-connect/incentives/lookups" \
   ],
   "customer_devices": [
     {
-      "device_id": "123",
+      "device_id": "d290f1ee-6c54-4b01-90e6-d701748f0851",
       "partner_device_reference": "order-9001",
-      "customer_device_id": "88123"
+      "customer_device_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
     }
   ]
 }

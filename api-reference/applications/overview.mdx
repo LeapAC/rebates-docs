@@ -1,9 +1,9 @@
 ---
 title: Applications Guide
-description: Search, update, and attach documentation to the rebate applications you track.
+description: Search, update, and attach documentation to the incentive applications you submit.
 ---
 
-Applications are the rebate submissions you track through processing. Search and update them, and manage supporting attachments — invoices, permits, and photos.
+Applications are the incentive submissions you track through processing. Search and update them, and manage supporting attachments — invoices, permits, and photos.
 
 ## Base URL
 
@@ -22,4 +22,42 @@ x-api-key: leap_live_...
 
 ## Attachments
 
-Manage supporting documents with a two-step **upload → commit** flow: request a signed URL, `PUT` the file to it, then commit. See the **Attachments** endpoints below.
+Uploading a file takes three steps. The file bytes never pass through the Applications API — you upload them straight to storage using a pre-authorized URL Leap hands you. No storage credentials or internal Leap access are needed; your API key only authorizes steps 1 and 3.
+
+<Steps>
+<Step title="Request an upload URL">
+  `POST /applications/attachments` with the `attachment_type`, `filename`, and `contentType`. The response gives you a short-lived **`uploadUrl`** (a pre-authorized storage URL) and a **`path`**.
+
+  ```bash
+  curl -X POST "https://api.incentives.leap.energy/alpha/applications/attachments?application_id=123" \
+    -H "x-api-key: leap_live_..." \
+    -H "Content-Type: application/json" \
+    -d '{ "attachment_type": "INVOICE_EQUIPMENT", "filename": "invoice.pdf", "contentType": "application/pdf" }'
+  # → { "uploadUrl": "https://<storage-host>/.../attachments/app-123/<uuid>-invoice.pdf?token=...",
+  #     "path": "app-123/<uuid>-invoice.pdf" }
+  ```
+</Step>
+
+<Step title="Upload the file">
+  `PUT` the raw file bytes to the `uploadUrl` from step 1, with the file's `Content-Type`. This request goes directly to storage — it carries **no** API key and does not hit the Applications API.
+
+  ```bash
+  curl -X PUT "<uploadUrl>" \
+    -H "Content-Type: application/pdf" \
+    --data-binary @invoice.pdf
+  ```
+</Step>
+
+<Step title="Commit">
+  `POST /applications/attachments/commit` with the same `attachment_type` and the `path` from step 1. This records the attachment on the application.
+
+  ```bash
+  curl -X POST "https://api.incentives.leap.energy/alpha/applications/attachments/commit?application_id=123" \
+    -H "x-api-key: leap_live_..." \
+    -H "Content-Type: application/json" \
+    -d '{ "attachment_type": "INVOICE_EQUIPMENT", "path": "app-123/<uuid>-invoice.pdf" }'
+  ```
+</Step>
+</Steps>
+
+To read a file back, call **Download attachment** for a signed URL (valid one hour). See the **Attachments** endpoints below for full parameters.

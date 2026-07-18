@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { filterOperations, retargetServers, ensureSecurity, findBrokenRefs, applyOperationTitles, applyTag, pruneUnusedComponents } from './sync-openapi.mjs';
+import { filterOperations, retargetServers, ensureSecurity, findBrokenRefs, applyOperationTitles, applyOperationDescriptions, applyTag, pruneUnusedComponents } from './sync-openapi.mjs';
 
 const sample = () => ({
   openapi: '3.0.0',
@@ -56,6 +56,14 @@ test('applyOperationTitles overrides op.summary from include titles', () => {
   applyOperationTitles(spec, [{ method: 'get', path: '/a', title: 'Short A' }]);
   assert.equal(spec.paths['/a'].get.summary, 'Short A');
   assert.ok(!('summary' in spec.paths['/b'].post), 'untitled ops untouched');
+});
+
+test('applyOperationDescriptions overrides op.description from include, leaves others', () => {
+  const spec = sample();
+  spec.paths['/b'].post.description = 'original B';
+  applyOperationDescriptions(spec, [{ method: 'get', path: '/a', description: 'Short A desc' }]);
+  assert.equal(spec.paths['/a'].get.description, 'Short A desc');
+  assert.equal(spec.paths['/b'].post.description, 'original B', 'ops without an override are untouched');
 });
 
 test('applyTag normalizes every operation to a single tag', () => {

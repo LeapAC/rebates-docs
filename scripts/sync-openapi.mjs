@@ -64,6 +64,25 @@ export function applyOperationTitles(spec, include) {
   return spec;
 }
 
+// The source specs carry long, internal-facing operation descriptions (pipeline
+// mechanics, org-scoping notes, auth boilerplate). Override them with the short,
+// audience-appropriate `description` from the include entry so the docs read for
+// partners, not maintainers. Descriptions without an override pass through
+// untouched. Kept in config (not the source repos) so this stays a one-PR change
+// and survives future re-syncs.
+export function applyOperationDescriptions(spec, include) {
+  if (!Array.isArray(include)) return spec;
+  const descs = new Map(include.filter((o) => o.description != null).map((o) => [`${o.method.toLowerCase()} ${o.path}`, o.description]));
+  for (const [p, ops] of Object.entries(spec.paths || {})) {
+    if (!ops || typeof ops !== 'object') continue;
+    for (const [m, op] of Object.entries(ops)) {
+      const d = descs.get(`${m.toLowerCase()} ${p}`);
+      if (d != null && op && typeof op === 'object') op.description = d;
+    }
+  }
+  return spec;
+}
+
 // Mintlify derives an endpoint page's URL path prefix from the operation `tag`.
 // Normalize every operation to one tag so a section's URLs share a clean prefix.
 export function applyTag(spec, tag) {
@@ -209,6 +228,7 @@ function main() {
     let spec = bundle(entry);
     if (s.include !== 'all') spec = filterOperations(spec, s.include, s.exclude);
     spec = applyOperationTitles(spec, s.include);
+    spec = applyOperationDescriptions(spec, s.include);
     if (s.tag) spec = applyTag(spec, s.tag);
     spec = retargetServers(spec, s.servers || cfg[s.serversRef]);
     spec = ensureSecurity(spec, s.security);

@@ -33,7 +33,7 @@
     "/applications": {
       "get": {
         "summary": "Search applications",
-        "description": "Search and filter applications with optional pagination. Returns a list of applications\nmatching the specified criteria. All results are automatically filtered to applications belonging to your organization.\n\n**Authentication:**\nRequires API key authentication via `x-api-key` header.\n\n**Organization Scoping:**\nResults are automatically filtered by your organization ID. You can only access applications that belong to your organization.\n",
+        "description": "Search and filter the applications you're tracking. Returns a paginated list, filterable by reference ID or status.",
         "operationId": "searchApplications",
         "tags": [
           "applications"
@@ -194,7 +194,7 @@
     "/applications/{application_id}": {
       "get": {
         "summary": "Get application",
-        "description": "Retrieves a complete application including customer information and all associated\ncustomer devices. The response includes nested customer and device data.\n\n**Authentication:**\nRequires API key authentication via `x-api-key` header.\n\n**Organization Verification:**\nThe application must belong to your organization. Returns 403 Forbidden if the application belongs to a different organization.\n",
+        "description": "Retrieve a single application in full, including customer information and device details.",
         "operationId": "getApplication",
         "tags": [
           "applications"
@@ -346,7 +346,7 @@
       },
       "patch": {
         "summary": "Update application",
-        "description": "Updates an application identified by application ID. Supports updating application fields, customer information, and customer devices.\n\n**Authentication:**\nRequires API key authentication via `x-api-key` header. The application must belong to your organization.\n\n**Application ID:**\nUse the `application_id` path parameter to identify which application to update. The API verifies the application belongs to your organization.\n\n**Request Structure:**\nMatches the GET `/applications/{id}` response structure (without protected fields):\n- Application fields at top level (e.g., `rebate_type`, `approval_date`)\n- `customer` (optional): Customer fields to update\n- `customer_devices` (optional): Array of devices to update (must include `id`)\n\n**Protected Fields:**\nThe following fields cannot be updated: `id`, `customer_id`, `organization_id`, `program_id`, `status`, `created_at`, `updated_at`\n\n**Dry Run:**\nSet `dryRun=true` as a query parameter to validate the request without applying changes.\n\n**Partial Update Behavior:**\n- Only include fields you want to change\n- Omitted fields will keep their current values\n- Set a field to `null` to clear its value (where nullable)\n\n**Customer Devices:**\n- Must include `id` (required) to identify the device\n- Missing `id` will return 400 Bad Request with error code `invalid_body`\n\n**Status Field:**\nThe `status` field is read-only for organizations and cannot be updated through this endpoint.\n\nAll updates are transactional - if any part fails, the entire operation is rolled back.\n",
+        "description": "Provide the information you're supplying on behalf of the customer — customer details, device data, purchase and installation dates, contractor info. Only include the fields you want to change; omitted fields keep their current values.\n\nStatus and system identifiers (`id`, `customer_id`, `program_id`) are read-only and can't be changed here.",
         "operationId": "patchApplicationById",
         "tags": [
           "applications"
@@ -655,7 +655,7 @@
     "/applications/attachments": {
       "get": {
         "summary": "List attachments",
-        "description": "List attachments for one or more applications.\n\n**Authentication:**\nRequires API key authentication via `x-api-key` header. The application must belong to your organization.\n\n**Query Parameters:**\n- Use `application_id` for a single application (requires `attachment_type`)\n- Use `application_ids` for bulk listing (comma-separated, `attachment_type` is optional)",
+        "description": "List the attachments on one or more applications. Pass `application_id` (with an `attachment_type`) for a single application, or `application_ids` (comma-separated) for several.",
         "operationId": "listAttachments",
         "tags": [
           "applications"
@@ -747,7 +747,7 @@
       },
       "post": {
         "summary": "Upload attachment",
-        "description": "Creates a signed upload URL for uploading an attachment to the application. After receiving the signed URL, upload the file using a PUT request, then commit using the commit endpoint.\n\n**Authentication:**\nRequires API key authentication via `x-api-key` header. The application must belong to your organization.\n\n**Application ID:**\nUse the `application_id` query parameter to identify which application to attach the file to. The API verifies the application belongs to your organization.",
+        "description": "Create a signed URL for uploading an attachment. Upload the file to that URL with a PUT request, then confirm it with the commit endpoint.",
         "operationId": "createAttachmentUploadUrl",
         "tags": [
           "applications"
@@ -912,7 +912,7 @@
     "/applications/attachments/{id}/download": {
       "get": {
         "summary": "Download attachment",
-        "description": "Get a signed download URL for an attachment. The URL is valid for 1 hour.\n\n**Authentication:**\nRequires API key authentication via `x-api-key` header. The application must belong to your organization.\n\nThe signed URL is valid for 1 hour. The response includes three fields (`downloadUrl`, `url`, `file_url`) all containing the same URL for compatibility.",
+        "description": "Get a signed URL for downloading an attachment. The URL is valid for one hour.",
         "operationId": "downloadAttachment",
         "tags": [
           "applications"
@@ -1005,7 +1005,7 @@
     "/applications/attachments/{id}": {
       "delete": {
         "summary": "Delete attachment",
-        "description": "Delete an attachment from storage and remove the database record.\n\n**Authentication:**\nRequires API key authentication via `x-api-key` header. The application must belong to your organization.\n\n**Warning:**\nThis operation is **permanent** and cannot be undone. The file will be deleted from storage and the database record will be removed.",
+        "description": "Permanently delete an attachment. This removes the file and its record and can't be undone.",
         "operationId": "deleteAttachment",
         "tags": [
           "applications"
@@ -1072,7 +1072,7 @@
     "/applications/attachments/commit": {
       "post": {
         "summary": "Commit attachment upload",
-        "description": "Commits an attachment after the file has been successfully uploaded to the signed URL from the create endpoint.\n\n**Authentication:**\nRequires API key authentication via `x-api-key` header. The application must belong to your organization.\n\n**Application ID:**\nUse the `application_id` query parameter to identify which application the attachment belongs to. The API verifies the application belongs to your organization.\n\n**Path Format:**\nFor organization authentication, the path should use the `app-{application_id}/` prefix format (e.g., `app-123/uuid-filename.pdf`).",
+        "description": "Confirm an attachment after the file has been uploaded to its signed URL. This finalizes the attachment on the application.",
         "operationId": "commitAttachment",
         "tags": [
           "applications"

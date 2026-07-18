@@ -1,17 +1,27 @@
 ---
-title: Incentives Lookups
-description: Check device- and customer-level incentive eligibility through the Leap API Gateway.
+title: Incentives Guide
+description: Check which energy incentives a customer qualifies for through the Leap API Gateway.
 ---
 
-Incentive lookups run against the Leap API Gateway.
+Check which energy incentives a customer qualifies for — across utility, market, and state programs — and get a Connect URL you can hand to the customer to apply. Lookups run against the Leap API Gateway.
 
-<Info>
-  **Base URL:** `https://api.leap.energy` (production) · `https://api.staging.leap.energy` (staging)
+## Base URL
 
-  **Authentication:** send your Leap API key as a Bearer token —
-  `Authorization: Bearer <api-key>`.
-</Info>
+| Environment | URL |
+| ----------- | --- |
+| Production  | `https://api.leap.energy` |
+| Staging     | `https://api.staging.leap.energy` |
 
-Use **Lookups** for first-touch eligibility, **Refreshes** to re-evaluate an
-existing lookup, and **Overrides** to correct a result. See **Reports** for
-batch lookups and history.
+## Authentication
+
+Send your Leap API key as a **Bearer token** in the `Authorization` header:
+
+```http
+Authorization: Bearer <your-api-key>
+```
+
+## Endpoints
+
+- **Look up incentives** — first-touch eligibility for a new customer.
+- **Refresh incentives** — re-evaluate a customer you've already looked up, using their stored data.
+- **Override incentives** — replace a customer's devices, then re-evaluate.

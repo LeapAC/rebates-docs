@@ -22,7 +22,7 @@ x-api-key: leap_live_...
 
 ## Attachments
 
-Uploading a file takes three steps. The file bytes never pass through the Applications API — you upload them straight to storage using a pre-authorized URL Leap hands you. No storage credentials or internal Leap access are needed; your API key only authorizes steps 1 and 3.
+Uploading a file takes three steps. The file bytes never pass through the Applications API — you upload them straight to storage using a pre-authorized URL Leap hands you, the same way an [S3 pre-signed `PUT`](https://docs.aws.amazon.com/AmazonS3/latest/userguide/PresignedUrlUploadObject.html) works. That upload (step 2) is a direct storage request, **not** a Leap endpoint — which is why you won't find it in the API Reference. Only the two calls that bracket it are Leap endpoints. No storage credentials or internal Leap access are needed; your API key authorizes steps 1 and 3.
 
 <Steps>
 <Step title="Request an upload URL">
@@ -39,7 +39,7 @@ Uploading a file takes three steps. The file bytes never pass through the Applic
 </Step>
 
 <Step title="Upload the file">
-  `PUT` the raw file bytes to the `uploadUrl` from step 1, with the file's `Content-Type`. This request goes directly to storage — it carries **no** API key and does not hit the Applications API.
+  `PUT` the raw file bytes to the `uploadUrl` from step 1, with the file's `Content-Type`. This request goes directly to storage — it carries **no** API key and does not hit the Applications API. Storage returns `200 OK` with an empty body on success.
 
   ```bash
   curl -X PUT "<uploadUrl>" \

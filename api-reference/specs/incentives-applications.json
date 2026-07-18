@@ -346,7 +346,7 @@
       },
       "patch": {
         "summary": "Update application",
-        "description": "Provide the information you're supplying on behalf of the customer — customer details, device data, purchase and installation dates, contractor info. Only include the fields you want to change; omitted fields keep their current values.\n\nStatuses, dates, and identifiers are read-only and can't be changed here.",
+        "description": "Provide the information you're supplying on behalf of the customer — customer details, device data, purchase and installation dates, contractor info. Only include the fields you want to change; omitted fields keep their current values.\n\nStatus and system identifiers (`id`, `customer_id`, `program_id`) are read-only and can't be changed here.",
         "operationId": "patchApplicationById",
         "tags": [
           "applications"

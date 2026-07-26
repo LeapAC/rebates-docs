@@ -65,11 +65,11 @@
           "404": {
             "$ref": "#/components/responses/NotFound"
           },
-          "409": {
-            "$ref": "#/components/responses/Conflict"
-          },
           "422": {
             "$ref": "#/components/responses/UnprocessableEntity"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
           },
           "500": {
             "$ref": "#/components/responses/InternalServerError"
@@ -124,6 +124,9 @@
           "422": {
             "$ref": "#/components/responses/UnprocessableEntity"
           },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
           "500": {
             "$ref": "#/components/responses/InternalServerError"
           }
@@ -174,6 +177,9 @@
           "422": {
             "$ref": "#/components/responses/UnprocessableEntity"
           },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
           "500": {
             "$ref": "#/components/responses/InternalServerError"
           }
@@ -223,8 +229,8 @@
           }
         }
       },
-      "Conflict": {
-        "description": "Conflict with existing customer state (e.g., reference_id already bound to a different address)",
+      "UnprocessableEntity": {
+        "description": "Request was syntactically valid but could not be processed (e.g., unknown device id, address could not be geocoded)",
         "content": {
           "application/json": {
             "schema": {
@@ -233,8 +239,16 @@
           }
         }
       },
-      "UnprocessableEntity": {
-        "description": "Request was syntactically valid but could not be processed (e.g., unknown device id, address could not be geocoded)",
+      "RateLimited": {
+        "description": "The shared per-partner rate limit for /incentives endpoints was exceeded (`error_code: RATE_LIMIT_EXCEEDED`). Back off and retry after the number of seconds indicated by the `Retry-After` header.\n",
+        "headers": {
+          "Retry-After": {
+            "description": "Seconds to wait before retrying.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
         "content": {
           "application/json": {
             "schema": {
@@ -342,6 +356,16 @@
             "additionalProperties": {
               "type": "string"
             }
+          },
+          "create_application": {
+            "type": "boolean",
+            "default": false,
+            "description": "When true, GCS asynchronously provisions the Supabase Connect records (customer, customer devices, applications) for this lookup's eligible programs, so the returned `connect_url` is a working Connect link. Optional — defaults to false; lookup-only integrations are unaffected and no application records are created for them. Intended for processing partners. Has no effect on billing or rate limits. When the lookup surfaces no eligible incentive there is nothing to enroll in, so `connect_url` is omitted entirely (REA-880).\n"
+          },
+          "include_preview": {
+            "type": "boolean",
+            "default": false,
+            "description": "Include the calling partner's own preview-state (IN_REVIEW) programs in the result. Caller-scoped: only the authenticated partner's own IN_REVIEW Partner Offer participates — another partner's preview-state offer is never surfaced by this flag. Optional — defaults to false, which preserves today's ACTIVE-only behavior. Has no effect on leap-definitions / rebate candidate programs, which remain ACTIVE-only regardless of this flag.\n"
           }
         }
       },
@@ -362,6 +386,29 @@
             "description": "Optional partner-supplied per-customer attributes to upsert against the existing customer record before re-evaluation. Use this to update values like `customer.is_homeowner` without touching the device set. Empty or omitted = no attribute changes.\n",
             "maxProperties": 100,
             "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "customer_devices": {
+            "type": "array",
+            "maxItems": 50,
+            "description": "Optional device merge set (REA-776, REA-858 §6.1). Each entry is UPSERTED: an entry carrying `customer_device_id` updates that installation in place; an entry without one creates (or idempotently re-upserts) an installation addressed by `(device, partner_device_reference)`. Installations on file that are not listed are left untouched — supplying a subset never deletes the rest. Deletion happens only through `remove_customer_device_ids` / `remove_device_references`.\n",
+            "items": {
+              "$ref": "#/components/schemas/CustomerDeviceRef"
+            }
+          },
+          "remove_customer_device_ids": {
+            "type": "array",
+            "description": "Explicit removals by `customer_device_id` (the universal cross-system device address, REA-858 §5). Ids that do not match a device on this customer are ignored, so retries are idempotent.\n",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "remove_device_references": {
+            "type": "array",
+            "description": "Explicit removals by `partner_device_reference` (partner convenience, REA-776). Every installation on file with a matching reference is removed. Unknown references are ignored.\n",
+            "items": {
               "type": "string"
             }
           }
@@ -401,14 +448,21 @@
       },
       "CustomerDeviceRef": {
         "type": "object",
-        "required": [
-          "device_id"
-        ],
+        "description": "One installation. New installations address their catalog device by exactly one of `device_id` / `device_source_id`. On `/refreshes`, `customer_device_id` instead targets an existing installation for an in-place update (REA-858 §5/§6.1).\n",
         "properties": {
           "device_id": {
             "type": "string",
             "format": "uuid",
-            "description": "Catalog `device.id`. Must exist in the device catalog or the request is rejected with 422 `INVALID_DEVICE_ID`.\n"
+            "description": "Catalog `device.id`. Exactly one of `device_id` / `device_source_id` is required on new installations. Optional when `customer_device_id` targets an existing installation — and must match that installation's catalog device when supplied. Must exist in the device catalog or the request is rejected with 422 `INVALID_DEVICE_ID`.\n"
+          },
+          "device_source_id": {
+            "type": "integer",
+            "description": "Alternative catalog address: the device's `source_id` (the Supabase catalog `devices.id` carried by the REA-747 ingestion). Resolved server-side via `device.source_id`; unknown values are rejected with 422 `INVALID_DEVICE_ID`. Supply exactly one of `device_id` / `device_source_id` on new installations.\n"
+          },
+          "customer_device_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Targets an existing `customer_device` row for an in-place update. Accepted only on `/incentives/refreshes` (and the internal refresh lane); rejected with 400 on `/lookups` and `/overrides`. This id is the universal cross-system device address (REA-858 §5): it is stable across refreshes and regenerated only by the explicitly destructive `/overrides` operation.\n"
           },
           "partner_device_reference": {
             "type": "string",
@@ -437,7 +491,8 @@
         "properties": {
           "device_id": {
             "type": "string",
-            "format": "uuid"
+            "format": "uuid",
+            "description": "The catalog `device.id` resolved for this installation."
           },
           "partner_device_reference": {
             "type": "string",
@@ -460,21 +515,25 @@
         ],
         "properties": {
           "address_line_1": {
-            "type": "string"
+            "type": "string",
+            "description": "Street address — house number and street name."
           },
           "address_line_2": {
             "type": "string",
-            "nullable": true
+            "nullable": true,
+            "description": "Optional secondary address line, such as an apartment, suite, or unit number."
           },
           "city": {
-            "type": "string"
+            "type": "string",
+            "description": "City name."
           },
           "state": {
             "type": "string",
             "description": "Two-letter US state abbreviation."
           },
           "zip_code": {
-            "type": "string"
+            "type": "string",
+            "description": "US ZIP code (5-digit or ZIP+4)."
           },
           "country_code": {
             "type": "string",
@@ -489,14 +548,14 @@
           "reference_id",
           "customer_classification",
           "customer_devices",
-          "connect_url",
           "incentive_summary",
           "utilities",
           "program_details"
         ],
         "properties": {
           "reference_id": {
-            "type": "string"
+            "type": "string",
+            "description": "Echoes the `reference_id` from the request — the partner's stable identifier for this customer."
           },
           "customer_classification": {
             "$ref": "#/components/schemas/CustomerClassification"
@@ -511,7 +570,7 @@
           "connect_url": {
             "type": "string",
             "format": "uri",
-            "description": "Deep link the partner can hand to the customer to start the Connect flow. Encodes `reference_id` and (later) variant.\n"
+            "description": "Deep link the partner can hand to the customer to start the Connect flow: `https://connect.incentives.leap.energy/{company}/refId/{reference_id}`, where `{company}` is the partner's registration nickname. Falls back to a legacy placeholder URL when the partner has no registration nickname. **Omitted entirely when the lookup surfaces no eligible incentive** (empty `program_details` / zero `incentive_summary`): there is nothing to enroll in, so the deep link would 404 (REA-880).\n"
           },
           "incentive_summary": {
             "$ref": "#/components/schemas/IncentiveSummary"
@@ -528,6 +587,28 @@
           },
           "geocoding": {
             "$ref": "#/components/schemas/Geocoding"
+          },
+          "partner": {
+            "$ref": "#/components/schemas/PartnerBranding"
+          }
+        }
+      },
+      "PartnerBranding": {
+        "type": "object",
+        "description": "Page-level partner branding (external brand name + logo) resolved from the identity service by the authenticated partner. This is the same source the session endpoint `GET /session/{id}/partner` reads (`PartnerResponse`), resolved here without a session so the Connect surface can render the partner's brand at the top of the page directly from the incentives response. Present on the refresh lane (Connect bootstrap); absent only if the partner could not be resolved.\n",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The partner's external brand name (identity `Account.name`)."
+          },
+          "logo_url": {
+            "type": "string",
+            "format": "uri",
+            "nullable": true,
+            "description": "URL to the partner's logo (identity `Account.logo_url`). Null when the partner has no logo configured in the identity service.\n"
           }
         }
       },
@@ -549,7 +630,7 @@
           },
           "ongoing_amount": {
             "type": "number",
-            "description": "Sum across all eligible programs of recurring incentives. Maps from the engine's `ongoing_total` per program."
+            "description": "Sum across all eligible programs of recurring incentives, PER YEAR. Maps from the engine's monthly-normalized `ongoing_total` per program, annualized (x12) at response assembly.\n"
           }
         }
       },
@@ -594,8 +675,33 @@
             "nullable": true,
             "description": "Free-form description shown to the customer (PARTNER_OFFER rows only). Read from `program.metadata.description`. Null for non-offer programs.\n"
           },
+          "is_partner_offer": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "True when this entry is a Partner Offer sleeving one or more Leap-Definitions programs; false for raw programs (INCENTIVES_DB rebate rows — raw LEAP_DEFINITIONS programs are never surfaced). Absent on results computed before this field shipped.\n"
+          },
+          "covered_programs": {
+            "type": "array",
+            "description": "The wrapped Leap-Definitions programs that evaluated eligible for this customer under this offer (PARTNER_OFFER rows only) — the programs whose value is summed into this entry's tier amounts. Always empty for non-offer entries.\n",
+            "items": {
+              "$ref": "#/components/schemas/CoveredProgram"
+            }
+          },
+          "program_identifier": {
+            "type": "string",
+            "nullable": true,
+            "description": "Stable program identifier for this row: the partner-offer identifier for PARTNER_OFFER rows, or the leap-definitions / catalog identifier (e.g. `PGE-ART`) otherwise. Clients use it to fetch the program's requirement definitions from `GET /v1.1/global-connect/programs/{program_identifier}/requirements`. Absent on results computed before this field shipped.\n"
+          },
+          "included_leap_program_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "PARTNER_OFFER rows only: the leap-definitions program identifiers this offer sleeves for the matched customer (the intersection evaluated for this lookup). Empty for non-offer rows. Fetch each identifier's requirements to show the offer's combined eligibility.\n"
+          },
           "tiers": {
             "type": "array",
+            "description": "The program's incentive tiers evaluated for this customer. Each tier carries its payment type, total amount, and per-device results.\n",
             "items": {
               "$ref": "#/components/schemas/MatchedTier"
             }
@@ -612,14 +718,15 @@
         ],
         "properties": {
           "tier_name": {
-            "type": "string"
+            "type": "string",
+            "description": "Display name for the tier. Non-offer programs surface their spec tier id; Partner Offer legs surface customer-facing names — \"Enrollment Incentive\" (up-front leg) / \"Participation Incentive\" (recurring leg). Partner Offers emit one tier per payment leg.\n"
           },
           "payment_type": {
             "$ref": "#/components/schemas/PaymentType"
           },
           "incentive_amount": {
             "type": "number",
-            "description": "Tier-level total across surviving devices. The calc engine produces a single scalar per (program, tier); per-device differentiation lives in `device_results[]`.\n"
+            "description": "Tier-level total across surviving devices. The calc engine produces a single scalar per (program, tier); per-device differentiation lives in `device_results[]`. Units by `payment_type`: UPFRONT / INSTALL amounts are one-time; ONGOING amounts are PER YEAR.\n"
           },
           "device_results": {
             "type": "array",
@@ -627,6 +734,23 @@
             "items": {
               "$ref": "#/components/schemas/DeviceTierResult"
             }
+          }
+        }
+      },
+      "CoveredProgram": {
+        "type": "object",
+        "required": [
+          "identifier",
+          "name"
+        ],
+        "properties": {
+          "identifier": {
+            "type": "string",
+            "description": "The wrapped Leap-Definitions program's identifier. Internal detail surfaced only in `covered_programs[]` on a Partner Offer entry — never a standalone `EligibleProgram` (raw LEAP_DEFINITIONS programs are never surfaced).\n"
+          },
+          "name": {
+            "type": "string",
+            "description": "Human-readable label for the wrapped program (`program.label`)."
           }
         }
       },
@@ -645,7 +769,8 @@
           },
           "customer_device_id": {
             "type": "string",
-            "format": "uuid"
+            "format": "uuid",
+            "description": "The `customer_device.id` of the installation evaluated in this result."
           },
           "status": {
             "type": "string",
@@ -653,6 +778,7 @@
           },
           "eligibility_details": {
             "type": "array",
+            "description": "Per-requirement check results behind this device's tier `status` — one entry per eligibility rule evaluated.\n",
             "items": {
               "$ref": "#/components/schemas/EligibilityCheck"
             }
@@ -707,10 +833,16 @@
         ],
         "properties": {
           "primary": {
-            "$ref": "#/components/schemas/IncentiveUtility"
+            "description": "The utility resolved as serving this address — the one whose programs drive the eligibility result.\n",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/IncentiveUtility"
+              }
+            ]
           },
           "possible_utilities": {
             "type": "array",
+            "description": "Every utility whose service territory covers this address (including `primary`); more than one can appear where territories overlap.\n",
             "items": {
               "$ref": "#/components/schemas/IncentiveUtility"
             }
@@ -730,7 +862,8 @@
             "description": "EIA utility identifier."
           },
           "name": {
-            "type": "string"
+            "type": "string",
+            "description": "Human-readable utility name."
           },
           "state": {
             "type": "string",
@@ -749,14 +882,17 @@
         "properties": {
           "latitude": {
             "type": "number",
-            "format": "double"
+            "format": "double",
+            "description": "Latitude of the geocoded address, in decimal degrees."
           },
           "longitude": {
             "type": "number",
-            "format": "double"
+            "format": "double",
+            "description": "Longitude of the geocoded address, in decimal degrees."
           },
           "formatted_address": {
-            "type": "string"
+            "type": "string",
+            "description": "The address as normalized by the geocoder."
           }
         }
       },

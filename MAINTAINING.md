@@ -102,5 +102,7 @@ auth matches the section (Bearer for Incentives, `x-api-key` for Applications).
 | Section | Source repo · file | Auth |
 |---|---|---|
 | Incentives | global-connect-service · `incentives.yaml` (+ `common-schemas.yaml`) | Bearer |
-| Device Catalog | global-connect-service · `programs.yaml` (+ `common-schemas.yaml`) | Bearer |
 | Applications | incentives-service · `applications/openapi.json` | `x-api-key` |
+
+The device catalog search endpoint is deliberately **not** published — it ships later
+behind a paid wrapper. Don't add it back without checking.

@@ -42,17 +42,6 @@
       }
     },
     {
-      "output": "gcs-devices.json",
-      "title": "Leap Incentives — Device Catalog",
-      "serversRef": "gcsServers",
-      "security": "bearer",
-      "tag": "device-catalog",
-      "source": { "repo": "LeapAC/global-connect-service", "entry": "src/main/resources/openapi/programs.yaml", "deps": ["src/main/resources/openapi/common-schemas.yaml"] },
-      "include": [
-        { "method": "get", "path": "/v1.1/global-connect/incentives/devices/search", "title": "Search device catalog", "description": "Find the catalog `device_id` for a product by free-text search over manufacturer, model, and description. Use this to map your product catalog to Leap's programmatically instead of by hand, and to keep the mapping current as the catalog grows. Every whitespace-separated term in `q` must match; results are ranked by closeness." }
-      ]
-    },
-    {
       "output": "incentives-applications.json",
       "title": "Leap Incentives — Applications",
       "servers": [

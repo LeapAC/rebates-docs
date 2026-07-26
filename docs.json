@@ -48,6 +48,13 @@
         ]
       },
       {
+        "group": "Device Catalog",
+        "openapi": "api-reference/specs/gcs-devices.json",
+        "pages": [
+          "GET /v1.1/global-connect/incentives/devices/search"
+        ]
+      },
+      {
         "group": "Applications",
         "openapi": "api-reference/specs/incentives-applications.json",
         "pages": [
@@ -58,6 +65,7 @@
           {
             "group": "Attachments",
             "pages": [
+              "api-reference/applications/attachments",
               "GET /applications/attachments",
               "POST /applications/attachments",
               "POST /applications/attachments/commit",

@@ -1,0 +1,48 @@
+---
+title: Attachments Guide
+description: Upload invoices, permits, and photos to an application in three steps.
+---
+
+Programs ask for documentation to substantiate a claim — commonly `INVOICE_EQUIPMENT`, `INVOICE_INSTALL`, `PERMIT`, `PHOTO_INSTALL`, `PHOTO_NAMEPLATE`, or `PHOTO_METER`, varying by program. You don't have to hold them all: types you haven't claimed under **Data Preferences** are collected from the customer in Leap Connect, so claim only what you can reliably supply.
+
+## Uploading a file
+
+The file bytes never pass through the Applications API — you upload them straight to storage with a pre-authorized URL Leap hands you, the way an [S3 pre-signed `PUT`](https://docs.aws.amazon.com/AmazonS3/latest/userguide/PresignedUrlUploadObject.html) works. Only the two calls bracketing that upload are Leap endpoints; your API key authorizes both.
+
+<Steps>
+<Step title="Request an upload URL">
+  `POST /applications/attachments` with the `attachment_type`, `filename`, and `contentType`. You get back a short-lived **`uploadUrl`** and a **`path`**. Leap prefixes your filename with a unique id, so two `invoice.pdf`s never collide.
+
+  ```bash
+  curl -X POST "https://api.incentives.leap.energy/alpha/applications/attachments?application_id=123" \
+    -H "x-api-key: leap_live_..." \
+    -H "Content-Type: application/json" \
+    -d '{ "attachment_type": "INVOICE_EQUIPMENT", "filename": "invoice.pdf", "contentType": "application/pdf" }'
+  # → { "uploadUrl": "https://<storage-host>/attachments/app-123/<uuid>-invoice.pdf?token=...",
+  #     "path": "app-123/<uuid>-invoice.pdf" }
+  ```
+</Step>
+
+<Step title="Upload the file">
+  `PUT` the raw bytes to that `uploadUrl` with the file's `Content-Type`. This goes directly to storage — **no** API key — and returns `200 OK` with an empty body.
+
+  ```bash
+  curl -X PUT "<uploadUrl>" \
+    -H "Content-Type: application/pdf" \
+    --data-binary @invoice.pdf
+  ```
+</Step>
+
+<Step title="Commit">
+  `POST /applications/attachments/commit` with the same `attachment_type` and the `path` from step 1. This records the attachment on the application.
+
+  ```bash
+  curl -X POST "https://api.incentives.leap.energy/alpha/applications/attachments/commit?application_id=123" \
+    -H "x-api-key: leap_live_..." \
+    -H "Content-Type: application/json" \
+    -d '{ "attachment_type": "INVOICE_EQUIPMENT", "path": "app-123/<uuid>-invoice.pdf" }'
+  ```
+</Step>
+</Steps>
+
+To read a file back, call **Download attachment** for a signed URL, valid one hour.

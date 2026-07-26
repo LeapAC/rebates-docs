@@ -1,0 +1,345 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Leap Incentives — Device Catalog",
+    "description": "API for managing program definitions, requirement catalog, field groups, and partner data preferences",
+    "contact": {
+      "email": "apiteam@leap.energy"
+    },
+    "version": "0.1"
+  },
+  "servers": [
+    {
+      "url": "https://api.leap.energy",
+      "description": "Production"
+    },
+    {
+      "url": "https://api.staging.leap.energy",
+      "description": "Staging"
+    }
+  ],
+  "tags": [
+    {
+      "name": "device-catalog"
+    }
+  ],
+  "paths": {
+    "/v1.1/global-connect/incentives/devices/search": {
+      "get": {
+        "tags": [
+          "device-catalog"
+        ],
+        "summary": "Search device catalog",
+        "description": "Find the catalog `device_id` for a product by free-text search over manufacturer, model, and description. Use this to map your product catalog to Leap's programmatically instead of by hand, and to keep the mapping current as the catalog grows. Every whitespace-separated term in `q` must match; results are ranked by closeness.",
+        "operationId": "searchDevices",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "minimum": 1,
+              "maximum": 50
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ranked page of matching devices.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceSearchResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "responses": {
+      "BadRequest": {
+        "description": "Malformed or invalid request",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "You are not authorized to perform this operation",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "You do not have permission to perform this operation",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "RateLimited": {
+        "description": "The shared per-partner rate limit for /incentives endpoints was exceeded (`error_code: RATE_LIMIT_EXCEEDED`). Back off and retry after the number of seconds indicated by the `Retry-After` header.\n",
+        "headers": {
+          "Retry-After": {
+            "description": "Seconds to wait before retrying.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "InternalServerError": {
+        "description": "An internal server error occurred",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "ErrorResponse": {
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "object",
+            "required": [
+              "message"
+            ],
+            "properties": {
+              "message": {
+                "type": "string"
+              },
+              "details": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "error_code": {
+                      "type": "string"
+                    },
+                    "reason": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "DeviceResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "source_id": {
+            "type": "integer"
+          },
+          "device_category_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "manufacturer": {
+            "type": "string"
+          },
+          "model_number": {
+            "type": "string"
+          },
+          "model_name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "subcategory": {
+            "type": "string"
+          },
+          "is_active": {
+            "type": "boolean"
+          },
+          "date_available": {
+            "type": "string",
+            "format": "date"
+          },
+          "date_discontinued": {
+            "type": "string",
+            "format": "date"
+          },
+          "manufacture_year": {
+            "type": "integer"
+          },
+          "is_test": {
+            "type": "boolean"
+          },
+          "is_customer_submitted": {
+            "type": "boolean"
+          },
+          "charger_level": {
+            "type": "string"
+          },
+          "charging_power_kw": {
+            "type": "number"
+          },
+          "connector_types": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "seer2_rating": {
+            "type": "number"
+          },
+          "eer2_rating": {
+            "type": "number"
+          },
+          "hspf2_rating": {
+            "type": "number"
+          },
+          "ceer_rating": {
+            "type": "number"
+          },
+          "capacity_tons": {
+            "type": "number"
+          },
+          "capacity_btu": {
+            "type": "integer"
+          },
+          "capacity_kw": {
+            "type": "number"
+          },
+          "msrp": {
+            "type": "number"
+          },
+          "is_energy_star_certified": {
+            "type": "boolean"
+          },
+          "is_ul_listed": {
+            "type": "boolean"
+          },
+          "is_networked": {
+            "type": "boolean"
+          },
+          "is_ocpp_compliant": {
+            "type": "boolean"
+          },
+          "battery_capacity_kwh": {
+            "type": "number"
+          },
+          "battery_chemistry": {
+            "type": "string"
+          },
+          "is_mobile_plugin_charger": {
+            "type": "boolean"
+          },
+          "msrp_updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "msrp_source": {
+            "type": "string"
+          },
+          "msrp_confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        }
+      },
+      "DeviceSearchResponse": {
+        "type": "object",
+        "required": [
+          "results"
+        ],
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DeviceResponse"
+            }
+          },
+          "next_offset": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Offset for the next page, or null when this is the last page."
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Your Leap API key as a Bearer token. Send it in the `Authorization` header: `Authorization: Bearer <api-key>`."
+      }
+    }
+  },
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ]
+}

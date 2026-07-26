@@ -65,11 +65,11 @@
           "404": {
             "$ref": "#/components/responses/NotFound"
           },
-          "409": {
-            "$ref": "#/components/responses/Conflict"
-          },
           "422": {
             "$ref": "#/components/responses/UnprocessableEntity"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
           },
           "500": {
             "$ref": "#/components/responses/InternalServerError"
@@ -124,6 +124,9 @@
           "422": {
             "$ref": "#/components/responses/UnprocessableEntity"
           },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
           "500": {
             "$ref": "#/components/responses/InternalServerError"
           }
@@ -174,6 +177,9 @@
           "422": {
             "$ref": "#/components/responses/UnprocessableEntity"
           },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
           "500": {
             "$ref": "#/components/responses/InternalServerError"
           }
@@ -223,8 +229,8 @@
           }
         }
       },
-      "Conflict": {
-        "description": "Conflict with existing customer state (e.g., reference_id already bound to a different address)",
+      "UnprocessableEntity": {
+        "description": "Request was syntactically valid but could not be processed (e.g., unknown device id, address could not be geocoded)",
         "content": {
           "application/json": {
             "schema": {
@@ -233,8 +239,16 @@
           }
         }
       },
-      "UnprocessableEntity": {
-        "description": "Request was syntactically valid but could not be processed (e.g., unknown device id, address could not be geocoded)",
+      "RateLimited": {
+        "description": "The shared per-partner rate limit for /incentives endpoints was exceeded (`error_code: RATE_LIMIT_EXCEEDED`). Back off and retry after the number of seconds indicated by the `Retry-After` header.\n",
+        "headers": {
+          "Retry-After": {
+            "description": "Seconds to wait before retrying.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
         "content": {
           "application/json": {
             "schema": {
@@ -342,6 +356,16 @@
             "additionalProperties": {
               "type": "string"
             }
+          },
+          "create_application": {
+            "type": "boolean",
+            "default": false,
+            "description": "Create the Connect application records for this lookup's eligible programs, so the returned `connect_url` is a link the customer can open. Provisioning runs in the background and is normally in place within seconds. Defaults to `false`: lookup-only integrations are unaffected and no applications are created for them. No effect on billing or rate limits."
+          },
+          "include_preview": {
+            "type": "boolean",
+            "default": false,
+            "description": "Include your own unpublished partner offer in the results so you can test it before publishing. Only your own offer is ever included. Utility, state, and market programs are unaffected. Defaults to `false`."
           }
         }
       },
@@ -362,6 +386,29 @@
             "description": "Optional partner-supplied per-customer attributes to upsert against the existing customer record before re-evaluation. Use this to update values like `customer.is_homeowner` without touching the device set. Empty or omitted = no attribute changes.\n",
             "maxProperties": 100,
             "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "customer_devices": {
+            "type": "array",
+            "maxItems": 50,
+            "description": "Optional device merge set. An entry carrying a `customer_device_id` updates that installation in place; an entry without one adds a new installation. Installations already on file that you don't list are left untouched — sending a subset never deletes the rest.",
+            "items": {
+              "$ref": "#/components/schemas/CustomerDeviceRef"
+            }
+          },
+          "remove_customer_device_ids": {
+            "type": "array",
+            "description": "Remove installations by `customer_device_id`. Ids that don't match a device on this customer are ignored, so retries are safe.",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "remove_device_references": {
+            "type": "array",
+            "description": "Remove installations by `partner_device_reference`. Every installation with a matching reference is removed; unknown references are ignored.",
+            "items": {
               "type": "string"
             }
           }
@@ -401,14 +448,21 @@
       },
       "CustomerDeviceRef": {
         "type": "object",
-        "required": [
-          "device_id"
-        ],
+        "description": "One installation. New installations identify their catalog device with exactly one of `device_id` / `device_source_id`. On **Refresh incentives**, `customer_device_id` instead targets an installation already on file, for an in-place update.",
         "properties": {
           "device_id": {
             "type": "string",
             "format": "uuid",
-            "description": "Catalog `device.id`. Must exist in the device catalog or the request is rejected with 422 `INVALID_DEVICE_ID`.\n"
+            "description": "Catalog `device.id`. Exactly one of `device_id` / `device_source_id` is required on new installations. Optional when `customer_device_id` targets an existing installation — and must match that installation's catalog device when supplied. Must exist in the device catalog or the request is rejected with 422 `INVALID_DEVICE_ID`.\n"
+          },
+          "device_source_id": {
+            "type": "integer",
+            "description": "Alternative way to address the catalog device: its numeric catalog `source_id`. Unknown values are rejected with 422 `INVALID_DEVICE_ID`. Supply exactly one of `device_id` / `device_source_id` on new installations."
+          },
+          "customer_device_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Identifies one installation — this customer, this catalog device, your device reference. Leap assigns it on the first lookup and echoes it back in `customer_devices[]`; it is stable across later lookups and refreshes, and is regenerated only by **Override incentives**, which replaces the device set. Send it on **Refresh incentives** to update that installation in place; it is rejected with 400 on lookups and overrides."
           },
           "partner_device_reference": {
             "type": "string",
@@ -489,7 +543,6 @@
           "reference_id",
           "customer_classification",
           "customer_devices",
-          "connect_url",
           "incentive_summary",
           "utilities",
           "program_details"
@@ -511,7 +564,7 @@
           "connect_url": {
             "type": "string",
             "format": "uri",
-            "description": "Deep link the partner can hand to the customer to start the Connect flow. Encodes `reference_id` and (later) variant.\n"
+            "description": "Deep link to hand the customer so they can apply: `https://connect.incentives.leap.energy/{company}/refId/{reference_id}`, where `{company}` is your registration nickname. **Omitted entirely when the lookup surfaces no eligible incentive** — there is nothing to apply for, so check that the field is present before showing a link."
           },
           "incentive_summary": {
             "$ref": "#/components/schemas/IncentiveSummary"
@@ -528,6 +581,28 @@
           },
           "geocoding": {
             "$ref": "#/components/schemas/Geocoding"
+          },
+          "partner": {
+            "$ref": "#/components/schemas/PartnerBranding"
+          }
+        }
+      },
+      "PartnerBranding": {
+        "type": "object",
+        "description": "Your brand name and logo as configured on your Leap account, so a surface rendering these results can show your branding without a second call.",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The partner's external brand name (identity `Account.name`)."
+          },
+          "logo_url": {
+            "type": "string",
+            "format": "uri",
+            "nullable": true,
+            "description": "URL to your logo, as configured on your Leap account. Null when no logo is configured."
           }
         }
       },
@@ -549,7 +624,7 @@
           },
           "ongoing_amount": {
             "type": "number",
-            "description": "Sum across all eligible programs of recurring incentives. Maps from the engine's `ongoing_total` per program."
+            "description": "Total recurring incentives across all eligible programs, **per year**."
           }
         }
       },
@@ -562,7 +637,7 @@
         "properties": {
           "name": {
             "type": "string",
-            "description": "Human-readable program label, sourced from `program.label`."
+            "description": "Program name as shown to the customer. Leap sets this for utility, state, and market programs; for your own partner offer it is the offer name you configure in the portal."
           },
           "operator_name": {
             "type": "string",
@@ -594,6 +669,30 @@
             "nullable": true,
             "description": "Free-form description shown to the customer (PARTNER_OFFER rows only). Read from `program.metadata.description`. Null for non-offer programs.\n"
           },
+          "is_partner_offer": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "`true` when this entry is your own partner offer (which bundles one or more underlying programs); `false` for utility, state, and market rebate programs. Use it to separate your offer from rebates in your own UI."
+          },
+          "covered_programs": {
+            "type": "array",
+            "description": "The wrapped Leap-Definitions programs that evaluated eligible for this customer under this offer (PARTNER_OFFER rows only) — the programs whose value is summed into this entry's tier amounts. Always empty for non-offer entries.\n",
+            "items": {
+              "$ref": "#/components/schemas/CoveredProgram"
+            }
+          },
+          "program_identifier": {
+            "type": "string",
+            "nullable": true,
+            "description": "Stable identifier for this program — your offer's identifier for a partner offer, or the catalog identifier (for example `PGE-ART`) otherwise. Use it to correlate the same program across lookups."
+          },
+          "included_leap_program_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "PARTNER_OFFER rows only: the leap-definitions program identifiers this offer sleeves for the matched customer (the intersection evaluated for this lookup). Empty for non-offer rows. Fetch each identifier's requirements to show the offer's combined eligibility.\n"
+          },
           "tiers": {
             "type": "array",
             "items": {
@@ -612,14 +711,15 @@
         ],
         "properties": {
           "tier_name": {
-            "type": "string"
+            "type": "string",
+            "description": "Display name for the tier. Non-offer programs surface their spec tier id; Partner Offer legs surface customer-facing names — \"Enrollment Incentive\" (up-front leg) / \"Participation Incentive\" (recurring leg). Partner Offers emit one tier per payment leg.\n"
           },
           "payment_type": {
             "$ref": "#/components/schemas/PaymentType"
           },
           "incentive_amount": {
             "type": "number",
-            "description": "Tier-level total across surviving devices. The calc engine produces a single scalar per (program, tier); per-device differentiation lives in `device_results[]`.\n"
+            "description": "Tier total across the devices that passed this tier's requirements; per-device outcomes are in `device_results[]`. Units follow `payment_type`: `UPFRONT` and `INSTALL` amounts are one-time, `ONGOING` amounts are per year."
           },
           "device_results": {
             "type": "array",
@@ -627,6 +727,23 @@
             "items": {
               "$ref": "#/components/schemas/DeviceTierResult"
             }
+          }
+        }
+      },
+      "CoveredProgram": {
+        "type": "object",
+        "required": [
+          "identifier",
+          "name"
+        ],
+        "properties": {
+          "identifier": {
+            "type": "string",
+            "description": "The wrapped Leap-Definitions program's identifier. Internal detail surfaced only in `covered_programs[]` on a Partner Offer entry — never a standalone `EligibleProgram` (raw LEAP_DEFINITIONS programs are never surfaced).\n"
+          },
+          "name": {
+            "type": "string",
+            "description": "Human-readable label for the wrapped program (`program.label`)."
           }
         }
       },
@@ -695,7 +812,7 @@
           "source_program_identifier": {
             "type": "string",
             "nullable": true,
-            "description": "For Partner Offers, attributes the check to the program that produced it — the offer's `program_identifier` for offer-side checks, an underlying leap-defs program identifier for leap-side checks. Null on the existing rebate flow (INCENTIVES_DB programs).\n"
+            "description": "On a partner offer, the program this check came from — your offer's identifier for checks on the offer itself, or the identifier of an underlying program for checks it inherits. Null on rebate programs."
           }
         }
       },

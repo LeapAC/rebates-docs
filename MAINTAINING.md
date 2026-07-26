@@ -52,6 +52,38 @@ and stay partner-facing. Set `title` / `description` on the operation's `include
 entry and re-run the sync. Leave `description` off to pass the source prose through
 unchanged.
 
+## Edit a schema or property description
+
+Source schemas carry maintainer-facing prose — ticket references, storage
+internals, service names — that must not reach partners. Override it with
+`schemaDescriptions` on the spec, keyed `"Schema"` or `"Schema.property"`:
+
+```json
+"schemaDescriptions": {
+  "EligibilityRequest.create_application": "Create the Connect application records …"
+}
+```
+
+The sync **fails** if a key stops matching after an upstream rename — otherwise the
+internal description would silently ship in its place. When that happens, re-point
+the key (or drop it if the property is gone).
+
+## Rewrite example values
+
+Inline `example` strings live throughout the source paths and can't be addressed by
+name. `replacements` on a spec rewrites them by literal substring — used to keep
+storage-vendor hostnames out of the rendered samples:
+
+```json
+"replacements": [
+  { "from": "https://your-project.supabase.co/storage/v1/object/sign/attachments/", "to": "https://<storage-host>/attachments/" }
+]
+```
+
+A rule that matches nothing warns (the source may have been fixed) but doesn't fail.
+These are workarounds for source-spec problems — prefer fixing the source repo and
+dropping the rule.
+
 ## Verify locally
 
 ```bash
@@ -70,4 +102,5 @@ auth matches the section (Bearer for Incentives, `x-api-key` for Applications).
 | Section | Source repo · file | Auth |
 |---|---|---|
 | Incentives | global-connect-service · `incentives.yaml` (+ `common-schemas.yaml`) | Bearer |
+| Device Catalog | global-connect-service · `programs.yaml` (+ `common-schemas.yaml`) | Bearer |
 | Applications | incentives-service · `applications/openapi.json` | `x-api-key` |

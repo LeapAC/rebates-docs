@@ -873,7 +873,7 @@
                       "type": "string",
                       "format": "uri",
                       "description": "Signed URL for uploading the file (PUT file bytes here)",
-                      "example": "https://your-project.supabase.co/storage/v1/object/sign/attachments/app-123/uuid-invoice.pdf?token=..."
+                      "example": "https://<storage-host>/attachments/app-123/<uuid>-invoice.pdf?token=..."
                     },
                     "path": {
                       "type": "string",
@@ -951,19 +951,19 @@
                       "type": "string",
                       "format": "uri",
                       "description": "Signed download URL (valid for 1 hour)",
-                      "example": "https://your-project.supabase.co/storage/v1/object/sign/attachments/app-123/uuid-invoice.pdf?token=..."
+                      "example": "https://<storage-host>/attachments/app-123/<uuid>-invoice.pdf?token=..."
                     },
                     "url": {
                       "type": "string",
                       "format": "uri",
                       "description": "Signed download URL (same as downloadUrl, for compatibility)",
-                      "example": "https://your-project.supabase.co/storage/v1/object/sign/attachments/app-123/uuid-invoice.pdf?token=..."
+                      "example": "https://<storage-host>/attachments/app-123/<uuid>-invoice.pdf?token=..."
                     },
                     "file_url": {
                       "type": "string",
                       "format": "uri",
                       "description": "Signed download URL (same as downloadUrl, for compatibility)",
-                      "example": "https://your-project.supabase.co/storage/v1/object/sign/attachments/app-123/uuid-invoice.pdf?token=..."
+                      "example": "https://<storage-host>/attachments/app-123/<uuid>-invoice.pdf?token=..."
                     }
                   }
                 }
@@ -1202,7 +1202,7 @@
                       "type": "string",
                       "format": "uri",
                       "description": "Storage URL (`storage://...` or public HTTP URL if `makePublic=true`)",
-                      "example": "https://your-project.supabase.co/storage/v1/object/public/attachments/app-123/a1b2c3d4-e5f6-7890-abcd-ef1234567890-invoice.pdf"
+                      "example": "https://<storage-host>/attachments/app-123/a1b2c3d4-e5f6-7890-abcd-ef1234567890-invoice.pdf"
                     },
                     "bucket": {
                       "type": "string",

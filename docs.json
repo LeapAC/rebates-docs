@@ -58,6 +58,7 @@
           {
             "group": "Attachments",
             "pages": [
+              "api-reference/applications/attachments",
               "GET /applications/attachments",
               "POST /applications/attachments",
               "POST /applications/attachments/commit",

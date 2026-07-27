@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { filterOperations, retargetServers, ensureSecurity, findBrokenRefs, applyOperationTitles, applyOperationDescriptions, applyTag, pruneUnusedComponents } from './sync-openapi.mjs';
+import { filterOperations, retargetServers, ensureSecurity, findBrokenRefs, applyOperationTitles, applyOperationDescriptions, applySchemaDescriptions, findMissingSchemaDescriptions, applyStringReplacements, applyTag, pruneUnusedComponents } from './sync-openapi.mjs';
 
 const sample = () => ({
   openapi: '3.0.0',
@@ -64,6 +64,39 @@ test('applyOperationDescriptions overrides op.description from include, leaves o
   applyOperationDescriptions(spec, [{ method: 'get', path: '/a', description: 'Short A desc' }]);
   assert.equal(spec.paths['/a'].get.description, 'Short A desc');
   assert.equal(spec.paths['/b'].post.description, 'original B', 'ops without an override are untouched');
+});
+
+const schemaSample = () => ({
+  info: { title: 'x' },
+  paths: {},
+  components: {
+    schemas: {
+      Req: { type: 'object', description: 'internal (TICKET-1 §2)', properties: { flag: { type: 'boolean', description: 'internal prose' }, other: { type: 'string', description: 'untouched' } } },
+    },
+  },
+});
+
+test('applySchemaDescriptions overrides schema- and property-level descriptions', () => {
+  const spec = applySchemaDescriptions(schemaSample(), { Req: 'partner prose', 'Req.flag': 'partner flag prose' });
+  assert.equal(spec.components.schemas.Req.description, 'partner prose');
+  assert.equal(spec.components.schemas.Req.properties.flag.description, 'partner flag prose');
+  assert.equal(spec.components.schemas.Req.properties.other.description, 'untouched', 'properties without an override are left alone');
+});
+
+test('findMissingSchemaDescriptions reports overrides that no longer match', () => {
+  const spec = schemaSample();
+  assert.deepEqual(findMissingSchemaDescriptions(spec, { Req: 'a', 'Req.flag': 'b' }), []);
+  assert.deepEqual(findMissingSchemaDescriptions(spec, { 'Req.renamed': 'a', Gone: 'b' }), ['Req.renamed', 'Gone']);
+});
+
+test('applyStringReplacements rewrites nested example strings and reports unused rules', () => {
+  const spec = { paths: { '/a': { get: { responses: { 200: { schema: { properties: { url: { example: 'https://vendor.example/x/file.pdf' } } } } } } } } };
+  const { spec: out, unused } = applyStringReplacements(spec, [
+    { from: 'https://vendor.example/x/', to: 'https://<storage-host>/' },
+    { from: 'not-present', to: 'x' },
+  ]);
+  assert.equal(out.paths['/a'].get.responses[200].schema.properties.url.example, 'https://<storage-host>/file.pdf');
+  assert.deepEqual(unused, ['not-present']);
 });
 
 test('applyTag normalizes every operation to a single tag', () => {

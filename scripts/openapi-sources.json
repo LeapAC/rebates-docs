@@ -20,7 +20,32 @@
         { "method": "post", "path": "/v1.1/global-connect/incentives/lookups", "title": "Look up incentives", "description": "Check which rebate programs a customer qualifies for. Send the customer's address, classification, and devices; Leap returns the total incentive amount, a per-program breakdown, and a Connect URL the customer can use to apply." },
         { "method": "post", "path": "/v1.1/global-connect/incentives/refreshes", "title": "Refresh incentives", "description": "Re-run eligibility for a customer you've already looked up, using their stored address and devices — no need to resend them. Use this to pick up newly launched programs or updated incentive amounts." },
         { "method": "post", "path": "/v1.1/global-connect/incentives/overrides", "title": "Override incentives", "description": "Replace an existing customer's device list, then re-run eligibility. Use this when a customer's equipment has changed. The previous device set is discarded." }
-      ]
+      ],
+      "schemaDescriptions": {
+        "EligibilityRequest.create_application": "Create the Connect application records for this lookup's eligible programs, so the returned `connect_url` is a link the customer can open. Provisioning runs in the background and is normally in place within seconds. Defaults to `false`: lookup-only integrations are unaffected and no applications are created for them. No effect on billing or rate limits.",
+        "EligibilityRequest.include_preview": "Include your own unpublished partner offer in the results so you can test it before publishing. Only your own offer is ever included. Utility, state, and market programs are unaffected. Defaults to `false`.",
+        "EligibilityResult.connect_url": "Deep link to hand the customer so they can apply: `https://connect.incentives.leap.energy/{company}/refId/{reference_id}`, where `{company}` is your registration nickname. **Omitted entirely when the lookup surfaces no eligible incentive** — there is nothing to apply for, so check that the field is present before showing a link.",
+        "IncentiveSummary.ongoing_amount": "Total recurring incentives across all eligible programs, **per year**.",
+        "EligibleProgram.name": "Program name as shown to the customer. Leap sets this for utility, state, and market programs; for your own partner offer it is the offer name you configure in the portal.",
+        "EligibleProgram.program_identifier": "Stable identifier for this program — your offer's identifier for a partner offer, or the catalog identifier (for example `PGE-ART`) otherwise. Use it to correlate the same program across lookups.",
+        "EligibleProgram.is_partner_offer": "`true` when this entry is your own partner offer (which bundles one or more underlying programs); `false` for utility, state, and market rebate programs. Use it to separate your offer from rebates in your own UI.",
+        "MatchedTier.incentive_amount": "Tier total across the devices that passed this tier's requirements; per-device outcomes are in `device_results[]`. Units follow `payment_type`: `UPFRONT` and `INSTALL` amounts are one-time, `ONGOING` amounts are per year.",
+        "PartnerBranding": "Your brand name and logo as configured on your Leap account, so a surface rendering these results can show your branding without a second call.",
+        "CustomerDeviceRef": "One installation. New installations identify their catalog device with exactly one of `device_id` / `device_source_id`. On **Refresh incentives**, `customer_device_id` instead targets an installation already on file, for an in-place update.",
+        "CustomerDeviceRef.device_source_id": "Alternative way to address the catalog device: its numeric catalog `source_id`. Unknown values are rejected with 422 `INVALID_DEVICE_ID`. Supply exactly one of `device_id` / `device_source_id` on new installations.",
+        "CustomerDeviceRef.customer_device_id": "Identifies one installation — this customer, this catalog device, your device reference. Leap assigns it on the first lookup and echoes it back in `customer_devices[]`; it is stable across later lookups and refreshes, and is regenerated only by **Override incentives**, which replaces the device set. Send it on **Refresh incentives** to update that installation in place; it is rejected with 400 on lookups and overrides.",
+        "RefreshIncentivesRequest.customer_devices": "Optional device merge set. An entry carrying a `customer_device_id` updates that installation in place; an entry without one adds a new installation. Installations already on file that you don't list are left untouched — sending a subset never deletes the rest.",
+        "RefreshIncentivesRequest.remove_customer_device_ids": "Remove installations by `customer_device_id`. Ids that don't match a device on this customer are ignored, so retries are safe.",
+        "RefreshIncentivesRequest.remove_device_references": "Remove installations by `partner_device_reference`. Every installation with a matching reference is removed; unknown references are ignored.",
+        "PartnerBranding.logo_url": "URL to your logo, as configured on your Leap account. Null when no logo is configured.",
+        "EligibilityCheck.source_program_identifier": "On a partner offer, the program this check came from — your offer's identifier for checks on the offer itself, or the identifier of an underlying program for checks it inherits. Null on rebate programs.",
+        "EligibilityRequest.customer_details": "Attributes you're supplying for the customer, keyed by requirement key (for example `customer.email`, `customer.is_homeowner`). They're stored against the customer and used when eligibility is evaluated. Omit or leave empty if you have none. Maximum 100 entries.",
+        "EligibleProgram.included_leap_program_ids": "Partner offers only: identifiers of the underlying programs this offer covers for this customer. Empty for every other kind of entry.",
+        "CustomerClassification": "The customer or site classification used to determine eligibility. `RESIDENTIAL` and `COMMERCIAL` are the long-standing values; `MULTIFAMILY` and `MANUFACTURED_HOME` exist because rebate qualification differs across single-family, multifamily, and manufactured housing.",
+        "CustomerDeviceRefEcho.customer_device_id": "Leap's identifier for this installation. Store it — it's how you address that specific device on later calls.",
+        "EligibilityRequest.reference_id": "Your stable identifier for this customer. Leap uses it to recognise a returning customer, and you'll send it again on **Refresh incentives**, **Override incentives**, and when searching applications. It's scoped to you — another partner using the same value is a different customer.",
+        "EligibilityRequest.eiaid": "Optional utility override. Supply it when you already know the customer's serving utility and the address-based match is unavailable or ambiguous: Leap uses this EIA utility id to select candidate programs instead of resolving the utility from the address. On this path the address isn't geocoded, so the response omits the `geocoding` block and any stored coordinates are left as they are. A value matching no utility fails the same way an unserved address does (404 `NO_UTILITY_AT_ADDRESS`)."
+      }
     },
     {
       "output": "incentives-applications.json",
@@ -32,6 +57,11 @@
       "security": "apikey",
       "tag": "applications",
       "source": { "repo": "LeapAC/incentives-service", "entry": "supabase/functions/applications/openapi.json", "deps": [] },
+      "replacements": [
+        { "from": "https://your-project.supabase.co/storage/v1/object/sign/attachments/", "to": "https://<storage-host>/attachments/" },
+        { "from": "https://your-project.supabase.co/storage/v1/object/public/attachments/", "to": "https://<storage-host>/attachments/" },
+        { "from": "/uuid-invoice.pdf", "to": "/<uuid>-invoice.pdf" }
+      ],
       "include": [
         { "method": "get", "path": "/applications", "title": "Search applications", "description": "Search and filter the applications you're tracking. Returns a paginated list, filterable by reference ID or status." },
         { "method": "get", "path": "/applications/{application_id}", "title": "Get application", "description": "Retrieve a single application in full, including customer information and device details." },

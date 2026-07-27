@@ -1,27 +1,41 @@
 ---
 title: Incentives Guide
-description: Check which energy incentives a customer qualifies for through the Leap API Gateway.
+description: Check which energy incentives a customer qualifies for through the Incentives Gateway.
 ---
 
-Check which energy incentives a customer qualifies for — across utility, market, and state programs — and get a Connect URL you can hand to the customer to apply. Lookups run against the Leap API Gateway.
+Check which energy incentives a customer qualifies for — across utility, market, and state programs — and get a Connect URL you can hand to the customer to apply.
 
-## Base URL
+## Base URL and authentication
 
-| Environment | URL |
-| ----------- | --- |
-| Production  | `https://api.leap.energy` |
-| Staging     | `https://api.staging.leap.energy` |
-
-## Authentication
-
-Send your Leap API key as a **Bearer token** in the `Authorization` header:
+`https://api.leap.energy` in production, `https://api.staging.leap.energy` in staging. Send your Leap API key as a **Bearer token**:
 
 ```http
 Authorization: Bearer <your-api-key>
 ```
 
-## Endpoints
+## Which endpoint do I call?
 
-- **Look up incentives** — first-touch eligibility for a new customer.
-- **Refresh incentives** — re-evaluate a customer you've already looked up, using their stored data.
-- **Override incentives** — replace a customer's devices, then re-evaluate.
+All three return the same result; they differ in what you send and what they change.
+
+| | **Look up** | **Refresh** | **Override** |
+| --- | --- | --- | --- |
+| Send | Address, classification, devices | `reference_id` only | `reference_id` + full device list |
+| Customer | Created if new | Must exist | Must exist |
+| Devices | Added to what's on file | Merged; removals are explicit | **Replaced** — old set discarded |
+| Address & utility | Resolved on the first lookup and kept — a new address needs a new `reference_id` | Reused | Reused |
+
+Look up on first touch and to add a device. Refresh to re-run as-is, or to fill in details as you learn them — purchase price, install date, permit status.
+
+## Reading the results
+
+Each device is evaluated against each tier's requirements, and every requirement reports a status:
+
+| Status | Meaning |
+| --- | --- |
+| `COMPLETED` | Satisfied. |
+| `FAILED` | Not met — the tier is off the table for that device. |
+| `IGNORED` | Not knowable yet: the input doesn't exist until after the sale (install date, permit approval, new-equipment flag). |
+
+`IGNORED` is not a rejection. A tier whose only open items are `IGNORED` still counts toward `incentive_summary`, so the summary is the customer's **potential** value; supply the missing facts later and the checks resolve. To quote conservatively, sum only the tiers whose `device_results[].status` is `COMPLETED`.
+
+Program names come from Leap for utility, state, and market programs; for your own partner offer, it's the name you set in the portal.

@@ -83,6 +83,58 @@ export function applyOperationDescriptions(spec, include) {
   return spec;
 }
 
+// Schema and property descriptions come through from the source specs written
+// for maintainers — ticket references, storage internals, service names. Override
+// the partner-visible ones from config, keyed `Schema` or `Schema.property`, so
+// the rendered reference reads for partners and the wording survives re-syncs.
+export function applySchemaDescriptions(spec, overrides) {
+  if (!overrides) return spec;
+  for (const [key, text] of Object.entries(overrides)) {
+    const target = resolveSchemaTarget(spec, key);
+    if (target) target.description = text;
+  }
+  return spec;
+}
+
+// An override that no longer matches means its internal source description is
+// silently shipping instead. Surface those like a broken $ref: fail the run.
+export function findMissingSchemaDescriptions(spec, overrides) {
+  return Object.keys(overrides || {}).filter((key) => !resolveSchemaTarget(spec, key));
+}
+
+// Inline `example` values live all over the source paths (not just
+// components.schemas), so they can't be reached by name. Rewrite them by literal
+// substring — used to keep storage-vendor hostnames and placeholder filenames out
+// of the rendered samples. Returns the rules that matched nothing.
+export function applyStringReplacements(spec, replacements) {
+  const unused = new Set((replacements || []).map((r) => r.from));
+  if (!replacements?.length) return { spec, unused: [] };
+  const rewrite = (node) => {
+    if (Array.isArray(node)) return node.map(rewrite);
+    if (node && typeof node === 'object') {
+      for (const [k, v] of Object.entries(node)) node[k] = rewrite(v);
+      return node;
+    }
+    if (typeof node === 'string') {
+      let out = node;
+      for (const { from, to } of replacements) {
+        if (out.includes(from)) { unused.delete(from); out = out.split(from).join(to); }
+      }
+      return out;
+    }
+    return node;
+  };
+  return { spec: rewrite(spec), unused: [...unused] };
+}
+
+function resolveSchemaTarget(spec, key) {
+  const [name, prop] = key.split('.');
+  const schema = spec.components?.schemas?.[name];
+  if (!schema) return undefined;
+  const target = prop ? schema.properties?.[prop] : schema;
+  return target && typeof target === 'object' ? target : undefined;
+}
+
 // Mintlify derives an endpoint page's URL path prefix from the operation `tag`.
 // Normalize every operation to one tag so a section's URLs share a clean prefix.
 export function applyTag(spec, tag) {
@@ -233,10 +285,17 @@ function main() {
     spec = retargetServers(spec, s.servers || cfg[s.serversRef]);
     spec = ensureSecurity(spec, s.security);
     spec = pruneUnusedComponents(spec);
+    // After pruning, so overrides are only required for schemas that ship.
+    const missing = findMissingSchemaDescriptions(spec, s.schemaDescriptions);
+    spec = applySchemaDescriptions(spec, s.schemaDescriptions);
+    const replaced = applyStringReplacements(spec, s.replacements);
+    spec = replaced.spec;
+    if (replaced.unused.length) console.warn(`  ! ${s.output}: replacements matched nothing (source may be fixed): ${replaced.unused.join(', ')}`);
     spec.info = { ...(spec.info || {}), title: s.title };
 
     const broken = findBrokenRefs(spec);
     if (broken.length) { console.error(`✗ ${s.output}: broken refs: ${broken.join(', ')}`); failures++; }
+    if (missing.length) { console.error(`✗ ${s.output}: schemaDescriptions no longer match: ${missing.join(', ')}`); failures++; }
 
     const opCount = Object.values(spec.paths || {}).reduce((n, ops) => n + Object.keys(ops).filter((m) => HTTP_METHODS.includes(m)).length, 0);
     fs.writeFileSync(path.join(outDir, s.output), JSON.stringify(spec, null, 2) + '\n');

@@ -3,61 +3,29 @@ title: Applications Guide
 description: Search, update, and attach documentation to the incentive applications you submit.
 ---
 
-Applications are the incentive submissions you track through processing. Search and update them, and manage supporting attachments — invoices, permits, and photos.
+Applications are the incentive submissions you track through processing. Search and update them, and manage supporting attachments.
 
-## Base URL
+## Base URL and authentication
 
-| Environment | URL |
-| ----------- | --- |
-| Production  | `https://api.incentives.leap.energy/alpha` |
-| Staging     | `https://api.staging.incentives.leap.energy/alpha` |
-
-## Authentication
-
-Send your Leap API key in the `x-api-key` header:
+`https://api.incentives.leap.energy/alpha` in production, `https://api.staging.incentives.leap.energy/alpha` in staging. Send your Leap API key in the `x-api-key` header:
 
 ```http
 x-api-key: leap_live_...
 ```
 
-## Attachments
+## Endpoints
 
-Uploading a file takes three steps. The file bytes never pass through the Applications API — you upload them straight to storage using a pre-authorized URL Leap hands you, the same way an [S3 pre-signed `PUT`](https://docs.aws.amazon.com/AmazonS3/latest/userguide/PresignedUrlUploadObject.html) works. That upload (step 2) is a direct storage request, **not** a Leap endpoint — which is why you won't find it in the API Reference. Only the two calls that bracket it are Leap endpoints. No storage credentials or internal Leap access are needed; your API key authorizes steps 1 and 3.
+Send `create_application: true` on [Look up incentives](/api-reference/incentives-lookups/look-up-incentives) and Leap creates one application per eligible program in the background — normally within seconds, before the customer opens the Connect URL. Without the flag, no applications are created.
 
-<Steps>
-<Step title="Request an upload URL">
-  `POST /applications/attachments` with the `attachment_type`, `filename`, and `contentType`. The response gives you a short-lived **`uploadUrl`** (a pre-authorized storage URL) and a **`path`**.
+- **Search applications** — by reference ID or status. Each result's top-level `id` is the application ID you pass as `application_id` everywhere else.
+- **Get application** — one application in full, with customer and device detail.
+- **Update application** — supply data on the customer's behalf. Only the fields you include change; `null` clears one. Status and system identifiers (`id`, `customer_id`, `program_id`) are read-only.
+- **Attachments** — upload, list, download, and delete supporting files. See the [Attachments Guide](/api-reference/applications/attachments).
 
-  ```bash
-  curl -X POST "https://api.incentives.leap.energy/alpha/applications/attachments?application_id=123" \
-    -H "x-api-key: leap_live_..." \
-    -H "Content-Type: application/json" \
-    -d '{ "attachment_type": "INVOICE_EQUIPMENT", "filename": "invoice.pdf", "contentType": "application/pdf" }'
-  # → { "uploadUrl": "https://<storage-host>/.../attachments/app-123/<uuid>-invoice.pdf?token=...",
-  #     "path": "app-123/<uuid>-invoice.pdf" }
-  ```
-</Step>
+## Supplying data on the customer's behalf
 
-<Step title="Upload the file">
-  `PUT` the raw file bytes to the `uploadUrl` from step 1, with the file's `Content-Type`. This request goes directly to storage — it carries **no** API key and does not hit the Applications API. Storage returns `200 OK` with an empty body on success.
+Fields you claim under **Data Preferences** in the portal drop out of the customer-facing form and become yours to provide. On devices you registered, a claimed field is hidden from the customer and they can't correct it — send another **Update application** if a value turns out to be wrong. Claimed fields reappear for any device the customer adds themselves.
 
-  ```bash
-  curl -X PUT "<uploadUrl>" \
-    -H "Content-Type: application/pdf" \
-    --data-binary @invoice.pdf
-  ```
-</Step>
-
-<Step title="Commit">
-  `POST /applications/attachments/commit` with the same `attachment_type` and the `path` from step 1. This records the attachment on the application.
-
-  ```bash
-  curl -X POST "https://api.incentives.leap.energy/alpha/applications/attachments/commit?application_id=123" \
-    -H "x-api-key: leap_live_..." \
-    -H "Content-Type: application/json" \
-    -d '{ "attachment_type": "INVOICE_EQUIPMENT", "path": "app-123/<uuid>-invoice.pdf" }'
-  ```
-</Step>
-</Steps>
-
-To read a file back, call **Download attachment** for a signed URL (valid one hour). See the **Attachments** endpoints below for full parameters.
+<Tip>
+  Claim what you can supply for every customer — a low-water mark — and send extras as you get them. Values submitted before the customer opens Connect appear pre-filled for them.
+</Tip>

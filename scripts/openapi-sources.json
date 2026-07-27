@@ -38,7 +38,13 @@
         "RefreshIncentivesRequest.remove_customer_device_ids": "Remove installations by `customer_device_id`. Ids that don't match a device on this customer are ignored, so retries are safe.",
         "RefreshIncentivesRequest.remove_device_references": "Remove installations by `partner_device_reference`. Every installation with a matching reference is removed; unknown references are ignored.",
         "PartnerBranding.logo_url": "URL to your logo, as configured on your Leap account. Null when no logo is configured.",
-        "EligibilityCheck.source_program_identifier": "On a partner offer, the program this check came from — your offer's identifier for checks on the offer itself, or the identifier of an underlying program for checks it inherits. Null on rebate programs."
+        "EligibilityCheck.source_program_identifier": "On a partner offer, the program this check came from — your offer's identifier for checks on the offer itself, or the identifier of an underlying program for checks it inherits. Null on rebate programs.",
+        "EligibilityRequest.customer_details": "Attributes you're supplying for the customer, keyed by requirement key (for example `customer.email`, `customer.is_homeowner`). They're stored against the customer and used when eligibility is evaluated. Omit or leave empty if you have none. Maximum 100 entries.",
+        "EligibleProgram.included_leap_program_ids": "Partner offers only: identifiers of the underlying programs this offer covers for this customer. Empty for every other kind of entry.",
+        "CustomerClassification": "The customer or site classification used to determine eligibility. `RESIDENTIAL` and `COMMERCIAL` are the long-standing values; `MULTIFAMILY` and `MANUFACTURED_HOME` exist because rebate qualification differs across single-family, multifamily, and manufactured housing.",
+        "CustomerDeviceRefEcho.customer_device_id": "Leap's identifier for this installation. Store it — it's how you address that specific device on later calls.",
+        "EligibilityRequest.reference_id": "Your stable identifier for this customer. Leap uses it to recognise a returning customer, and you'll send it again on **Refresh incentives**, **Override incentives**, and when searching applications. It's scoped to you — another partner using the same value is a different customer.",
+        "EligibilityRequest.eiaid": "Optional utility override. Supply it when you already know the customer's serving utility and the address-based match is unavailable or ambiguous: Leap uses this EIA utility id to select candidate programs instead of resolving the utility from the address. On this path the address isn't geocoded, so the response omits the `geocoding` block and any stored coordinates are left as they are. A value matching no utility fails the same way an unserved address does (404 `NO_UTILITY_AT_ADDRESS`)."
       }
     },
     {

@@ -327,7 +327,7 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 256,
-            "description": "Partner's stable identifier for the customer. The orchestrator uses this as the dedup key against `incentives.customer` scoped to the authenticated `partner_id`.\n"
+            "description": "Your stable identifier for this customer. Leap uses it to recognise a returning customer, and you'll send it again on **Refresh incentives**, **Override incentives**, and when searching applications. It's scoped to you — another partner using the same value is a different customer."
           },
           "address": {
             "$ref": "#/components/schemas/Address"
@@ -347,11 +347,11 @@
           "eiaid": {
             "type": "string",
             "minLength": 1,
-            "description": "Optional utility override. When supplied, the orchestrator bypasses both the geocoder and the geocode-driven territory (`ST_Covers`) utility lookup, and uses this EIA utility id directly to select candidate programs — useful when the partner already knows the serving utility and the address-based territory match is unavailable or ambiguous. On this path the address is NOT geocoded: the response `geocoding` block is omitted and the customer record's geocoded coordinates are left untouched. If no utility matches the supplied `eiaid`, the request fails the same way an un-served address does (404 `NO_UTILITY_AT_ADDRESS`).\n"
+            "description": "Optional utility override. Supply it when you already know the customer's serving utility and the address-based match is unavailable or ambiguous: Leap uses this EIA utility id to select candidate programs instead of resolving the utility from the address. On this path the address isn't geocoded, so the response omits the `geocoding` block and any stored coordinates are left as they are. A value matching no utility fails the same way an unserved address does (404 `NO_UTILITY_AT_ADDRESS`)."
           },
           "customer_details": {
             "type": "object",
-            "description": "Partner-supplied per-customer attributes keyed by `requirement.key` (e.g., `customer.email`, `customer.is_homeowner`). The orchestrator persists these against the customer record and the calc engine consumes them during eligibility evaluation. Absent or empty → no partner-supplied attributes. Maximum 100 entries.\n",
+            "description": "Attributes you're supplying for the customer, keyed by requirement key (for example `customer.email`, `customer.is_homeowner`). They're stored against the customer and used when eligibility is evaluated. Omit or leave empty if you have none. Maximum 100 entries.",
             "maxProperties": 100,
             "additionalProperties": {
               "type": "string"
@@ -491,7 +491,8 @@
         "properties": {
           "device_id": {
             "type": "string",
-            "format": "uuid"
+            "format": "uuid",
+            "description": "The catalog `device.id` resolved for this installation."
           },
           "partner_device_reference": {
             "type": "string",
@@ -500,7 +501,7 @@
           "customer_device_id": {
             "type": "string",
             "format": "uuid",
-            "description": "Upserted `incentives.customer_device.id` for this entry."
+            "description": "Leap's identifier for this installation. Store it — it's how you address that specific device on later calls."
           }
         }
       },
@@ -514,21 +515,25 @@
         ],
         "properties": {
           "address_line_1": {
-            "type": "string"
+            "type": "string",
+            "description": "Street address — house number and street name."
           },
           "address_line_2": {
             "type": "string",
-            "nullable": true
+            "nullable": true,
+            "description": "Optional secondary address line, such as an apartment, suite, or unit number."
           },
           "city": {
-            "type": "string"
+            "type": "string",
+            "description": "City name."
           },
           "state": {
             "type": "string",
             "description": "Two-letter US state abbreviation."
           },
           "zip_code": {
-            "type": "string"
+            "type": "string",
+            "description": "US ZIP code (5-digit or ZIP+4)."
           },
           "country_code": {
             "type": "string",
@@ -549,7 +554,8 @@
         ],
         "properties": {
           "reference_id": {
-            "type": "string"
+            "type": "string",
+            "description": "Echoes the `reference_id` from the request — the partner's stable identifier for this customer."
           },
           "customer_classification": {
             "$ref": "#/components/schemas/CustomerClassification"
@@ -691,10 +697,11 @@
             "items": {
               "type": "string"
             },
-            "description": "PARTNER_OFFER rows only: the leap-definitions program identifiers this offer sleeves for the matched customer (the intersection evaluated for this lookup). Empty for non-offer rows. Fetch each identifier's requirements to show the offer's combined eligibility.\n"
+            "description": "Partner offers only: identifiers of the underlying programs this offer covers for this customer. Empty for every other kind of entry."
           },
           "tiers": {
             "type": "array",
+            "description": "The program's incentive tiers evaluated for this customer. Each tier carries its payment type, total amount, and per-device results.\n",
             "items": {
               "$ref": "#/components/schemas/MatchedTier"
             }
@@ -762,7 +769,8 @@
           },
           "customer_device_id": {
             "type": "string",
-            "format": "uuid"
+            "format": "uuid",
+            "description": "The `customer_device.id` of the installation evaluated in this result."
           },
           "status": {
             "type": "string",
@@ -770,6 +778,7 @@
           },
           "eligibility_details": {
             "type": "array",
+            "description": "Per-requirement check results behind this device's tier `status` — one entry per eligibility rule evaluated.\n",
             "items": {
               "$ref": "#/components/schemas/EligibilityCheck"
             }
@@ -824,10 +833,16 @@
         ],
         "properties": {
           "primary": {
-            "$ref": "#/components/schemas/IncentiveUtility"
+            "description": "The utility resolved as serving this address — the one whose programs drive the eligibility result.\n",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/IncentiveUtility"
+              }
+            ]
           },
           "possible_utilities": {
             "type": "array",
+            "description": "Every utility whose service territory covers this address (including `primary`); more than one can appear where territories overlap.\n",
             "items": {
               "$ref": "#/components/schemas/IncentiveUtility"
             }
@@ -847,7 +862,8 @@
             "description": "EIA utility identifier."
           },
           "name": {
-            "type": "string"
+            "type": "string",
+            "description": "Human-readable utility name."
           },
           "state": {
             "type": "string",
@@ -866,19 +882,22 @@
         "properties": {
           "latitude": {
             "type": "number",
-            "format": "double"
+            "format": "double",
+            "description": "Latitude of the geocoded address, in decimal degrees."
           },
           "longitude": {
             "type": "number",
-            "format": "double"
+            "format": "double",
+            "description": "Longitude of the geocoded address, in decimal degrees."
           },
           "formatted_address": {
-            "type": "string"
+            "type": "string",
+            "description": "The address as normalized by the geocoder."
           }
         }
       },
       "CustomerClassification": {
-        "description": "Customer/site classification used for incentive eligibility and flow routing.\nAligns with the leap-definitions canonical identifier `customer_classification`.\nRESIDENTIAL/COMMERCIAL are the historic values; MULTIFAMILY and MANUFACTURED_HOME\nare extensions for incentives eligibility (rebate qualification differs across\nsingle-family vs multifamily vs manufactured housing).\n",
+        "description": "The customer or site classification used to determine eligibility. `RESIDENTIAL` and `COMMERCIAL` are the long-standing values; `MULTIFAMILY` and `MANUFACTURED_HOME` exist because rebate qualification differs across single-family, multifamily, and manufactured housing.",
         "type": "string",
         "enum": [
           "RESIDENTIAL",

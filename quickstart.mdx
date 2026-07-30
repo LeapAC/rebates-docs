@@ -3,16 +3,16 @@ title: "Quickstart"
 description: "Look up a customer's incentives, share a Connect URL, and provide data on their behalf"
 ---
 
-Check a customer's incentive eligibility, hand them a Connect URL to apply, and submit supporting data on their behalf. Two APIs are involved:
+Check a customer's incentive eligibility, share a Connect URL they apply through, and submit supporting data on their behalf. You'll call two APIs:
 
-- **Incentives Lookups** — `https://api.leap.energy`, authenticated with a **Bearer token**.
-- **Applications** — `https://api.incentives.leap.energy/alpha`, authenticated with an **`x-api-key`** header.
+- **Incentives Lookups**: `https://api.leap.energy`, authenticated with a **Bearer token**
+- **Applications**: `https://api.incentives.leap.energy/alpha`, authenticated with an **`x-api-key`** header
 
-## Setup
+## Set up your integration
 
 <Steps>
 <Step title="Create your API keys">
-  Open [**Settings → Developer**](https://partner.incentives.leap.energy/settings/developer) for both: an **API Key** (the Bearer token for Incentives Lookups) and an **Alpha · Applications API** key (the `x-api-key`).
+  Create both keys under [**Settings → Developer**](https://partner.incentives.leap.energy/settings/developer): an **API Key** (the Bearer token for Incentives Lookups) and an **Alpha · Applications API** key (the `x-api-key` for Applications).
 </Step>
 
 <Step title="Get device IDs">
@@ -20,23 +20,23 @@ Check a customer's incentive eligibility, hand them a Connect URL to apply, and 
 </Step>
 
 <Step title="Set up data preferences">
-  Choose which application fields you'll provide for customers under [**Settings → Data Preferences**](https://partner.incentives.leap.energy/settings/data-preferences). Claimed fields leave the customer-facing form and become yours to supply.
+  Choose which application fields you'll provide for customers under [**Settings → Data Preferences**](https://partner.incentives.leap.energy/settings/data-preferences). Leap removes claimed fields from the customer-facing form; you supply the values through the API instead.
 </Step>
 
 <Step title="Configure a partner offer (optional)">
-  Running your own program — a virtual power plant, say? Set it up under [**Settings → Customer VPP Offering**](https://partner.incentives.leap.energy/settings/customer-offering). It surfaces in lookups under your own name and logo, stacked on the customer's rebates, and gets the same address, utility, and device eligibility checks Leap runs on every other program.
+  If you run your own program, such as a virtual power plant, set it up under [**Settings → Customer VPP Offering**](https://partner.incentives.leap.energy/settings/customer-offering). Your offer appears in lookup results under your own name and logo, stacks on top of the customer's rebates, and gets the same address, utility, and device eligibility checks Leap runs on every other program.
 </Step>
 </Steps>
 
 ## Check eligibility and get a Connect URL
 
-Send the customer's address, classification, and devices to the **Look up incentives** endpoint. Leap returns the total incentive, a per-program breakdown, and a `connect_url` the customer uses to apply. Set `create_application: true` when you want that link to work — it tells Leap to create the applications behind it. Leave it off for eligibility checks alone, like quoting a number on a product page.
+Send the customer's address, classification, and devices to the **Look up incentives** endpoint. Leap returns the total incentive, a per-program breakdown, and a `connect_url` the customer uses to apply. Set `create_application: true` when you want that link to work: it tells Leap to create the applications behind it. Leave it off when you only need an eligibility check, like quoting a number on a product page.
 
 ### Request
 
 ```bash
 curl -X POST "https://api.leap.energy/v1.1/global-connect/incentives/lookups" \
-  -H "Authorization: Bearer <your-api-key>" \
+  -H "Authorization: Bearer your_api_key_here" \
   -H "Content-Type: application/json" \
   -d '{
     "reference_id": "customer-123",
@@ -49,7 +49,10 @@ curl -X POST "https://api.leap.energy/v1.1/global-connect/incentives/lookups" \
       "zip_code": "97701"
     },
     "customer_devices": [
-      { "device_id": "d290f1ee-6c54-4b01-90e6-d701748f0851", "partner_device_reference": "order-9001" }
+      {
+        "device_id": "d290f1ee-6c54-4b01-90e6-d701748f0851",
+        "partner_device_reference": "order-9001"
+      }
     ]
   }'
 ```
@@ -60,8 +63,14 @@ curl -X POST "https://api.leap.energy/v1.1/global-connect/incentives/lookups" \
 {
   "reference_id": "customer-123",
   "connect_url": "https://connect.incentives.leap.energy/your-company/refId/customer-123",
-  "incentive_summary": { "upfront_amount": 0, "install_amount": 750, "ongoing_amount": 0 },
-  "utilities": { "primary": { "eiaid": "14354", "name": "PacifiCorp (Oregon)", "state": "OR" } },
+  "incentive_summary": {
+    "upfront_amount": 0,
+    "install_amount": 750,
+    "ongoing_amount": 0
+  },
+  "utilities": {
+    "primary": { "eiaid": "14354", "name": "PacifiCorp (Oregon)", "state": "OR" }
+  },
   "program_details": [
     {
       "name": "Pacific Power – Oregon \"Charge at Home\" EV Charger Rebate",
@@ -79,27 +88,27 @@ curl -X POST "https://api.leap.energy/v1.1/global-connect/incentives/lookups" \
 }
 ```
 
-Store each `customer_device_id` next to your own order line — it identifies that installation for later updates and removals.
+Store each `customer_device_id` alongside your own order record: it identifies that installation in later updates and removals.
 
 <Note>
-  `connect_url` is omitted entirely when nothing is eligible — there's nothing to apply for. Check that the field is present before showing a link.
+  When nothing is eligible, the response omits `connect_url`: there's nothing to apply for. Check that the field is present before you show the link.
 </Note>
 
 <Tip>
-  Returning customer? [Refresh incentives](/api-reference/incentives-lookups/refresh-incentives) re-evaluates from stored data and fills in details as you learn them; [Override incentives](/api-reference/incentives-lookups/override-incentives) discards the devices on file and starts over. The [Incentives Guide](/api-reference/incentives-lookups/overview) compares all three.
+  For returning customers, [Refresh incentives](/api-reference/incentives-lookups/refresh-incentives) re-evaluates from stored data and fills in details as you learn them, while [Override incentives](/api-reference/incentives-lookups/override-incentives) discards the devices on file and starts over. The [Incentives Guide](/api-reference/incentives-lookups/overview) compares all three endpoints.
 </Tip>
 
-Surface the Connect URL wherever it fits — order confirmation, follow-up email, product setup.
+Show the Connect URL wherever it fits: order confirmation, follow-up email, product setup.
 
 ## Provide data on the customer's behalf
 
-Your `create_application: true` lookup creates one application per eligible program in the background, normally within seconds and before the customer opens the Connect URL. Supply the fields you claimed so the customer doesn't have to: find the application, then update it.
+A lookup with `create_application: true` creates one application per eligible program in the background, usually within a few seconds and before the customer opens the Connect URL. Supply the fields you claimed so the customer doesn't have to: find the application, then update it.
 
 ### Find the application
 
 ```bash
 curl -X GET "https://api.incentives.leap.energy/alpha/applications?refId=customer-123" \
-  -H "x-api-key: leap_live_..."
+  -H "x-api-key: leap_live_your_api_key_here"
 ```
 
 Filter by `refId` (your reference ID) or `application_status`. Each result's top-level `id` is the application ID. See [Search applications](/api-reference/applications/search-applications) for the full response.
@@ -110,7 +119,7 @@ Send the data you're providing on behalf of the customer, using the application 
 
 ```bash
 curl -X PATCH "https://api.incentives.leap.energy/alpha/applications/123" \
-  -H "x-api-key: leap_live_..." \
+  -H "x-api-key: leap_live_your_api_key_here" \
   -H "Content-Type: application/json" \
   -d '{
     "customer": {
@@ -133,7 +142,7 @@ curl -X PATCH "https://api.incentives.leap.energy/alpha/applications/123" \
 ```
 
 <Note>
-  Only include the fields you want to change — omitted fields keep their current values, and `null` clears one. Status and system identifiers (`id`, `customer_id`, `program_id`) are read-only and can't be modified here.
+  Only include the fields you want to change: omitted fields keep their current values, and `null` clears one. Status and system identifiers (`id`, `customer_id`, `program_id`) are read-only.
 </Note>
 
 ## Next steps

@@ -10,22 +10,26 @@ Applications are the incentive submissions you track through processing. Search 
 `https://api.incentives.leap.energy/alpha` in production, `https://api.staging.incentives.leap.energy/alpha` in staging. Send your Leap API key in the `x-api-key` header:
 
 ```http
-x-api-key: leap_live_...
+x-api-key: leap_live_your_api_key_here
 ```
+
+## Where applications come from
+
+Send `create_application: true` on [Look up incentives](/api-reference/incentives-lookups/look-up-incentives) and Leap creates one application per eligible program in the background, usually within a few seconds and before the customer opens the Connect URL. Without the flag, Leap creates no applications.
 
 ## Endpoints
 
-Send `create_application: true` on [Look up incentives](/api-reference/incentives-lookups/look-up-incentives) and Leap creates one application per eligible program in the background — normally within seconds, before the customer opens the Connect URL. Without the flag, no applications are created.
+The API has four operations:
 
-- **Search applications** — by reference ID or status. Each result's top-level `id` is the application ID you pass as `application_id` everywhere else.
-- **Get application** — one application in full, with customer and device detail.
-- **Update application** — supply data on the customer's behalf. Only the fields you include change; `null` clears one. Status and system identifiers (`id`, `customer_id`, `program_id`) are read-only.
-- **Attachments** — upload, list, download, and delete supporting files. See the [Attachments Guide](/api-reference/applications/attachments).
+- **Search applications**: filter by reference ID or status. Each result's top-level `id` is the application ID you pass as `application_id` everywhere else.
+- **Get application**: one application in full, with customer and device detail.
+- **Update application**: supply data on the customer's behalf. Only the fields you include change; `null` clears one. Status and system identifiers (`id`, `customer_id`, `program_id`) are read-only.
+- **Attachments**: upload, list, download, and delete supporting files. See the [Attachments Guide](/api-reference/applications/attachments).
 
 ## Supplying data on the customer's behalf
 
-Fields you claim under **Data Preferences** in the portal drop out of the customer-facing form and become yours to provide. On devices you registered, a claimed field is hidden from the customer and they can't correct it — send another **Update application** if a value turns out to be wrong. Claimed fields reappear for any device the customer adds themselves.
+When you claim a field under **Data Preferences** in the portal, Leap removes it from the customer-facing form and expects the value from you. On devices you registered, the customer never sees a claimed field and can't correct it: if a value turns out to be wrong, send another **Update application** request. Claimed fields reappear for any device the customer adds themselves.
 
 <Tip>
-  Claim what you can supply for every customer — a low-water mark — and send extras as you get them. Values submitted before the customer opens Connect appear pre-filled for them.
+  Claim only the fields you can supply for every customer, and send extras as you get them. Values you submit before the customer opens Connect appear pre-filled for them.
 </Tip>

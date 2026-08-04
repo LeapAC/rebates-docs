@@ -151,11 +151,14 @@ REA-1080 also has to decide a data question, not only a permission one:
 `JooqProgramRepository.findAll` puts no partner or source filter on the query, and
 partner offers are program rows (`source = PARTNER_OFFER`, with a `partner_id`
 column). So `GET /beta/incentives/programs` returns every partner's offer rows to
-every caller. `ProgramResponse` drops `partner_id` and the offer-scoping arrays at
-the mapper (`ProgramConversions.kt`), but `label`, `description` and the free-form
-`metadata` object survive, and `IncentivesPipelineRunner.brandingFor` reads offer
-branding out of `metadata`. Filtering `PARTNER_OFFER` rows down to the caller's own
-belongs in the permission work, not in this repo.
+every caller. The read shape is `ProgramSummaryResponse` (REA-1082 split reads from
+writes and trimmed the former to eight fields): it drops `partner_id`, the
+offer-scoping arrays, and `metadata` entirely, so the branding leak
+`IncentivesPipelineRunner.brandingFor` used to read out of `metadata` no longer
+reaches these reads. `label`, `description`, `program_type`, `eiaids` and
+`device_category` still survive, so a caller can still see that another partner
+runs an offer and read its name and description. Filtering `PARTNER_OFFER` rows
+down to the caller's own belongs in the permission work, not in this repo.
 
 An earlier note here said the device catalog search endpoint would ship behind a
 paid wrapper and should stay unpublished. That decision was reversed in REA-1078:

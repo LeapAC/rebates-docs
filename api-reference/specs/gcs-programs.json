@@ -111,97 +111,6 @@
         "description": "Retrieve one program by its `program_identifier`. That is the same value **Look up incentives** returns as `program_identifier` on each eligible program, so you can go from a lookup result straight to the program's full definition.\n\nThe response covers the program's window and deadlines, plus its per-customer and per-address rebate caps. It also carries the customer class the program serves and the qualification flags that gate eligibility: homeowner status, income qualification, contractor participation, permits and inspection. An identifier Leap does not hold returns 404."
       }
     },
-    "/beta/incentives/programs/{program_id}/requirements": {
-      "get": {
-        "tags": [
-          "programs"
-        ],
-        "summary": "Get program requirements",
-        "operationId": "getProgramRequirements",
-        "parameters": [
-          {
-            "$ref": "#/components/parameters/ProgramId"
-          },
-          {
-            "name": "variant_id",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string"
-            },
-            "description": "Filter by variant"
-          },
-          {
-            "name": "partner_uuid",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            },
-            "description": "Apply partner data preferences"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successfully retrieved program requirements",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProgramRequirementsResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequest"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFound"
-          },
-          "500": {
-            "$ref": "#/components/responses/InternalServerError"
-          }
-        },
-        "description": "List everything a customer must supply to claim this program, resolved and grouped for display. Each group carries its own fields, and each field arrives complete: key, data type, label, help text, whether it is required, who owns it, and the option list on enumerated fields. Agreement and attachment fields carry their template identifiers. The detail is embedded here, so interpreting the response takes no second call to a requirements catalog.\n\nUse `variant_id` to narrow the response to one program variant. `partner_uuid` applies a partner account's stored data preferences. Leave both off to get the program's default requirement set. A program identifier Leap does not hold returns 404."
-      }
-    },
-    "/beta/incentives/programs/{program_id}/incentive-tiers": {
-      "get": {
-        "tags": [
-          "programs"
-        ],
-        "summary": "List incentive tiers",
-        "operationId": "listIncentiveTiers",
-        "parameters": [
-          {
-            "$ref": "#/components/parameters/ProgramId"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "List of incentive tiers",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/IncentiveTierResponse"
-                  }
-                }
-              }
-            }
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFound"
-          }
-        },
-        "description": "List the payout tiers on a program. A tier states how Leap works out its amount through `calculation_method`, along with the floor and ceiling on the payout. It also carries the equipment thresholds a device must clear to match the tier: efficiency ratings (SEER2, EER2, HSPF2, CEER), capacity in tons, BTU or kW, and any early-replacement or bundled-measure condition. `tier_order` gives the tier's position within the program.\n\nRead these to understand what a program pays before you run a lookup. The response is a plain array rather than a paginated envelope. A program identifier Leap does not hold returns 404."
-      }
-    },
     "/beta/incentives/programs/{programIdentifier}/approved-devices": {
       "get": {
         "tags": [
@@ -338,16 +247,6 @@
       }
     },
     "schemas": {
-      "RequirementOwner": {
-        "type": "string",
-        "enum": [
-          "UTILITY",
-          "END_USER",
-          "PARTNER",
-          "LEAP"
-        ],
-        "description": "Who supplies the value: the customer (`END_USER`), you (`PARTNER`), Leap (`LEAP`), or the utility running the program (`UTILITY`)."
-      },
       "RequirementSource": {
         "type": "string",
         "enum": [
@@ -356,16 +255,6 @@
           "PARTNER_OFFER"
         ],
         "description": "Where the definition came from. `LEAP_DEFINITIONS` and `INCENTIVES_DB` are rebate programs Leap maintains. `PARTNER_OFFER` marks a partner offer, which a partner account configures rather than Leap."
-      },
-      "CalculationMethod": {
-        "type": "string",
-        "enum": [
-          "FLAT_RATE",
-          "PERCENTAGE",
-          "FORMULA",
-          "PER_UNIT"
-        ],
-        "description": "How Leap works out the tier's payout: a fixed amount (`FLAT_RATE`), a rate per unit (`PER_UNIT`), a percentage rate (`PERCENTAGE`), or a program-specific formula (`FORMULA`). The matching rate field on the tier carries the value."
       },
       "ErrorResponse": {
         "type": "object",
@@ -511,208 +400,6 @@
         },
         "description": "A page of catalog programs. `data` carries the full matching set today, because this endpoint does not paginate yet."
       },
-      "ProgramRequirementsResponse": {
-        "type": "object",
-        "properties": {
-          "program_identifier": {
-            "type": "string"
-          },
-          "field_groups": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/FieldGroupResponse"
-            }
-          }
-        },
-        "description": "Everything the customer must supply to claim this program, grouped for display. Field detail is embedded in each group, so interpreting the response takes no second call to a requirements catalog."
-      },
-      "FieldGroupResponse": {
-        "type": "object",
-        "properties": {
-          "component_id": {
-            "type": "string"
-          },
-          "label": {
-            "type": "string"
-          },
-          "sort_order": {
-            "type": "integer"
-          },
-          "fields": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ProgramFieldResponse"
-            }
-          }
-        },
-        "description": "One display group of related fields, such as customer contact details or equipment information. `sort_order` gives the group's position in the form."
-      },
-      "ProgramFieldResponse": {
-        "type": "object",
-        "properties": {
-          "key": {
-            "type": "string"
-          },
-          "type": {
-            "type": "string",
-            "description": "Flat field type: STRING, NUMBER, BOOLEAN, DATE, ENUM, PHONE, AGREEMENT, ATTACHMENT, CHECKLIST_CHECK\n",
-            "enum": [
-              "STRING",
-              "NUMBER",
-              "BOOLEAN",
-              "DATE",
-              "ENUM",
-              "PHONE",
-              "AGREEMENT",
-              "ATTACHMENT",
-              "CHECKLIST_CHECK"
-            ]
-          },
-          "label": {
-            "type": "string"
-          },
-          "description": {
-            "type": "string"
-          },
-          "placeholder": {
-            "type": "string"
-          },
-          "required": {
-            "type": "boolean"
-          },
-          "owner": {
-            "$ref": "#/components/schemas/RequirementOwner"
-          },
-          "options": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Available options (ENUM fields only)"
-          },
-          "validation_rules": {
-            "type": "object",
-            "additionalProperties": true,
-            "description": "Constraints the value must satisfy, such as a length limit or a numeric range. The keys depend on the field's `type`."
-          },
-          "agreement_template_id": {
-            "type": "string",
-            "description": "Present for AGREEMENT type only"
-          },
-          "agreement_url": {
-            "type": "string",
-            "description": "Present for AGREEMENT type only"
-          },
-          "attachment_template_id": {
-            "type": "string",
-            "description": "Present for ATTACHMENT type only"
-          },
-          "attachment_sample_label": {
-            "type": "string",
-            "description": "Present for ATTACHMENT type only"
-          },
-          "check_identifier": {
-            "type": "string",
-            "description": "Present for CHECKLIST_CHECK type only"
-          }
-        },
-        "description": "One thing the customer must supply. `type` decides which of the optional fields are populated: `options` on `ENUM`, the agreement fields on `AGREEMENT`, the attachment fields on `ATTACHMENT`, and `check_identifier` on `CHECKLIST_CHECK`."
-      },
-      "IncentiveTierResponse": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "source_id": {
-            "type": "integer",
-            "description": "Leap's identifier for this tier in the data feed it was ingested from. Address a tier by `id` instead; `source_id` is not part of the published contract."
-          },
-          "program_identifier": {
-            "type": "string"
-          },
-          "tier_name": {
-            "type": "string"
-          },
-          "tier_order": {
-            "type": "integer"
-          },
-          "calculation_method": {
-            "$ref": "#/components/schemas/CalculationMethod"
-          },
-          "flat_rate_amount": {
-            "type": "number"
-          },
-          "per_unit_rate": {
-            "type": "number"
-          },
-          "percentage_rate": {
-            "type": "number"
-          },
-          "max_incentive_amount": {
-            "type": "number"
-          },
-          "min_incentive_amount": {
-            "type": "number"
-          },
-          "income_qualified_multiplier": {
-            "type": "number"
-          },
-          "geographic_bonus_multiplier": {
-            "type": "number"
-          },
-          "min_seer2": {
-            "type": "number"
-          },
-          "max_seer2": {
-            "type": "number"
-          },
-          "min_eer2": {
-            "type": "number"
-          },
-          "max_eer2": {
-            "type": "number"
-          },
-          "min_hspf2": {
-            "type": "number"
-          },
-          "max_hspf2": {
-            "type": "number"
-          },
-          "min_ceer": {
-            "type": "number"
-          },
-          "max_ceer": {
-            "type": "number"
-          },
-          "min_capacity_tons": {
-            "type": "number"
-          },
-          "max_capacity_tons": {
-            "type": "number"
-          },
-          "min_capacity_btu": {
-            "type": "integer"
-          },
-          "max_capacity_btu": {
-            "type": "integer"
-          },
-          "min_capacity_kw": {
-            "type": "number"
-          },
-          "max_capacity_kw": {
-            "type": "number"
-          },
-          "requires_early_replacement": {
-            "type": "boolean"
-          },
-          "requires_bundled_measures": {
-            "type": "boolean"
-          }
-        },
-        "description": "One payout tier on a program, with the equipment thresholds a device must clear to match it."
-      },
       "ProgramApprovedDeviceResponse": {
         "type": "object",
         "properties": {
@@ -727,7 +414,7 @@
           "tier_id": {
             "type": "string",
             "format": "uuid",
-            "description": "The incentive tier this device is bound to, matching an `id` from **List incentive tiers**. Absent when the entry is not tier-specific."
+            "description": "The incentive tier this device is bound to. Absent when the entry is not tier-specific."
           },
           "apl_source": {
             "type": "string",

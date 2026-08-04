@@ -111,13 +111,13 @@ Programs and Devices read the same source file into two output specs, because a
 
 ## What stays unpublished, and why
 
-`programs.yaml` carries far more than the nine operations the Programs and Devices
+`programs.yaml` carries far more than the seven operations the Programs and Devices
 sections publish. Publish an operation only after checking the permission its
 handler requires. Partner API keys carry `LOOKUP_INCENTIVES`; they do not carry
 `MANAGE_INCENTIVE_DATA`, so an operation gated on the latter returns 403 for a
 partner today.
 
-Three cases worth naming, because all three have been raised before:
+Four cases worth naming, because they've all been raised before:
 
 - `GET /beta/incentives/devices` (the catalog list) sits next to the published
   search endpoint and looks publishable. It is not: `DeviceAdminApiServiceImpl`
@@ -125,19 +125,25 @@ Three cases worth naming, because all three have been raised before:
   product decision to open it up. Device search is the partner-facing read.
 - Every programs **write** stays hidden: `POST`/`PUT` on programs, the requirement
   assignment routes, the incentive tier writes, the approved-device upsert, the
-  component routes and the partner data preference routes. Only the five reads
+  component routes and the partner data preference routes. Only the three reads
   listed in the Programs section ship.
-- The standalone requirements catalog (`/beta/incentives/requirements`) stays
-  hidden on purpose, not by oversight. `GET /programs/{program_id}/requirements`
-  returns `ProgramRequirementsResponse`, whose `field_groups[].fields[]` embed the
-  full requirement detail (key, type, label, description, placeholder, required,
-  owner, options, validation rules, template ids). A partner never needs the
-  catalog to interpret a program's requirements.
+- `GET /programs/{program_id}/requirements` and `GET /programs/{program_id}/incentive-tiers`
+  were published briefly in this repo, then removed. Sean reviewed the rendered
+  docs and ruled that neither operation suits a public partner audience. Treat
+  this as a product decision, not an oversight or a permission gap like the cases
+  above. Don't re-add either route as a perceived coverage gap without checking
+  back on the decision first.
+- The standalone requirements catalog (`/beta/incentives/requirements`) was never
+  published either. It returns the same field-level detail as the program-scoped
+  requirements route above: `ProgramRequirementsResponse`, whose
+  `field_groups[].fields[]` carry key, type, label, description, placeholder,
+  required, owner, options, validation rules, and template ids. The audience
+  question is the same one already answered there.
 
 ### The Programs section is documented ahead of its permission
 
-Sean asked for the five programs reads to be documented even though every one of
-them calls `requireManageIncentiveData`, so a partner key gets 403 today. REA-1080
+Sean asked for the programs reads to be documented even though every one of them
+calls `requireManageIncentiveData`, so a partner key gets 403 today. REA-1080
 tracks the `READ_INCENTIVES_DATA` permission that makes them callable. Do not
 publish this section to production before that permission ships.
 

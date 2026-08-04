@@ -75,8 +75,6 @@
         "pages": [
           "GET /beta/incentives/programs",
           "GET /beta/incentives/programs/{program_id}",
-          "GET /beta/incentives/programs/{program_id}/requirements",
-          "GET /beta/incentives/programs/{program_id}/incentive-tiers",
           "GET /beta/incentives/programs/{programIdentifier}/approved-devices"
         ]
       },

@@ -102,25 +102,54 @@ auth matches the section (Bearer for Incentives, `x-api-key` for Applications).
 | Section | Source repo · file | Auth |
 |---|---|---|
 | Incentives | global-connect-service · `incentives.yaml` (+ `common-schemas.yaml`) | Bearer |
-| Devices | global-connect-service · `programs.yaml` (+ `common-schemas.yaml`) | Bearer |
 | Applications | incentives-service · `applications/openapi.json` | `x-api-key` |
+| Programs | global-connect-service · `programs.yaml` (+ `common-schemas.yaml`) | Bearer |
+| Devices | global-connect-service · `programs.yaml` (+ `common-schemas.yaml`) | Bearer |
+
+Programs and Devices read the same source file into two output specs, because a
+`docs.json` nav group binds to exactly one `openapi` file.
 
 ## What stays unpublished, and why
 
-`programs.yaml` carries far more than the four device operations in the Devices
-section. Publish an operation only after checking the permission its handler
-requires. Partner API keys carry `LOOKUP_INCENTIVES`; they do not carry
-`MANAGE_INCENTIVE_DATA`, so any operation gated on the latter returns 403 for a
-partner and must not be documented.
+`programs.yaml` carries far more than the nine operations the Programs and Devices
+sections publish. Publish an operation only after checking the permission its
+handler requires. Partner API keys carry `LOOKUP_INCENTIVES`; they do not carry
+`MANAGE_INCENTIVE_DATA`, so an operation gated on the latter returns 403 for a
+partner today.
 
-Two cases worth naming, because both have been raised before:
+Three cases worth naming, because all three have been raised before:
 
 - `GET /beta/incentives/devices` (the catalog list) sits next to the published
   search endpoint and looks publishable. It is not: `DeviceAdminApiServiceImpl`
-  gates it on `MANAGE_INCENTIVE_DATA`. Device search is the partner-facing read.
-- Every programs operation (`/beta/incentives/programs…`, including
-  `/approved-devices` and the calculation specs) is admin-gated and is pending a
-  separate product decision. Don't add them on your own initiative.
+  gates it on `MANAGE_INCENTIVE_DATA`, and unlike the programs reads there is no
+  product decision to open it up. Device search is the partner-facing read.
+- Every programs **write** stays hidden: `POST`/`PUT` on programs, the requirement
+  assignment routes, the incentive tier writes, the approved-device upsert, the
+  component routes and the partner data preference routes. Only the five reads
+  listed in the Programs section ship.
+- The standalone requirements catalog (`/beta/incentives/requirements`) stays
+  hidden on purpose, not by oversight. `GET /programs/{program_id}/requirements`
+  returns `ProgramRequirementsResponse`, whose `field_groups[].fields[]` embed the
+  full requirement detail (key, type, label, description, placeholder, required,
+  owner, options, validation rules, template ids). A partner never needs the
+  catalog to interpret a program's requirements.
+
+### The Programs section is documented ahead of its permission
+
+Sean asked for the five programs reads to be documented even though every one of
+them calls `requireManageIncentiveData`, so a partner key gets 403 today. REA-1080
+tracks the `READ_INCENTIVES_DATA` permission that makes them callable. Do not
+publish this section to production before that permission ships.
+
+REA-1080 also has to decide a data question, not only a permission one:
+`JooqProgramRepository.findAll` puts no partner or source filter on the query, and
+partner offers are program rows (`source = PARTNER_OFFER`, with a `partner_id`
+column). So `GET /beta/incentives/programs` returns every partner's offer rows to
+every caller. `ProgramResponse` drops `partner_id` and the offer-scoping arrays at
+the mapper (`ProgramConversions.kt`), but `label`, `description` and the free-form
+`metadata` object survive, and `IncentivesPipelineRunner.brandingFor` reads offer
+branding out of `metadata`. Filtering `PARTNER_OFFER` rows down to the caller's own
+belongs in the permission work, not in this repo.
 
 An earlier note here said the device catalog search endpoint would ship behind a
 paid wrapper and should stay unpublished. That decision was reversed in REA-1078:

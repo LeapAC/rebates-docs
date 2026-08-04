@@ -42,6 +42,7 @@
         "openapi": "api-reference/specs/gcs-incentives.json",
         "pages": [
           "api-reference/incentives-lookups/overview",
+          "api-reference/incentives-lookups/eligibility-codes",
           "POST /v1.1/global-connect/incentives/lookups",
           "POST /v1.1/global-connect/incentives/refreshes",
           "POST /v1.1/global-connect/incentives/overrides"

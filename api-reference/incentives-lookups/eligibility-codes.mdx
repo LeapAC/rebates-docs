@@ -38,12 +38,15 @@ The Input column names the field that resolves each check. Send it on a lookup o
 | `CUST-HO-001` | The customer owns the home. | `customer.is_homeowner` |
 | `CUST-IND-001` | The customer qualifies under an Indigenous customer program. | `customer.is_indigenous` |
 | `CUST-IQ-001` | The customer meets the program’s income-qualification rule. | `customer.is_income_qualified` |
+| `CUST-POC-001` | The address has at least the required number of historical Public Safety Power Shutoff outages. | `customer.psps_outage_count` |
 | `CUST-PRA-001` | No rebate has been claimed at this address before. | `customer.has_previous_rebate_at_address` |
 | `CUST-RP-001` | The customer is on a utility rate plan the program allows. | `customer.utility_rate_plan` |
 | `CUST-ST-001` | The service address is in a state the program covers. | `customer.state` |
 | `CUST-VC-001` | The customer has at least the required number of vehicles on file. | `customer.vehicle_count` |
+| `CD-AD-001` | The rebate application arrives inside the program’s submission window. | `customer_device.application_date` |
 | `CD-IC-001` | Installation cost is within the program’s bounds. | `customer_device.installation_cost` |
 | `CD-ID-001` | The install date falls inside the eligible window. | `customer_device.installation_date` |
+| `CD-IL-001` | An installer license reference is on file. | `customer_device.installer_license` |
 | `CD-IT-001` | The installation method is allowed, such as professional install only. | `customer_device.installation_type` |
 | `CD-NC-001` | Cost net of other utility incentives is within the program’s cap. | `customer_device.net_cost` |
 | `CD-NEW-001` | The equipment is new rather than used. | `customer_device.is_new_equipment` |
@@ -51,6 +54,7 @@ The Input column names the field that resolves each check. Send it on a lookup o
 | `CD-PD-001` | The purchase date falls inside the eligible window. | `customer_device.purchase_date` |
 | `CD-PP-001` | Purchase price is within the program’s bounds. | `customer_device.purchase_price` |
 | `CD-PTO-001` | The permission-to-operate date falls inside the program’s window. Used by battery and generation programs. | `customer_device.pto_date` |
+| `CD-PU-001` | The project includes an electrical panel upgrade. | `customer_device.includes_panel_upgrade` |
 | `CD-UCI-001` | The utility-side incentive amount, which programs with a net-cost cap measure against. | `customer_device.utility_customer_incentive` |
 | `CD-VR-001` | A vehicle registration is on file for the address. | `customer_device.vehicle_registration` |
 | `CD-VT-001` | The vehicle is an eligible type, such as battery electric or plug-in hybrid. | `customer_device.vehicle_type` |
@@ -82,6 +86,7 @@ The Input column names the field that resolves each check. Send it on a lookup o
 | `AGR-PGE-001` | Customer agreed to PG&E Automated Response Technology enrollment for the thermostat. | `customer.pge_art_enrollment` |
 | `AGR-PGE-SAC-IC-001` | Customer consented to PG&E installing a SmartAC switch on their heating and cooling equipment. | `customer.pge_smartac_install_consent` |
 | `AGR-PGE-SAC-LC-001` | Customer consented to PG&E cycling their air conditioning during peak demand. | `customer.pge_smartac_load_control_consent` |
+| `AGR-PGE-TA-001` | Customer confirmed the installer is in PG&E’s Trade Ally Network. | `customer.pge_trade_ally_contractor` |
 | `AGR-PSELI-TC-001` | Customer accepted PSEG Long Island program terms. | `customer.psegli_terms_and_conditions` |
 | `AGR-SMUD-CN-001` | Customer attested that the installer is on SMUD’s approved-contractor network. | `customer.smud_contractor_network_attestation` |
 | `AGR-SMUD-HH-001` | Customer attested that the household has not received this rebate before. | `customer.smud_household_lifetime_attestation` |

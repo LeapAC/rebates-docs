@@ -17,15 +17,21 @@
       "tag": "incentives-lookups",
       "source": { "repo": "LeapAC/global-connect-service", "entry": "src/main/resources/openapi/incentives.yaml", "deps": ["src/main/resources/openapi/common-schemas.yaml"] },
       "include": [
-        { "method": "post", "path": "/v1.1/global-connect/incentives/lookups", "title": "Look up incentives", "description": "Check which rebate programs a customer qualifies for. Send the customer's address, classification, and devices; Leap returns the total incentive amount, a per-program breakdown, and a Connect URL the customer can use to apply." },
-        { "method": "post", "path": "/v1.1/global-connect/incentives/refreshes", "title": "Refresh incentives", "description": "Re-run eligibility for a customer you've already looked up, using their stored address and devices — no need to resend them. Use this to pick up newly launched programs or updated incentive amounts." },
-        { "method": "post", "path": "/v1.1/global-connect/incentives/overrides", "title": "Override incentives", "description": "Replace an existing customer's device list, then re-run eligibility. Use this when a customer's equipment has changed. The previous device set is discarded." }
+        { "method": "post", "path": "/beta/incentives/lookups", "title": "Look up incentives", "description": "Check which rebate programs a customer qualifies for. Send the customer's address, classification, and devices; Leap returns the total incentive amount, a per-program breakdown, and a Connect URL the customer can use to apply." },
+        { "method": "post", "path": "/beta/incentives/refreshes", "title": "Refresh incentives", "description": "Re-run eligibility for a customer you've already looked up, using their stored address and devices — no need to resend them. Use this to pick up newly launched programs or updated incentive amounts." },
+        { "method": "post", "path": "/beta/incentives/overrides", "title": "Override incentives", "description": "Replace an existing customer's device list, then re-run eligibility. Use this when a customer's equipment has changed. The previous device set is discarded." }
       ],
       "schemaDescriptions": {
         "EligibilityRequest.create_application": "Create the Connect application records for this lookup's eligible programs, so the returned `connect_url` is a link the customer can open. Provisioning runs in the background and is normally in place within seconds. Defaults to `false`: lookup-only integrations are unaffected and no applications are created for them. No effect on billing or rate limits.",
         "EligibilityRequest.include_preview": "Include your own unpublished partner offer in the results so you can test it before publishing. Only your own offer is ever included. Utility, state, and market programs are unaffected. Defaults to `false`.",
         "EligibilityResult.connect_url": "Deep link to hand the customer so they can apply: `https://connect.incentives.leap.energy/{company}/refId/{reference_id}`, where `{company}` is your registration nickname. **Omitted entirely when the lookup surfaces no eligible incentive** — there is nothing to apply for, so check that the field is present before showing a link.",
         "IncentiveSummary.ongoing_amount": "Total recurring incentives across all eligible programs, **per year**.",
+        "IncentiveSummary.upfront_amount": "Reserved for a payment kind Leap does not pay yet, so it is always 0. Read `install_amount` for the one-time total.",
+        "IncentiveSummary.install_amount": "Total one-time incentives across all eligible programs, paid at install time.",
+        "EligibleProgram.upfront_amount": "Reserved for a payment kind Leap does not pay yet, so it is always 0. Read `install_amount` for this program's one-time incentive.",
+        "EligibleProgram.install_amount": "This program's one-time incentive, paid at install time.",
+        "EligibleProgram.ongoing_amount": "This program's recurring incentive, **per year**.",
+        "RefreshIncentivesRequest.eiaid": "Optional utility override, matching the one on **Look up incentives**. Supply an EIA utility id to re-resolve the customer's serving utility instead of reusing the one on file. Leap re-selects candidate programs against it, re-runs eligibility, and keeps the override for later calls on this customer.",
         "EligibleProgram.name": "Program name as shown to the customer. Leap sets this for utility, state, and market programs; for your own partner offer it is the offer name you configure in the portal.",
         "EligibleProgram.program_identifier": "Stable identifier for this program — your offer's identifier for a partner offer, or the catalog identifier (for example `PGE-ART`) otherwise. Use it to correlate the same program across lookups.",
         "EligibleProgram.is_partner_offer": "`true` when this entry is your own partner offer (which bundles one or more underlying programs); `false` for utility, state, and market rebate programs. Use it to separate your offer from rebates in your own UI.",
@@ -45,6 +51,28 @@
         "CustomerDeviceRefEcho.customer_device_id": "Leap's identifier for this installation. Store it — it's how you address that specific device on later calls.",
         "EligibilityRequest.reference_id": "Your stable identifier for this customer. Leap uses it to recognise a returning customer, and you'll send it again on **Refresh incentives**, **Override incentives**, and when searching applications. It's scoped to you — another partner using the same value is a different customer.",
         "EligibilityRequest.eiaid": "Optional utility override. Supply it when you already know the customer's serving utility and the address-based match is unavailable or ambiguous: Leap uses this EIA utility id to select candidate programs instead of resolving the utility from the address. On this path the address isn't geocoded, so the response omits the `geocoding` block and any stored coordinates are left as they are. A value matching no utility fails the same way an unserved address does (404 `NO_UTILITY_AT_ADDRESS`)."
+      }
+    },
+    {
+      "output": "gcs-devices.json",
+      "title": "Leap Incentives — Devices",
+      "serversRef": "gcsServers",
+      "security": "bearer",
+      "tag": "devices",
+      "source": { "repo": "LeapAC/global-connect-service", "entry": "src/main/resources/openapi/programs.yaml", "deps": ["src/main/resources/openapi/common-schemas.yaml"] },
+      "include": [
+        { "method": "get", "path": "/beta/incentives/devices/search", "title": "Search device catalog", "description": "Find the catalog `device_id` for a product by free-text search over manufacturer, model, and description. Use this to map your product catalog to Leap's programmatically instead of by hand, and to keep the mapping current as the catalog grows. Every whitespace-separated term in `q` must match; results are ranked by closeness." },
+        { "method": "get", "path": "/beta/incentives/devices/saved", "title": "List saved devices", "description": "List the devices you've saved, most recently saved first. Each entry carries the full catalog record plus your own optional label. Saving the products you sell keeps them on hand without a catalog search every time. Results are scoped to your account; page through them with `limit` and `offset`." },
+        { "method": "put", "path": "/beta/incentives/devices/saved/{device_id}", "title": "Save a device", "description": "Add a catalog device to your saved list, or relabel one you already saved. The `label` is your own name for the device and is optional: omit the key to keep the current label, send null or a blank string to clear it, send text to set it. Repeating the call is safe, because the same `device_id` updates the existing entry instead of adding a second one. Catalog devices that Leap has retired return 404." },
+        { "method": "delete", "path": "/beta/incentives/devices/saved/{device_id}", "title": "Remove a saved device", "description": "Remove a device from your saved list. The catalog device is untouched, and so is any lookup that referenced it. Removing a device you have not saved also returns 204, so retries are safe." }
+      ],
+      "schemaDescriptions": {
+        "DeviceResponse": "One device in Leap's catalog. Send its `id` as the `device_id` on a lookup. Specification fields such as `capacity_kw` or `seer2_rating` are populated where Leap holds data for that device type, and are null otherwise.",
+        "SavedDeviceUpsertRequest.label": "Your own name for the device, to help you find it later. Omit the key to keep the current label, send null or a blank string to clear it, send text to set it. Maximum 256 characters.",
+        "SavedDeviceResponse.device_id": "Catalog device UUID. This is the `device_id` you send on a lookup.",
+        "SavedDeviceResponse.label": "Your own name for the device, when you set one. Null otherwise.",
+        "SavedDeviceResponse.created_at": "When you first saved this device.",
+        "SavedDevicePage.total": "Total devices on your saved list, ignoring paging."
       }
     },
     {

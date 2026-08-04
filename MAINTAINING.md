@@ -102,7 +102,26 @@ auth matches the section (Bearer for Incentives, `x-api-key` for Applications).
 | Section | Source repo · file | Auth |
 |---|---|---|
 | Incentives | global-connect-service · `incentives.yaml` (+ `common-schemas.yaml`) | Bearer |
+| Devices | global-connect-service · `programs.yaml` (+ `common-schemas.yaml`) | Bearer |
 | Applications | incentives-service · `applications/openapi.json` | `x-api-key` |
 
-The device catalog search endpoint is deliberately **not** published — it ships later
-behind a paid wrapper. Don't add it back without checking.
+## What stays unpublished, and why
+
+`programs.yaml` carries far more than the four device operations in the Devices
+section. Publish an operation only after checking the permission its handler
+requires. Partner API keys carry `LOOKUP_INCENTIVES`; they do not carry
+`MANAGE_INCENTIVE_DATA`, so any operation gated on the latter returns 403 for a
+partner and must not be documented.
+
+Two cases worth naming, because both have been raised before:
+
+- `GET /beta/incentives/devices` (the catalog list) sits next to the published
+  search endpoint and looks publishable. It is not: `DeviceAdminApiServiceImpl`
+  gates it on `MANAGE_INCENTIVE_DATA`. Device search is the partner-facing read.
+- Every programs operation (`/beta/incentives/programs…`, including
+  `/approved-devices` and the calculation specs) is admin-gated and is pending a
+  separate product decision. Don't add them on your own initiative.
+
+An earlier note here said the device catalog search endpoint would ship behind a
+paid wrapper and should stay unpublished. That decision was reversed in REA-1078:
+search is published, along with read and write on saved devices.

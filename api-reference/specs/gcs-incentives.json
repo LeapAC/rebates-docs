@@ -2,7 +2,7 @@
   "openapi": "3.0.1",
   "info": {
     "title": "Leap Incentives — Lookups",
-    "description": "Partner-facing eligibility evaluation. Three operations, each its own sub-collection under the `incentives` resource:\n\n  * `POST /v1.1/global-connect/incentives/lookups` — first-touch.\n    Creates the customer if new, upserts devices, geocodes the address,\n    resolves serving utilities, and evaluates eligibility.\n  * `POST /v1.1/global-connect/incentives/refreshes` — re-evaluates an\n    existing customer against their already-stored devices and cached\n    utilities. No new customer or device rows.\n  * `POST /v1.1/global-connect/incentives/overrides` — replaces the\n    customer's device set with a new one (destructively wipes the\n    existing devices), then evaluates against the new set.\n\nThe legacy `POST /v1.1/global-connect/incentives` path is preserved as a deprecated alias for `/lookups` so partners on the original release keep working. New integrations should use the explicit `/lookups` sub-collection.\n`partner_id` is derived server-side from the authenticated principal's `leap-partnerid` header — it is intentionally not part of any request body. Accepting it from the client would turn these endpoints into an IDOR primitive over the customer / customer_device tables.\n",
+    "description": "Partner-facing eligibility evaluation. Three operations, each its own sub-collection under the `incentives` resource:\n\n  * `POST /beta/incentives/lookups` — first-touch.\n    Creates the customer if new, upserts devices, geocodes the address,\n    resolves serving utilities, and evaluates eligibility.\n  * `POST /beta/incentives/refreshes` — re-evaluates an\n    existing customer against their already-stored devices and cached\n    utilities. No new customer or device rows.\n  * `POST /beta/incentives/overrides` — replaces the\n    customer's device set with a new one (destructively wipes the\n    existing devices), then evaluates against the new set.\n\nThe legacy `POST /beta/incentives` path is preserved as a deprecated alias for `/lookups` so partners on the original release keep working. New integrations should use the explicit `/lookups` sub-collection.\n`partner_id` is derived server-side from the authenticated principal's `leap-partnerid` header — it is intentionally not part of any request body. Accepting it from the client would turn these endpoints into an IDOR primitive over the customer / customer_device tables.\n",
     "contact": {
       "email": "apiteam@leap.energy"
     },
@@ -24,7 +24,7 @@
     }
   ],
   "paths": {
-    "/v1.1/global-connect/incentives/lookups": {
+    "/beta/incentives/lookups": {
       "post": {
         "tags": [
           "incentives-lookups"
@@ -80,7 +80,7 @@
         }
       }
     },
-    "/v1.1/global-connect/incentives/refreshes": {
+    "/beta/incentives/refreshes": {
       "post": {
         "tags": [
           "incentives-lookups"
@@ -133,7 +133,7 @@
         }
       }
     },
-    "/v1.1/global-connect/incentives/overrides": {
+    "/beta/incentives/overrides": {
       "post": {
         "tags": [
           "incentives-lookups"
@@ -411,6 +411,11 @@
             "items": {
               "type": "string"
             }
+          },
+          "eiaid": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Optional utility override, matching the one on **Look up incentives**. Supply an EIA utility id to re-resolve the customer's serving utility instead of reusing the one on file. Leap re-selects candidate programs against it, re-runs eligibility, and keeps the override for later calls on this customer."
           }
         }
       },
@@ -622,11 +627,11 @@
         "properties": {
           "upfront_amount": {
             "type": "number",
-            "description": "Always 0 in the current cut. Reserved for a future \"pre-install upfront\" payment kind."
+            "description": "Reserved for a payment kind Leap does not pay yet, so it is always 0. Read `install_amount` for the one-time total."
           },
           "install_amount": {
             "type": "number",
-            "description": "Sum across all eligible programs of incentives paid at install time. Maps from the engine's `up_front_total` per program."
+            "description": "Total one-time incentives across all eligible programs, paid at install time."
           },
           "ongoing_amount": {
             "type": "number",
@@ -638,6 +643,9 @@
         "type": "object",
         "required": [
           "name",
+          "upfront_amount",
+          "install_amount",
+          "ongoing_amount",
           "tiers"
         ],
         "properties": {
@@ -654,6 +662,18 @@
             "type": "string",
             "nullable": true,
             "description": "Category name (e.g., `EV_CHARGER`, `HEAT_PUMP`)."
+          },
+          "upfront_amount": {
+            "type": "number",
+            "description": "Reserved for a payment kind Leap does not pay yet, so it is always 0. Read `install_amount` for this program's one-time incentive."
+          },
+          "install_amount": {
+            "type": "number",
+            "description": "This program's one-time incentive, paid at install time."
+          },
+          "ongoing_amount": {
+            "type": "number",
+            "description": "This program's recurring incentive, **per year**."
           },
           "display_name": {
             "type": "string",

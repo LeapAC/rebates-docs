@@ -43,9 +43,9 @@
         "pages": [
           "api-reference/incentives-lookups/overview",
           "api-reference/incentives-lookups/eligibility-codes",
-          "POST /v1.1/global-connect/incentives/lookups",
-          "POST /v1.1/global-connect/incentives/refreshes",
-          "POST /v1.1/global-connect/incentives/overrides"
+          "POST /beta/incentives/lookups",
+          "POST /beta/incentives/refreshes",
+          "POST /beta/incentives/overrides"
         ]
       },
       {
@@ -65,6 +65,30 @@
               "POST /applications/attachments/commit",
               "GET /applications/attachments/{id}/download",
               "DELETE /applications/attachments/{id}"
+            ]
+          }
+        ]
+      },
+      {
+        "group": "Programs",
+        "openapi": "api-reference/specs/gcs-programs.json",
+        "pages": [
+          "GET /beta/incentives/programs",
+          "GET /beta/incentives/programs/{program_id}",
+          "GET /beta/incentives/programs/{programIdentifier}/approved-devices"
+        ]
+      },
+      {
+        "group": "Devices",
+        "openapi": "api-reference/specs/gcs-devices.json",
+        "pages": [
+          "GET /beta/incentives/devices/search",
+          {
+            "group": "Saved devices",
+            "pages": [
+              "GET /beta/incentives/devices/saved",
+              "PUT /beta/incentives/devices/saved/{device_id}",
+              "DELETE /beta/incentives/devices/saved/{device_id}"
             ]
           }
         ]

@@ -16,7 +16,7 @@ Check a customer's incentive eligibility, share a Connect URL they apply through
 </Step>
 
 <Step title="Get device IDs">
-  Map your product catalog to Leap's under [**Settings → Device profile**](https://partner.incentives.leap.energy/settings/device-profile). Each mapping gives you a `device_id` to pass in lookup requests.
+  Map your product catalog to Leap's under [**Settings → Device profile**](https://partner.incentives.leap.energy/settings/device-profile). Each mapping gives you a `device_id` to pass in lookup requests. To build that mapping in code instead, call [Search device catalog](/api-reference/devices/search-device-catalog): free text in, matching `device_id`s out. Keep the products you sell on hand with [Save a device](/api-reference/devices/save-a-device).
 </Step>
 
 <Step title="Set up data preferences">
@@ -35,7 +35,7 @@ Send the customer's address, classification, and devices to the **Look up incent
 ### Request
 
 ```bash
-curl -X POST "https://api.leap.energy/v1.1/global-connect/incentives/lookups" \
+curl -X POST "https://api.leap.energy/beta/incentives/lookups" \
   -H "Authorization: Bearer your_api_key_here" \
   -H "Content-Type: application/json" \
   -d '{

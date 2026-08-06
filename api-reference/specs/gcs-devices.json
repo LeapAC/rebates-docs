@@ -1,0 +1,570 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Leap Incentives — Devices",
+    "description": "API for managing program definitions, requirement catalog, field groups, and partner data preferences",
+    "contact": {
+      "email": "apiteam@leap.energy"
+    },
+    "version": "0.1"
+  },
+  "servers": [
+    {
+      "url": "https://api.leap.energy",
+      "description": "Production"
+    },
+    {
+      "url": "https://api.staging.leap.energy",
+      "description": "Staging"
+    }
+  ],
+  "tags": [
+    {
+      "name": "devices"
+    }
+  ],
+  "paths": {
+    "/beta/incentives/devices/search": {
+      "get": {
+        "tags": [
+          "devices"
+        ],
+        "summary": "Search device catalog",
+        "description": "Find the catalog `device_id` for a product by free-text search over manufacturer, model, and description. Use this to map your product catalog to Leap's programmatically instead of by hand, and to keep the mapping current as the catalog grows. Every whitespace-separated term in `q` must match; results are ranked by closeness.",
+        "operationId": "searchDevices",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "minimum": 1,
+              "maximum": 50
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ranked page of matching devices.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceSearchResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/beta/incentives/devices/saved": {
+      "get": {
+        "tags": [
+          "devices"
+        ],
+        "summary": "List saved devices",
+        "description": "List the devices you've saved, most recently saved first. Each entry carries the full catalog record plus your own optional label. Saving the products you sell keeps them on hand without a catalog search every time. Results are scoped to your account; page through them with `limit` and `offset`.",
+        "operationId": "listSavedDevices",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 100,
+              "minimum": 1,
+              "maximum": 200
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Page of the partner's saved devices.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedDevicePage"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/beta/incentives/devices/saved/{device_id}": {
+      "put": {
+        "tags": [
+          "devices"
+        ],
+        "summary": "Save a device",
+        "description": "Add a catalog device to your saved list, or relabel one you already saved. The `label` is your own name for the device and is optional: omit the key to keep the current label, send null or a blank string to clear it, send text to set it. Repeating the call is safe, because the same `device_id` updates the existing entry instead of adding a second one. Catalog devices that Leap has retired return 404.",
+        "operationId": "upsertSavedDevice",
+        "parameters": [
+          {
+            "name": "device_id",
+            "in": "path",
+            "required": true,
+            "description": "Catalog device UUID (as returned by the device search).",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SavedDeviceUpsertRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The saved device after the upsert.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedDeviceResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "devices"
+        ],
+        "summary": "Remove a saved device",
+        "description": "Remove a device from your saved list. The catalog device is untouched, and so is any lookup that referenced it. Removing a device you have not saved also returns 204, so retries are safe.",
+        "operationId": "deleteSavedDevice",
+        "parameters": [
+          {
+            "name": "device_id",
+            "in": "path",
+            "required": true,
+            "description": "Catalog device UUID.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The device is no longer in the saved list."
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "responses": {
+      "BadRequest": {
+        "description": "Malformed or invalid request",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "You are not authorized to perform this operation",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "You do not have permission to perform this operation",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "The requested resource was not found",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "RateLimited": {
+        "description": "The shared per-partner rate limit for /incentives endpoints was exceeded (`error_code: RATE_LIMIT_EXCEEDED`). Back off and retry after the number of seconds indicated by the `Retry-After` header.\n",
+        "headers": {
+          "Retry-After": {
+            "description": "Seconds to wait before retrying.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "InternalServerError": {
+        "description": "An internal server error occurred",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "ErrorResponse": {
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "object",
+            "required": [
+              "message"
+            ],
+            "properties": {
+              "message": {
+                "type": "string"
+              },
+              "details": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "error_code": {
+                      "type": "string"
+                    },
+                    "reason": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "DeviceResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "source_id": {
+            "type": "integer"
+          },
+          "device_category_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "manufacturer": {
+            "type": "string"
+          },
+          "model_number": {
+            "type": "string"
+          },
+          "model_name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "subcategory": {
+            "type": "string"
+          },
+          "is_active": {
+            "type": "boolean"
+          },
+          "date_available": {
+            "type": "string",
+            "format": "date"
+          },
+          "date_discontinued": {
+            "type": "string",
+            "format": "date"
+          },
+          "manufacture_year": {
+            "type": "integer"
+          },
+          "is_test": {
+            "type": "boolean"
+          },
+          "is_customer_submitted": {
+            "type": "boolean"
+          },
+          "charger_level": {
+            "type": "string"
+          },
+          "charging_power_kw": {
+            "type": "number"
+          },
+          "connector_types": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "seer2_rating": {
+            "type": "number"
+          },
+          "eer2_rating": {
+            "type": "number"
+          },
+          "hspf2_rating": {
+            "type": "number"
+          },
+          "ceer_rating": {
+            "type": "number"
+          },
+          "capacity_tons": {
+            "type": "number"
+          },
+          "capacity_btu": {
+            "type": "integer"
+          },
+          "capacity_kw": {
+            "type": "number"
+          },
+          "msrp": {
+            "type": "number"
+          },
+          "is_energy_star_certified": {
+            "type": "boolean"
+          },
+          "is_ul_listed": {
+            "type": "boolean"
+          },
+          "is_networked": {
+            "type": "boolean"
+          },
+          "is_ocpp_compliant": {
+            "type": "boolean"
+          },
+          "battery_capacity_kwh": {
+            "type": "number"
+          },
+          "battery_chemistry": {
+            "type": "string"
+          },
+          "is_mobile_plugin_charger": {
+            "type": "boolean"
+          },
+          "msrp_updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "msrp_source": {
+            "type": "string"
+          },
+          "msrp_confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        },
+        "description": "One device in Leap's catalog. Send its `id` as the `device_id` on a lookup. Specification fields such as `capacity_kw` or `seer2_rating` are populated where Leap holds data for that device type, and are null otherwise."
+      },
+      "DeviceSearchResponse": {
+        "type": "object",
+        "required": [
+          "results"
+        ],
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DeviceResponse"
+            }
+          },
+          "next_offset": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Offset for the next page, or null when this is the last page."
+          }
+        }
+      },
+      "SavedDeviceUpsertRequest": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 256,
+            "description": "Your own name for the device, to help you find it later. Omit the key to keep the current label, send null or a blank string to clear it, send text to set it. Maximum 256 characters."
+          }
+        }
+      },
+      "SavedDeviceResponse": {
+        "type": "object",
+        "required": [
+          "device_id",
+          "created_at",
+          "device"
+        ],
+        "properties": {
+          "device_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Catalog device UUID. This is the `device_id` you send on a lookup."
+          },
+          "label": {
+            "type": "string",
+            "nullable": true,
+            "description": "Your own name for the device, when you set one. Null otherwise."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When you first saved this device."
+          },
+          "device": {
+            "$ref": "#/components/schemas/DeviceResponse"
+          }
+        }
+      },
+      "SavedDevicePage": {
+        "type": "object",
+        "required": [
+          "devices",
+          "total"
+        ],
+        "properties": {
+          "devices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SavedDeviceResponse"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "description": "Total devices on your saved list, ignoring paging."
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Your Leap API key as a Bearer token. Send it in the `Authorization` header: `Authorization: Bearer <api-key>`."
+      }
+    }
+  },
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ]
+}

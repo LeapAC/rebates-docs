@@ -1,0 +1,67 @@
+---
+title: "Device IDs are UUIDs"
+description: "The device catalog ID is a UUID string. What it looks like, what changed, and what to do if you stored the old integer IDs."
+---
+
+The device catalog identifier is a **UUID string**. Integer catalog IDs were the earlier form and are no longer the identity of a catalog device.
+
+```diff
+- "device_id": 240
++ "device_id": "d290f1ee-6c54-4b01-90e6-d701748f0851"
+```
+
+Most of this API was already on UUIDs — the [Applications](/api-reference/applications/overview) section was the last place a bare integer `device_id` was published, and it now carries the UUID like everything else.
+
+## If you stored integer device IDs
+
+An integer you saved earlier does not identify a catalog device any more, and the API will not translate one into the other for you at request time. Treat every stored integer `device_id` as a value to re-resolve.
+
+<Warning>
+  **Do not parse a device ID as a number.** A UUID that begins with digits does not fail to parse — it silently becomes a wrong number. `parseInt("018f2c3a-1111-4222-8333-444455556666")` is `18`, not an error, and `Number(...)` on the same value is `NaN`, which most JSON encoders serialise as `null`. Carry the ID as an opaque string and never coerce it.
+</Warning>
+
+Integers are still tolerated at request validation during the transition, so sending one may not produce a validation error — but it will not resolve to a device. Do not rely on that tolerance; it will be removed.
+
+## Fields
+
+Both are on the [Applications](/api-reference/applications/overview) section.
+
+| Schema · field | Direction | Reached from |
+| --- | --- | --- |
+| `CustomerDevice.device_id` | Response | [Get application](/api-reference/applications/get-application), [Search applications](/api-reference/applications/search-applications) |
+| `CustomerDevicePatchRequest.device_id` | Request | [Update application](/api-reference/applications/update-application), in `customer_devices[]` |
+
+### Already on UUIDs
+
+These were UUID strings already and did not change. If you integrated against them, you are on the current shape.
+
+| Section | Fields |
+| --- | --- |
+| [Incentives](/api-reference/incentives-lookups/overview) | `CustomerDeviceRef.device_id`, `CustomerDeviceRefEcho.device_id` |
+| Devices | `DeviceResponse.id`, `SavedDeviceResponse.device_id` |
+| Programs | `ProgramApprovedDeviceResponse.device_id` |
+
+### Not affected
+
+`CustomerDevice.id`, `CustomerDevicePatchRequest.id`, and `customer_device_id` on the Applications section identify an **installation record** — one device as installed for one customer — not a catalog device. They are a separate identifier space, they keep their integer type, and nothing on this page applies to them.
+
+## What to do
+
+<Steps>
+  <Step title="Type the field as a string">
+    Anywhere you store, parse, key, or compare a catalog `device_id`, make it a string. A UUID does not fit an integer column or an integer-typed field, and a numeric comparison against one silently fails rather than erroring.
+  </Step>
+  <Step title="Regenerate your client">
+    If you generate a client from these OpenAPI specs, regenerate it. A client built from an older spec has `device_id` typed as an integer and will not accept the UUID the API returns.
+  </Step>
+  <Step title="Re-resolve any stored integer IDs">
+    Map the products you sell to catalog UUIDs with [Search device catalog](/api-reference/devices/search-device-catalog), or read them off **Settings → Device profile** in the portal.
+  </Step>
+  <Step title="Or address a catalog device by its numeric handle">
+    On [Look up incentives](/api-reference/incentives-lookups/look-up-incentives), `CustomerDeviceRef.device_source_id` takes the numeric catalog `source_id` instead of the UUID. Send exactly one of `device_id` or `device_source_id`. This keeps a numeric handle available on lookups; it does not remove the need to type the Applications fields above as strings.
+  </Step>
+</Steps>
+
+## Questions
+
+Reach out to your Leap contact if this affects an integration this page does not cover, or if you need the numeric handle kept available for longer.

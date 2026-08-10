@@ -92,6 +92,12 @@
             ]
           }
         ]
+      },
+      {
+        "group": "Migrations",
+        "pages": [
+          "migrations/device-id-uuid"
+        ]
       }
     ]
   },

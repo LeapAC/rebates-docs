@@ -38,6 +38,12 @@
         ]
       },
       {
+        "group": "VPP Offers",
+        "pages": [
+          "vpp-offers/how-offers-are-priced"
+        ]
+      },
+      {
         "group": "Incentives",
         "openapi": "api-reference/specs/gcs-incentives.json",
         "pages": [

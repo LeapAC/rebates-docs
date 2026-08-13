@@ -1,0 +1,107 @@
+---
+title: "How VPP offers are priced"
+description: "How the risk buffer, customer revenue share, and revenue horizon turn Leap's revenue projection into what your customers are paid."
+---
+
+Every amount your virtual power plant (VPP) offer quotes starts from one number: the revenue Leap projects a customer's device will earn over a year. Two settings in the offer builder scale that projection into a payout. A third sets how many years an upfront payment buys. This page walks the whole calculation and ends with an example you can check by hand.
+
+## Where the projected revenue comes from
+
+Leap pays you for the VPP revenue your enrolled customers earn. Your offer decides how much of that revenue each customer receives. Every figure the builder shows is money you owe a customer, based on a forecast rather than a settled payment.
+
+Leap holds a projected revenue figure for each month of the year. It is specific to a combination of program, customer classification, and device type. Your offer reads the sum of all twelve months. That total is the **projected annual revenue**. It is already net of Leap's fee, so it is what you earn.
+
+Monthly revenue moves with the seasons, and many programs pay in only part of the year. The annual figure is the true sum across the twelve months, not one month multiplied out.
+
+## The two settings that scale the projection
+
+Two controls turn projected annual revenue into a payout, and they multiply together:
+
+- **Risk buffer**: a multiplier from 0.50 to 1.50 on the projection. The builder shows the number alongside a word, so 0.85 reads as `0.85× · Conservative`. At 1.00 the offer pays the projection exactly. Below 1.00 you keep a buffer in case the projection proves optimistic. Above 1.00 you deliberately pay more than Leap projects you will earn. The upfront and ongoing payments each carry their own risk buffer.
+- **Customer revenue share**: the percentage of the risk-adjusted revenue your customer receives. This is one value for the whole offer, and it scales both payments.
+
+Because the two compound, the number that decides your cost is their product:
+
+| Risk buffer | Customer revenue share | Share of projected revenue paid out |
+| --- | --- | --- |
+| 1.00 | 100% | 100% |
+| 1.00 | 80% | 80% |
+| 0.80 | 80% | 64% |
+| 0.70 | 80% | 56% |
+| 0.50 | 50% | 25% |
+
+A risk buffer of 0.70 with a revenue share of 80% pays 56% of projected revenue, not 80% and not 70%.
+
+## Upfront payment, which buys several years at install
+
+An upfront payment is a single lump paid once, when the install is confirmed. It packages several years of projected revenue into that one amount:
+
+```
+upfront = risk buffer × customer revenue share × projected annual revenue × packaging factor
+```
+
+The **revenue horizon** control sets how many years the lump covers. Leap pays year one in full because the money changes hands now, then discounts each later year at 8% a year. The packaging factor is the result:
+
+| Revenue horizon | Packaging factor |
+| --- | --- |
+| 1 year | 1.000 |
+| 2 years | 1.926 |
+| 3 years | 2.783 |
+
+So a 3 year horizon is worth 2.783 years of revenue rather than 3.
+
+## Ongoing payment, which pays a year at a time
+
+An ongoing payment repeats for as long as the customer stays enrolled. It covers one year at a time, so no discount applies:
+
+```
+ongoing per year = risk buffer × customer revenue share × projected annual revenue
+```
+
+The **cadence** control divides that annual amount into the payments your customer actually receives. Monthly pays a twelfth each month, seasonal pays a quarter each quarter, and yearly pays the whole amount once. Cadence changes the size of each payment, never the yearly total.
+
+The **method** control decides what the amount means:
+
+- **Flat rate** locks the calculated amount. Your customer receives the same figure whatever the program pays out, and Leap recommends this for most partners.
+- **Revenue Share** promises the percentage instead of the figure. The amount shown is a projection, and the payment settles against the revenue actually earned. Revenue Share pays yearly, so the cadence control does not apply to it.
+
+## A worked example for a New York customer
+
+Take a residential customer of Consolidated Edison with a smart thermostat. The offer runs a 3 year revenue horizon and a customer revenue share of 80%. Its upfront risk buffer is 0.70 and its ongoing risk buffer is 0.80. Rounding is set to the nearest $5.
+
+The customer qualifies for two programs, and the two may legally run together, so both count:
+
+| Program | Projected annual revenue |
+| --- | --- |
+| ConEd Commercial System Relief Program | $12.35 |
+| ConEd Distribution Load Relief Program | $20.25 |
+| **Combined** | **$32.60** |
+
+Both payments read that combined $32.60:
+
+```
+upfront = 0.70 × 0.80 × $32.60 × 2.783 = $50.81
+ongoing = 0.80 × 0.80 × $32.60          = $20.86 per year
+```
+
+At a monthly cadence the ongoing payment reaches the customer as $1.74 a month. With rounding set to the nearest $5, the builder previews the two figures as $50 and $20.
+
+## What happens when a customer qualifies for several programs
+
+Programs are not all compatible, so Leap first works out which of them may legally run together for that customer. It picks the combination worth the most, then adds up what each program in that combination contributes. Programs that cannot legally stack never appear together in one offer.
+
+Stacking changes the input to the formula and never the formula itself. Adding a program to a customer's eligible set raises the payout in proportion to that program's projected revenue.
+
+## Why a program you expect may be missing
+
+Both payment types need a revenue projection for the exact combination in front of them: program, customer classification, and device type. When no projection exists for that combination, the program drops out of the offer rather than quoting $0.
+
+One consequence is worth planning for: the same offer settings produce different amounts for different devices and customer classes, and sometimes no amount at all. Run the builder's test scenarios across the device types you sell before you publish.
+
+<Note>
+**Round offer to nearest** changes the amounts shown in the builder preview. A published offer pays the calculated amount to the cent. Use the control to see figures the way you would quote them, and expect a published payout to carry cents.
+</Note>
+
+## Where to change these settings
+
+All of these controls live on the **Customer VPP Offering** page under **Settings** in the portal. Saving a preview leaves your live offer untouched. Run the test scenarios against new settings before you publish them to customers.

@@ -9,9 +9,11 @@ Every amount your virtual power plant (VPP) offer quotes starts from one number:
 
 Leap pays you for the VPP revenue your enrolled customers earn. Your offer decides how much of that revenue each customer receives. Every figure the builder shows is money you owe a customer, based on a forecast rather than a settled payment.
 
-Leap holds a projected revenue figure for each month of the year. It is specific to a combination of program, customer classification, and device type. Your offer reads the sum of all twelve months. That total is the **projected annual revenue**. It is already net of Leap's fee, so it is what you earn.
+Leap holds a projected revenue figure for each month of the year. It is specific to a combination of program, customer classification, device type, and the commercial terms of your agreement with Leap. Your offer reads the sum of all twelve months. That total is the **projected annual revenue**. It is already net of Leap's fee, so it is what you earn.
 
 Monthly revenue moves with the seasons, and many programs pay in only part of the year. The annual figure is the true sum across the twelve months, not one month multiplied out.
+
+Because your commercial terms feed the projection, two partners quoting the same customer and the same device can see different figures.
 
 ## The two settings that scale the projection
 
@@ -44,47 +46,55 @@ The **revenue horizon** control sets how many years the lump covers. Leap pays y
 
 | Revenue horizon | Packaging factor |
 | --- | --- |
-| 1 year | 1.000 |
-| 2 years | 1.926 |
-| 3 years | 2.783 |
+| 1 year | 1 |
+| 2 years | 1.925926 |
+| 3 years | 2.783265 |
 
-So a 3 year horizon is worth 2.783 years of revenue rather than 3.
+The 1 year factor is exact, because a 1 year lump covers only the undiscounted first year. The other two are shown to six decimal places. So a 3 year horizon is worth 2.783265 years of revenue rather than 3.
 
-## Ongoing payment, which pays a year at a time
+## Ongoing payment, which the builder quotes as a yearly amount
 
-An ongoing payment repeats for as long as the customer stays enrolled. It covers one year at a time, so no discount applies:
+An ongoing payment repeats for as long as the customer stays enrolled, and the builder quotes it as a yearly figure. It covers one year at a time, so no discount applies:
 
 ```
 ongoing per year = risk buffer × customer revenue share × projected annual revenue
 ```
 
-The **cadence** control divides that annual amount into the payments your customer actually receives. Monthly pays a twelfth each month, seasonal pays a quarter each quarter, and yearly pays the whole amount once. Cadence changes the size of each payment, never the yearly total.
+Read every ongoing figure in the builder as a yearly amount. The builder labels it `/yr` for that reason, and that label holds whatever cadence you set.
+
+The **cadence** control divides that yearly amount into the payments your customer actually receives. Monthly pays a twelfth each month, seasonal pays a quarter each quarter, and yearly pays the whole amount once. Cadence changes the size of each payment, never the yearly total.
+
+To work out a single payment, divide the yearly figure by the number of payments the cadence makes. That is 12 for monthly, 4 for seasonal, and 1 for yearly.
 
 The **method** control decides what the amount means:
 
-- **Flat rate** locks the calculated amount. Your customer receives the same figure whatever the program pays out, and Leap recommends this for most partners.
-- **Revenue Share** promises the percentage instead of the figure. The amount shown is a projection, and the payment settles against the revenue actually earned. Revenue Share pays yearly, so the cadence control does not apply to it.
+- **Flat rate** locks the calculated amount. Your customer receives the same figure whatever the program pays out. Leap recommends a flat amount for all partners.
+- **Revenue Share** promises the percentage instead of the figure. The amount shown is a projection, and the payment settles against the revenue actually earned. Leap reserves this method for commercial arrangements that pay customers on event performance. Revenue Share pays yearly, so the cadence control does not apply to it.
 
-## A worked example for a New York customer
+## A worked example you can check by hand
 
-Take a residential customer of Consolidated Edison with a smart thermostat. The offer runs a 3 year revenue horizon and a customer revenue share of 80%. Its upfront risk buffer is 0.70 and its ongoing risk buffer is 0.80. Rounding is set to the nearest $5.
+This example runs the whole calculation on round numbers. Every revenue figure below is illustrative rather than a real Leap projection. Follow the arithmetic here, then read your own figures from the builder.
+
+Take a residential customer with a smart thermostat. The offer runs a 3 year revenue horizon and a customer revenue share of 80%. Its upfront risk buffer is 0.70 and its ongoing risk buffer is 0.80. Rounding is set to the nearest \$5.
 
 The customer qualifies for two programs, and the two may legally run together, so both count:
 
-| Program | Projected annual revenue |
+| Program | Projected annual revenue (illustrative) |
 | --- | --- |
-| ConEd Commercial System Relief Program | $12.35 |
-| ConEd Distribution Load Relief Program | $20.25 |
-| **Combined** | **$32.60** |
+| Program A | \$45.00 |
+| Program B | \$75.00 |
+| **Combined** | **\$120.00** |
 
-Both payments read that combined $32.60:
+Both payments read that combined \$120.00:
 
 ```
-upfront = 0.70 × 0.80 × $32.60 × 2.783 = $50.81
-ongoing = 0.80 × 0.80 × $32.60          = $20.86 per year
+upfront = 0.70 × 0.80 × $120.00 × 2.783265 = $187.04
+ongoing = 0.80 × 0.80 × $120.00            = $76.80 per year
 ```
 
-At a monthly cadence the ongoing payment reaches the customer as $1.74 a month. With rounding set to the nearest $5, the builder previews the two figures as $50 and $20.
+Multiplying the four numbers above gives \$187.035408, and Leap rounds the payout to the cent.
+
+At a monthly cadence your customer receives \$6.40 a month, which is the \$76.80 year divided by 12. The builder keeps quoting the ongoing payment as \$76.80 per year. With rounding set to the nearest \$5, it previews \$185 upfront and \$75 per year.
 
 ## What happens when a customer qualifies for several programs
 
@@ -94,7 +104,7 @@ Stacking changes the input to the formula and never the formula itself. Adding a
 
 ## Why a program you expect may be missing
 
-Both payment types need a revenue projection for the exact combination in front of them: program, customer classification, and device type. When no projection exists for that combination, the program drops out of the offer rather than quoting $0.
+Both payment types need a revenue projection for the exact combination in front of them: program, customer classification, device type, and your commercial terms. When no projection exists for that combination, the program drops out of the offer rather than quoting \$0.
 
 One consequence is worth planning for: the same offer settings produce different amounts for different devices and customer classes, and sometimes no amount at all. Run the builder's test scenarios across the device types you sell before you publish.
 

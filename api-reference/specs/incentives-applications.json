@@ -1415,8 +1415,29 @@
             "type": "number",
             "format": "decimal",
             "nullable": true,
-            "description": "Total rebate amount being requested",
+            "description": "Total rebate amount being requested. Equal to the sum of upfront_amount + install_amount + ongoing_amount.",
             "example": 1500
+          },
+          "upfront_amount": {
+            "type": "number",
+            "format": "decimal",
+            "nullable": true,
+            "description": "Pre-install upfront incentive amount. Reserved for future use; currently always 0. Part of the itemized breakdown that sums to total_requested_amount.",
+            "example": 0
+          },
+          "install_amount": {
+            "type": "number",
+            "format": "decimal",
+            "nullable": true,
+            "description": "At-install one-time incentive amount. Part of the itemized breakdown that sums to total_requested_amount.",
+            "example": 1500
+          },
+          "ongoing_amount": {
+            "type": "number",
+            "format": "decimal",
+            "nullable": true,
+            "description": "Ongoing incentive amount, per year. Part of the itemized breakdown that sums to total_requested_amount.",
+            "example": 0
           },
           "status": {
             "type": "string",
@@ -1593,13 +1614,29 @@
             "type": "number",
             "format": "decimal",
             "nullable": true,
-            "description": "Total rebate amount being requested",
+            "description": "Total rebate amount being requested. Equal to the sum of upfront_amount + install_amount + ongoing_amount.",
             "example": 150
           },
-          "recaptcha_token": {
-            "type": "string",
+          "upfront_amount": {
+            "type": "number",
+            "format": "decimal",
             "nullable": true,
-            "description": "reCAPTCHA token for bot prevention"
+            "description": "Pre-install upfront incentive amount. Reserved for future use; currently always 0. Part of the itemized breakdown that sums to total_requested_amount.",
+            "example": 0
+          },
+          "install_amount": {
+            "type": "number",
+            "format": "decimal",
+            "nullable": true,
+            "description": "At-install one-time incentive amount. Part of the itemized breakdown that sums to total_requested_amount.",
+            "example": 150
+          },
+          "ongoing_amount": {
+            "type": "number",
+            "format": "decimal",
+            "nullable": true,
+            "description": "Ongoing incentive amount, per year. Part of the itemized breakdown that sums to total_requested_amount.",
+            "example": 0
           },
           "agree_terms": {
             "type": "boolean",
@@ -1969,11 +2006,6 @@
             "nullable": true,
             "description": "Number of dwelling units in building",
             "example": 1
-          },
-          "is_test": {
-            "type": "boolean",
-            "default": false,
-            "description": "Whether this is a test customer record"
           },
           "customer_devices": {
             "type": "array",
@@ -2408,7 +2440,25 @@
             "type": "number",
             "format": "decimal",
             "nullable": true,
-            "description": "Total rebate amount being requested"
+            "description": "Total rebate amount being requested. Equal to the sum of upfront_amount + install_amount + ongoing_amount."
+          },
+          "upfront_amount": {
+            "type": "number",
+            "format": "decimal",
+            "nullable": true,
+            "description": "Pre-install upfront incentive amount. Reserved for future use; currently always 0. Part of the itemized breakdown that sums to total_requested_amount."
+          },
+          "install_amount": {
+            "type": "number",
+            "format": "decimal",
+            "nullable": true,
+            "description": "At-install one-time incentive amount. Part of the itemized breakdown that sums to total_requested_amount."
+          },
+          "ongoing_amount": {
+            "type": "number",
+            "format": "decimal",
+            "nullable": true,
+            "description": "Ongoing incentive amount, per year. Part of the itemized breakdown that sums to total_requested_amount."
           },
           "equipment_complete": {
             "type": "boolean",

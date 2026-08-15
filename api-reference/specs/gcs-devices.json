@@ -30,33 +30,90 @@
           "devices"
         ],
         "summary": "Search device catalog",
-        "description": "Find the catalog `device_id` for a product by free-text search over manufacturer, model, and description. Use this to map your product catalog to Leap's programmatically instead of by hand, and to keep the mapping current as the catalog grows. Every whitespace-separated term in `q` must match; results are ranked by closeness.",
+        "description": "Find the catalog `device_id` for a product. Use this to map your product catalog to Leap's programmatically instead of by hand, and to keep the mapping current as the catalog grows.\n\nSearch with `q` over manufacturer, model name, and model number: every whitespace-separated term must match, and results are ranked by closeness. Leave `q` off to browse instead. `category` and `subcategory` narrow either mode, and `ids` turns catalog device UUIDs you already hold back into full catalog records, up to 100 per call.\n\nPage with `page_size` and `page_token`, following `next_page_token` until it is absent. The older `limit` and `offset` pair still works, but the two paging styles cannot be mixed in one request. A query parameter this endpoint does not recognise is rejected with 400 rather than ignored, so a misspelled filter fails loudly instead of quietly returning the unfiltered catalog.",
         "operationId": "searchDevices",
         "parameters": [
           {
             "name": "q",
             "in": "query",
-            "required": true,
+            "required": false,
+            "description": "Free-text query over manufacturer, model name and model number. Omit it to browse rather than search.\n",
             "schema": {
               "type": "string",
               "minLength": 1
             }
           },
           {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "description": "Device category, addressed by its stable `name` (case-insensitive): hvac, ev_charger, solar_storage, water_heater, smart_thermostat, weatherization, vehicle, meter, panel_make_ready, solar_panel. Address a category by name: the category's own id is specific to one Leap environment and is not accepted here. An unknown name is a 400 naming the categories that exist.\n",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "subcategory",
+            "in": "query",
+            "required": false,
+            "description": "Exact (case-insensitive) match on the device's `subcategory`. The stored vocabulary is uncontrolled today, so treat this as a filter on values you have already seen in `subcategory` on a response, not as an enum.\n",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "ids",
+            "in": "query",
+            "required": false,
+            "description": "Resolves specific catalog devices by id: a comma-separated list of catalog device UUIDs, at most 100 per request. Combines with the other filters by AND, so `ids` plus `category` returns only the named devices that also sit in that category.\n\nIntended for resolving already-attached customer devices, where the caller holds device UUIDs and needs the full catalog record for each one. An id that matches no device currently in the catalog is simply absent from the results rather than an error, so match the responses back to the ids you asked for. A malformed UUID, an empty value, or more than 100 ids is a 400.\n",
+            "schema": {
+              "type": "array",
+              "maxItems": 100,
+              "items": {
+                "type": "string",
+                "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+              }
+            },
+            "style": "form",
+            "explode": false
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "description": "Rows per page, 1 to 500. Defaults to `limit` when only `limit` is given, else to 20. Cannot be combined with `limit`.\n",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            }
+          },
+          {
+            "name": "page_token",
+            "in": "query",
+            "required": false,
+            "description": "Opaque cursor from a previous response's `next_page_token`. Only valid when replayed with the same `q`, `category` and `subcategory`; replaying it against different filters is a 400. Cannot be combined with `offset`.\n",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "limit",
             "in": "query",
             "required": false,
+            "description": "Legacy alias for `page_size`, kept so existing callers keep working. The ceiling was raised from 50 to 500.\n",
             "schema": {
               "type": "integer",
               "default": 20,
               "minimum": 1,
-              "maximum": 50
+              "maximum": 500
             }
           },
           {
             "name": "offset",
             "in": "query",
             "required": false,
+            "description": "Legacy row offset, kept so existing callers keep working. Prefer `page_token`.\n",
             "schema": {
               "type": "integer",
               "default": 0,
@@ -362,12 +419,14 @@
             "type": "string",
             "format": "uuid"
           },
-          "source_id": {
-            "type": "integer"
-          },
           "device_category_id": {
             "type": "string",
-            "format": "uuid"
+            "format": "uuid",
+            "description": "Leap's identifier for the device's category. It is specific to one Leap environment, so key on `device_category` instead when you store or compare categories."
+          },
+          "device_category": {
+            "type": "string",
+            "description": "The device's category name, and the stable way to address a category: `hvac`, `ev_charger`, `solar_storage`, `water_heater`, `smart_thermostat`, `weatherization`, `vehicle`, `meter`, `panel_make_ready`, `solar_panel`. It is the same value the `category` query parameter takes, so you can bucket a page of results without a second call."
           },
           "manufacturer": {
             "type": "string"
@@ -397,9 +456,6 @@
           },
           "manufacture_year": {
             "type": "integer"
-          },
-          "is_test": {
-            "type": "boolean"
           },
           "is_customer_submitted": {
             "type": "boolean"
@@ -491,7 +547,12 @@
           "next_offset": {
             "type": "integer",
             "nullable": true,
-            "description": "Offset for the next page, or null when this is the last page."
+            "description": "Offset for the next page, or null when this is the last page. Kept for callers still paging with limit + offset.\n"
+          },
+          "next_page_token": {
+            "type": "string",
+            "nullable": true,
+            "description": "Cursor for the next page, or null when this is the last page. Pass it back as `page_token`. Present alongside `next_offset` whichever paging style the request used, so a caller can switch.\n"
           }
         }
       },

@@ -11,16 +11,26 @@ Regenerate from local sibling checkouts (the supported path):
 ```bash
 npm ci
 
+git -C /path/to/global-connect-service fetch origin
+git -C /path/to/incentives-service fetch origin
+
 GCS_REPO=/path/to/global-connect-service \
 INCENTIVES_REPO=/path/to/incentives-service \
 npm run sync:openapi -- --local
 ```
 
 > **Why `--local`?** `global-connect-service` lives on GitLab (not GitHub), so the
-> `gh`-based remote fetch (`npm run sync:openapi` with no flags) can't reach it, and
-> `incentives-service`'s default branch is `develop`, not `main`. Until the fetcher
-> learns GitLab + per-repo refs, regenerate from local checkouts on the branch you
-> want to publish (typically each repo's default branch).
+> `gh`-based remote fetch (`npm run sync:openapi` with no flags) can't reach it.
+
+Each spec pins the ref it reads in `openapi-sources.json` (`source.ref`:
+`origin/main` for `global-connect-service`, `origin/develop` for
+`incentives-service`, which is that repo's default branch). The script reads the
+file out of that ref with `git show`, not out of the working tree, so a run does
+not depend on which branch either clone is sitting on, and two people running the
+sync get the same output. That is also why the `git fetch` above matters: `git
+show` only reads what is already local, and the run fails naming the repo when
+the ref is stale or missing. Drop `source.ref` for a spec to read the checkout as
+it stands, which is how you preview an unmerged branch.
 
 The script (`scripts/sync-openapi.mjs`, config `scripts/openapi-sources.json`) for
 each output spec:
@@ -68,21 +78,68 @@ The sync **fails** if a key stops matching after an upstream rename — otherwis
 internal description would silently ship in its place. When that happens, re-point
 the key (or drop it if the property is gone).
 
-## Rewrite example values
+## Rewrite prose the overrides can't reach
 
-Inline `example` strings live throughout the source paths and can't be addressed by
-name. `replacements` on a spec rewrites them by literal substring — used to keep
-storage-vendor hostnames out of the rendered samples:
+Inline `example` strings, response descriptions and parameter descriptions live
+throughout the source paths and can't be addressed by name. `replacements` on a
+spec rewrites them by literal substring — used to keep storage-vendor hostnames,
+database constraint names and other maintainer-facing detail out of the rendered
+reference:
 
 ```json
 "replacements": [
-  { "from": "https://your-project.supabase.co/storage/v1/object/sign/attachments/", "to": "https://<storage-host>/attachments/" }
+  { "from": "https://your-project.supabase.co/storage/v1/object/sign/attachments/", "to": "https://<storage-host>/attachments/" },
+  { "from": "`uc_customer_partner_address` makes one address reachable by", "to": "Leap holds one customer per address per partner, so", "required": true }
 ]
 ```
 
-A rule that matches nothing warns (the source may have been fixed) but doesn't fail.
-These are workarounds for source-spec problems — prefer fixing the source repo and
-dropping the rule.
+A rule that matches nothing warns (the source may have been fixed) but doesn't
+fail. Set `"required": true` when the rule exists to redact something, not to
+polish it: a required rule that stops matching **fails the run**, because an
+upstream reword would otherwise ship the original text silently. Match on enough
+of the sentence to be unambiguous, and keep the source's line breaks (`\n` plus
+the indent) when the source block preserved them.
+
+These are workarounds for source-spec problems — prefer fixing the source repo
+and dropping the rule.
+
+## Drop a field from the published spec
+
+`removeProperties` deletes a property from a schema (and from that schema's
+`required`) before the prune step, so a schema only that property referenced goes
+with it:
+
+```json
+"removeProperties": ["CustomerDeviceRef.device_source_id", "DeviceResponse.source_id"]
+```
+
+Use it for three cases, and say which one applies in the PR:
+
+- **Retired.** The field is still on the wire but no longer works.
+  `device_source_id` is the standing example: REA-970 cut catalog identity over
+  to UUIDs, and `WireDeviceRefResolver` now rejects any request carrying it with
+  422 `INVALID_DEVICE_ID`. Publishing it invites an integration against a field
+  that always fails.
+- **Lineage or internal state.** `DeviceResponse.source_id` and
+  `device_category_source_id` carry pre-migration integer ids for Leap's own
+  bookkeeping; `is_test` marks Leap's own seeded rows. None of them mean anything
+  to a partner.
+- **Private.** `ProgramResponse.metadata` is a free-form bag holding, among other
+  things, another partner's offer branding.
+
+Removing a field here changes the **documentation**, not the API: the service
+still returns it. When the field is private rather than merely useless, that
+distinction matters — fix it in the service, and treat the removal here as
+keeping the docs from advertising it in the meantime.
+
+## Rewrite a section's blurb
+
+`description` on a spec replaces `info.description`, which is the prose Mintlify
+shows above a section's endpoints. The source blurbs are written for maintainers:
+the Incentives one named the internal header partner identity is derived from and
+explained the IDOR it would open if that were accepted from the client. Set the
+spec's `description` to partner-facing prose; leave it off to pass the source
+through.
 
 ## Verify locally
 
@@ -140,25 +197,32 @@ Four cases worth naming, because they've all been raised before:
   required, owner, options, validation rules, and template ids. The audience
   question is the same one already answered there.
 
-### The Programs section is documented ahead of its permission
+### The Programs section: permission shipped, response shape still moving
 
-Sean asked for the programs reads to be documented even though every one of them
-calls `requireManageIncentiveData`, so a partner key gets 403 today. REA-1080
-tracks the `READ_INCENTIVES_DATA` permission that makes them callable. Do not
-publish this section to production before that permission ships.
+REA-1080 has landed on `main`. The three published programs reads now call
+`requireReadIncentivesData`, which accepts `READ_INCENTIVES_DATA` **or**
+`MANAGE_INCENTIVE_DATA`, so a partner key carrying the new read permission can
+call them. Two things still gate publishing this section to production: whether
+partner keys are actually provisioned with `READ_INCENTIVES_DATA`, and whether
+the GCS revision carrying it is deployed, since GCS production deploys are
+manual and `main` reaching production is not automatic.
 
-REA-1080 also has to decide a data question, not only a permission one:
+REA-1080 also had a data question, not only a permission one:
 `JooqProgramRepository.findAll` puts no partner or source filter on the query, and
 partner offers are program rows (`source = PARTNER_OFFER`, with a `partner_id`
 column). So `GET /beta/incentives/programs` returns every partner's offer rows to
-every caller. The read shape is `ProgramSummaryResponse` (REA-1082 split reads from
-writes and trimmed the former to eight fields): it drops `partner_id`, the
-offer-scoping arrays, and `metadata` entirely, so the branding leak
-`IncentivesPipelineRunner.brandingFor` used to read out of `metadata` no longer
-reaches these reads. `label`, `description`, `program_type`, `eiaids` and
-`device_category` still survive, so a caller can still see that another partner
-runs an offer and read its name and description. Filtering `PARTNER_OFFER` rows
-down to the caller's own belongs in the permission work, not in this repo.
+every caller. `label`, `description`, `program_type`, `eiaids` and
+`device_category` are all readable, so a caller can see that another partner runs
+an offer and read its name and description. Filtering `PARTNER_OFFER` rows down to
+the caller's own belongs in the service, not in this repo.
+
+The read shape is `ProgramResponse`, the same 23-field record the writes return.
+REA-1082 (GitLab MR 1628, **still a draft** as of 2026-08-15) would split reads
+from writes and trim the read to eight fields. This repo documented that trimmed
+shape before it merged, which put the published spec ahead of the service; the
+2026-08-15 resync put it back on what `main` actually returns, minus `metadata`
+and the superseded singular `eiaid`, which are dropped through
+`removeProperties`. If MR 1628 merges, re-run the sync and the shape follows.
 
 An earlier note here said the device catalog search endpoint would ship behind a
 paid wrapper and should stay unpublished. That decision was reversed in REA-1078:

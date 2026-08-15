@@ -2,7 +2,7 @@
   "openapi": "3.0.1",
   "info": {
     "title": "Leap Incentives — Lookups",
-    "description": "Partner-facing eligibility evaluation. Three operations, each its own sub-collection under the `incentives` resource:\n\n  * `POST /beta/incentives/lookups` — first-touch.\n    Creates the customer if new, upserts devices, geocodes the address,\n    resolves serving utilities, and evaluates eligibility.\n  * `POST /beta/incentives/refreshes` — re-evaluates an\n    existing customer against their already-stored devices and cached\n    utilities. No new customer or device rows.\n  * `POST /beta/incentives/overrides` — replaces the\n    customer's device set with a new one (destructively wipes the\n    existing devices), then evaluates against the new set.\n\nThe legacy `POST /beta/incentives` path is preserved as a deprecated alias for `/lookups` so partners on the original release keep working. New integrations should use the explicit `/lookups` sub-collection.\n`partner_id` is derived server-side from the authenticated principal's `leap-partnerid` header — it is intentionally not part of any request body. Accepting it from the client would turn these endpoints into an IDOR primitive over the customer / customer_device tables.\n",
+    "description": "Check which rebate programs a customer qualifies for, and keep that answer current as their situation changes. Three operations share one request shape:\n\n  * `POST /beta/incentives/lookups` is the first call for a customer. It stores the customer and their devices, resolves the serving utility from the address, and evaluates eligibility.\n  * `POST /beta/incentives/refreshes` re-evaluates a customer you have already looked up, against their stored address and devices. Send it to pick up newly launched programs and updated amounts, or to add, update, or remove individual devices.\n  * `POST /beta/incentives/overrides` rebuilds an existing customer from a fresh request body: it re-resolves the address and serving utility, replaces the device set, and clears the customer attributes you previously supplied. Use it to correct a customer record before any application is submitted.\n\nAuthenticate every call with your Leap API key as a bearer token. Your account is identified by that key, so the customers, devices, and applications you read and write are always your own.\n",
     "contact": {
       "email": "apiteam@leap.energy"
     },
@@ -146,14 +146,14 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/OverrideIncentivesRequest"
+                "$ref": "#/components/schemas/EligibilityRequest"
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "Devices replaced and eligibility re-evaluated.",
+            "description": "Customer rebuilt from the request and eligibility re-evaluated.",
             "content": {
               "application/json": {
                 "schema": {
@@ -174,6 +174,9 @@
           "404": {
             "$ref": "#/components/responses/NotFound"
           },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
           "422": {
             "$ref": "#/components/responses/UnprocessableEntity"
           },
@@ -182,6 +185,9 @@
           },
           "500": {
             "$ref": "#/components/responses/InternalServerError"
+          },
+          "502": {
+            "$ref": "#/components/responses/BadGateway"
           }
         }
       }
@@ -229,6 +235,16 @@
           }
         }
       },
+      "Conflict": {
+        "description": "The request cannot be applied without destroying a record the caller did not name, or one that no longer belongs to us alone. Both cases are raised by `/incentives/overrides`, and in both **nothing is modified on either side**.\n\n  * `ADDRESS_OWNED_BY_ANOTHER_CUSTOMER` — the submitted `address`\n    already belongs to a DIFFERENT customer of the same partner.\n    Leap holds one customer per address per partner, so applying the override would have to merge or clobber the other record. Resolve the duplicate partner-side (or\n    override the customer that already owns the address) and retry.\n  * `CONNECT_APPLICATIONS_IN_FLIGHT` — the customer has at least one\n    application that has already been filed with a program\n    administrator (`submitted` or `approved`). An override is a\n    pre-submission correction; a filed claim has an external record and\n    customer-uploaded documents behind it, so it is refused rather than\n    discarded. The `reason` names the blocking application ids and their\n    statuses. Resolve them first, or use a fresh `reference_id` for the\n    corrected customer. (`rejected` applications do NOT block.)\n  * `CONNECT_CUSTOMER_SHARED` — the customer is linked to more than one\n    organization on the Connect side, where device records carry no\n    organization attribution. The rebuild could therefore delete another\n    organization's devices, so it is refused. Use a fresh\n    `reference_id`, or contact Leap support to separate the record.\n  * `CONNECT_REFERENCE_ID_TAKEN` — the `reference_id` is already in use\n    by a DIFFERENT partner on the Connect side, where reference_ids are\n    unique across all partners rather than scoped to one. This customer\n    cannot be provisioned or rebuilt under it. Permanent — choose a\n    different `reference_id`.\n  * `CONNECT_RESET_REFUSED` — the Connect side refused the rebuild for a\n    reason this API does not yet have a specific code for; the upstream\n    code is named in the `reason`.\n",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
       "UnprocessableEntity": {
         "description": "Request was syntactically valid but could not be processed (e.g., unknown device id, address could not be geocoded)",
         "content": {
@@ -268,7 +284,7 @@
         }
       },
       "BadGateway": {
-        "description": "Upstream dependency (geocoder) is unavailable or rate-limited",
+        "description": "An upstream dependency did not answer.\n\n  * `GEOCODING_RATE_LIMITED` / `GEOCODING_SERVICE_UNAVAILABLE` — the\n    geocoder is unavailable or rate-limited.\n  * `CONNECT_RESET_UNAVAILABLE` (`/overrides` only) — the Connect side\n    could not confirm whether this customer may be rebuilt. Because an\n    override deletes Connect records, it fails **closed** rather than\n    proceeding blind. **Nothing was changed**; retry shortly.\n  * `CONNECT_RESET_FAILED` (`/overrides` only) — the customer WAS\n    rebuilt here, but we did not get confirmation that the follow-up\n    Connect reset completed, so Connect may still show their previous\n    devices and details. **Do not re-issue the override**: the reset may\n    still be running, and a second one can overlap with it and destroy\n    the customer's Connect records. Contact Leap support.\n  * `CONNECT_RESET_REJECTED` (`/overrides` only) — the customer WAS\n    rebuilt here and the Connect side rejected the reset outright. It\n    will reject it identically on every retry, and each attempt would\n    rebuild the customer again. Contact Leap support.\n  * `CONNECT_RESET_REFUSED_AFTER_REBUILD` (`/overrides` only) — the\n    permission check allowed the rebuild, it committed, and the Connect\n    side then refused the reset (state changed in between). The two\n    systems are out of step for this customer; retrying cannot fix it.\n    Contact Leap support.\n  * `CONNECT_REFERENCE_ID_TAKEN_AFTER_REBUILD` (`/overrides` only) —\n    the same, where the reason Connect refused is that another partner\n    claimed the globally-unique `reference_id` in between. Its own code\n    because it has a partner-side remedy the others do not: move this\n    customer to a different `reference_id`. Contact Leap support to\n    reconcile the record that was already rebuilt here.\n",
         "content": {
           "application/json": {
             "schema": {
@@ -301,7 +317,7 @@
                   "properties": {
                     "error_code": {
                       "type": "string",
-                      "description": "Stable wire code from `IncentivesErrorCode` (e.g., `INVALID_DEVICE_ID`, `GEOCODING_NO_RESULTS`, `NO_UTILITY_AT_ADDRESS`)."
+                      "description": "Stable wire code from `IncentivesErrorCode` (e.g., `INVALID_DEVICE_ID`, `GEOCODING_NO_RESULTS`, `NO_UTILITY_AT_ADDRESS`, `ADDRESS_OWNED_BY_ANOTHER_CUSTOMER`, `INCLUDE_PREVIEW_NOT_SUPPORTED`, `CONNECT_APPLICATIONS_IN_FLIGHT`, `CONNECT_CUSTOMER_SHARED`, `CONNECT_REFERENCE_ID_TAKEN`, `CONNECT_RESET_REFUSED`, `CONNECT_RESET_UNAVAILABLE`, `CONNECT_RESET_FAILED`, `CONNECT_RESET_REJECTED`, `CONNECT_RESET_REFUSED_AFTER_REBUILD`, `CONNECT_REFERENCE_ID_TAKEN_AFTER_REBUILD`, `CONNECT_RESET_WOULD_STRAND_CUSTOMER`)."
                     },
                     "reason": {
                       "type": "string",
@@ -336,7 +352,7 @@
             "type": "array",
             "minItems": 1,
             "maxItems": 50,
-            "description": "One entry per installation. Each carries the catalog `device_id` and an optional `partner_device_reference` that disambiguates two installs of the same catalog device. When omitted, the server assigns `\"1\"`, `\"2\"`, ... in request order, skipping any value already supplied by the partner. The inline `details` object accepts per-installation attributes (e.g. `customer_device.purchase_price`, `customer_device.installation_date`).\n",
+            "description": "One entry per installation, at least one and at most 50. Each names a catalog `device_id` and an optional `partner_device_reference` that tells two installations of the same device apart. The inline `details` object carries per-installation attributes, for example `customer_device.purchase_price` or `customer_device.installation_date`.\n\nOn **Override incentives** this list replaces the customer's device set: every installation on file is discarded first, so their `customer_device_id`s are regenerated.",
             "items": {
               "$ref": "#/components/schemas/CustomerDeviceRef"
             }
@@ -419,50 +435,14 @@
           }
         }
       },
-      "OverrideIncentivesRequest": {
-        "type": "object",
-        "required": [
-          "reference_id",
-          "customer_devices"
-        ],
-        "properties": {
-          "reference_id": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 256,
-            "description": "Partner's stable identifier for the customer. Must match an existing customer scoped to the authenticated `partner_id`; unknown reference IDs return 404.\n"
-          },
-          "customer_devices": {
-            "type": "array",
-            "minItems": 1,
-            "maxItems": 50,
-            "description": "The new device set for the customer. Every existing `customer_device` row for this customer is deleted before these are inserted — there is no merge step. The same `partner_device_reference` rules from `/lookups` apply (one entry per installation, server-assigned positional defaults when blank, uniqueness enforced within the request).\n",
-            "items": {
-              "$ref": "#/components/schemas/CustomerDeviceRef"
-            }
-          },
-          "customer_details": {
-            "type": "object",
-            "description": "Optional partner-supplied per-customer attributes to upsert against the existing customer record. Same shape as on `/lookups`. Empty or omitted = no attribute changes.\n",
-            "maxProperties": 100,
-            "additionalProperties": {
-              "type": "string"
-            }
-          }
-        }
-      },
       "CustomerDeviceRef": {
         "type": "object",
-        "description": "One installation. New installations identify their catalog device with exactly one of `device_id` / `device_source_id`. On **Refresh incentives**, `customer_device_id` instead targets an installation already on file, for an in-place update.",
+        "description": "One installation. New installations name their catalog device with `device_id`. On **Refresh incentives**, `customer_device_id` instead targets an installation already on file, for an in-place update.",
         "properties": {
           "device_id": {
             "type": "string",
             "format": "uuid",
-            "description": "Catalog `device.id`. Exactly one of `device_id` / `device_source_id` is required on new installations. Optional when `customer_device_id` targets an existing installation — and must match that installation's catalog device when supplied. Must exist in the device catalog or the request is rejected with 422 `INVALID_DEVICE_ID`.\n"
-          },
-          "device_source_id": {
-            "type": "integer",
-            "description": "Alternative way to address the catalog device: its numeric catalog `source_id`. Unknown values are rejected with 422 `INVALID_DEVICE_ID`. Supply exactly one of `device_id` / `device_source_id` on new installations."
+            "description": "The catalog device's `id`, from **Search device catalog** or the portal's Device profile mapping. Required on a new installation. Optional when `customer_device_id` targets an installation already on file, and must match that installation's catalog device when you do send it. A `device_id` that is not in the catalog is rejected with 422 `INVALID_DEVICE_ID`."
           },
           "customer_device_id": {
             "type": "string",
@@ -474,7 +454,7 @@
             "minLength": 1,
             "maxLength": 64,
             "pattern": "^[A-Za-z0-9_-]+$",
-            "description": "Partner-supplied per-installation identifier. Unique within the request. Echoed back in the response so partners can join their local records to the upserted `customer_device`. Server fills in `\"1\"`, `\"2\"`, ... in request order (skipping any value the partner already supplied) when omitted.\n"
+            "description": "Partner-supplied per-installation identifier. Unique within the request. Echoed back in the response so partners can join their local records to the upserted `customer_device`.\nSupplying it makes it the installation's identity: the entry addresses the stored installation holding that reference for that `device_id`, and nothing else.\nOmitting it is supported and stable. The server matches the entry against the installations already on file for the customer by `device_id`, so reordering the array or sending a subset resolves to the same installations as before. It assigns `\"1\"`, `\"2\"`, ... (skipping any value already in use) only when it actually creates a new installation. Two entries for the same `device_id` with no reference are only accepted when the customer has no installation of that device yet; otherwise nothing but array position tells them apart, and the request is rejected with 400 `INVALID_REQUEST` asking for an explicit reference.\n"
           },
           "details": {
             "type": "object",
@@ -595,6 +575,39 @@
           },
           "partner": {
             "$ref": "#/components/schemas/PartnerBranding"
+          },
+          "devices_ignored": {
+            "type": "array",
+            "description": "`/incentives/lookups` only. Entries the request named that were NOT written, because the request resolved to a customer that already exists and the entry named an installation that customer does not have. Absent or empty on every other outcome, and always absent for a customer created by this request.\n`/incentives/lookups` establishes a customer's device set. Adding to one that already exists is what `/incentives/refreshes` does — send the new installation there. The call still returns 200 and still evaluates the entries that WERE recognised, so a partner-side mistake never fails an otherwise-answerable eligibility request; the entries in this array are the ones that had no effect.\nEach entry echoes only what the caller sent. The customer's stored installations are never listed.\n",
+            "items": {
+              "$ref": "#/components/schemas/IgnoredCustomerDevice"
+            }
+          }
+        }
+      },
+      "IgnoredCustomerDevice": {
+        "type": "object",
+        "required": [
+          "device_id",
+          "reason"
+        ],
+        "properties": {
+          "device_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The catalog `device.id` the skipped entry named."
+          },
+          "partner_device_reference": {
+            "type": "string",
+            "nullable": true,
+            "description": "The `partner_device_reference` the caller supplied on this entry, or null when the entry omitted it. Never a server-generated value — nothing was written, so no reference was assigned.\n"
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "NOT_ON_EXISTING_CUSTOMER"
+            ],
+            "description": "`NOT_ON_EXISTING_CUSTOMER`: the request resolved to a customer that already exists, and this entry named an installation that customer does not have.\n"
           }
         }
       },
@@ -678,22 +691,22 @@
           "display_name": {
             "type": "string",
             "nullable": true,
-            "description": "Partner-branded display name for the program (PARTNER_OFFER rows only). Read from `program.metadata.display_name`. Null for non-offer programs.\n"
+            "description": "Partner offers only: the branded offer name shown to the customer, as configured in the portal. Null for rebate programs."
           },
           "logo_url": {
             "type": "string",
             "nullable": true,
-            "description": "URL to the partner's logo (PARTNER_OFFER rows only). Read from `program.metadata.logo_url`. Null for non-offer programs.\n"
+            "description": "Partner offers only: URL to the logo shown alongside the offer, as configured in the portal. Null for rebate programs."
           },
           "terms_url": {
             "type": "string",
             "nullable": true,
-            "description": "URL to the partner's terms-and-conditions page (PARTNER_OFFER rows only). Read from `program.metadata.terms_url`. Null for non-offer programs.\n"
+            "description": "Partner offers only: URL to the offer's terms and conditions, as configured in the portal. Null for rebate programs."
           },
           "description": {
             "type": "string",
             "nullable": true,
-            "description": "Free-form description shown to the customer (PARTNER_OFFER rows only). Read from `program.metadata.description`. Null for non-offer programs.\n"
+            "description": "Partner offers only: the offer description shown to the customer, as configured in the portal. Null for rebate programs."
           },
           "is_partner_offer": {
             "type": "boolean",
@@ -702,7 +715,7 @@
           },
           "covered_programs": {
             "type": "array",
-            "description": "The wrapped Leap-Definitions programs that evaluated eligible for this customer under this offer (PARTNER_OFFER rows only) — the programs whose value is summed into this entry's tier amounts. Always empty for non-offer entries.\n",
+            "description": "Partner offers only: the rebate programs bundled into this offer that the customer qualified for, and whose value is summed into this entry's amounts. Empty for every other kind of entry.",
             "items": {
               "$ref": "#/components/schemas/CoveredProgram"
             }
@@ -766,7 +779,7 @@
         "properties": {
           "identifier": {
             "type": "string",
-            "description": "The wrapped Leap-Definitions program's identifier. Internal detail surfaced only in `covered_programs[]` on a Partner Offer entry — never a standalone `EligibleProgram` (raw LEAP_DEFINITIONS programs are never surfaced).\n"
+            "description": "Identifier of the bundled program. Use it to tell the covered programs apart across lookups; it is not a value any other endpoint accepts."
           },
           "name": {
             "type": "string",

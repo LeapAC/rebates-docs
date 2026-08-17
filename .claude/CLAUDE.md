@@ -36,12 +36,11 @@ mint broken-links
 
 The documentation is organized into the following key directories:
 
-- `/api-reference/` - API documentation examples with OpenAPI integration
-- `/essentials/` - Core documentation guides (markdown, code samples, images, navigation)
-- `/ai-tools/` - Documentation for AI development tools integration
-- `/snippets/` - Reusable MDX content snippets
+- `/api-reference/` - the partner API reference: guides plus the generated `specs/`
 - `/images/` - Image assets for documentation
 - `/logo/` - Logo SVG files (light and dark variants)
+
+The Mintlify starter kit's own pages (`/essentials/`, `/ai-tools/`, `/snippets/`) were deleted: they documented how to write documentation, they were out of the navigation, and they were still served on a customer-facing domain. Don't reintroduce them by re-running a Mintlify scaffold over this repo.
 
 Key configuration file:
 - `docs.json` - Main configuration for navigation, theming, and site structure

@@ -132,24 +132,36 @@ with it:
 "removeProperties": ["CustomerDeviceRef.device_source_id", "DeviceResponse.source_id"]
 ```
 
-Use it for three cases, and say which one applies in the PR:
+Use it for four cases, and say which one applies in the PR:
 
 - **Retired.** The field is still on the wire but no longer works.
   `device_source_id` is the standing example: REA-970 cut catalog identity over
   to UUIDs, and `WireDeviceRefResolver` now rejects any request carrying it with
   422 `INVALID_DEVICE_ID`. Publishing it invites an integration against a field
   that always fails.
-- **Lineage or internal state.** `DeviceResponse.source_id` and
-  `device_category_source_id` carry pre-migration integer ids for Leap's own
-  bookkeeping; `is_test` marks Leap's own seeded rows. None of them mean anything
-  to a partner.
-- **Private.** `ProgramResponse.metadata` is a free-form bag holding, among other
-  things, another partner's offer branding.
+- **Lineage or internal state.** `Customer.is_test` marks Leap's own seeded rows,
+  and means nothing to a partner. The device equivalents are gone from the source
+  now: GCS !1835 split `PartnerDeviceResponse` off `DeviceResponse`, so the
+  lineage ids and the msrp provenance fields are removed upstream rather than
+  here.
+- **Internal.** `Application.recaptcha_token` is the Connect web form's bot
+  token, on a schema a partner reads.
+- **True of the endpoint, wrong for this audience.** `ApplicationSearchResult`
+  types the `results[]` of `GET /applications`, and three different lanes answer
+  that route. The org-key lane strips `organization_id`; the admin lanes return
+  it, one of them re-adding it deliberately so an admin view can show which
+  organization owns each application, and `connect-incentives` reads it off that
+  response. The property is correct in the source spec, so **do not** try to fix
+  this one upstream. incentives-service#566 attempted exactly that and was
+  closed. Curate it here, where the published reference documents the partner
+  lane.
 
 Removing a field here changes the **documentation**, not the API: the service
-still returns it. When the field is private rather than merely useless, that
-distinction matters — fix it in the service, and treat the removal here as
-keeping the docs from advertising it in the meantime.
+still returns it. That distinction cuts both ways. When the field is private, fix
+it in the service and treat the removal here as keeping the docs from advertising
+it in the meantime — GCS !1835 is the worked example. When the field is
+legitimate for another caller of the same route, the removal here is the whole
+fix, and a source-side change would break that caller.
 
 ## Rewrite a section's blurb
 
@@ -166,7 +178,7 @@ through.
 npm run test:sync            # unit-tests the transform functions
 GCS_REPO=... INCENTIVES_REPO=... npm run sync:openapi -- --local
 npx mint dev --port 3333     # http://localhost:3333
-npx mint broken-links        # (pre-existing failures in essentials/ are unrelated)
+npx mint broken-links        # expect zero
 ```
 
 On an API endpoint page, confirm the method+path header shows **Try it**, the

@@ -102,6 +102,33 @@ export function findMissingSchemaDescriptions(spec, overrides) {
   return Object.keys(overrides || {}).filter((key) => !resolveSchemaTarget(spec, key));
 }
 
+// Machine-readable markers on schemas and properties, keyed like
+// `schemaDescriptions` and merged onto the target. Prose tells a partner a field
+// is changing; a marker lets their tooling (and ours) enumerate every field a
+// cross-service change touches without parsing prose. Kept in config so a marker
+// survives re-syncs and never waits on the source repo to carry it.
+//
+// Only `x-` keys are accepted: these overrides sit next to `type`, and a typo
+// that silently rewrote a field's declared type would be far worse than a
+// failed run.
+export function applySchemaExtensions(spec, overrides) {
+  if (!overrides) return spec;
+  for (const [key, ext] of Object.entries(overrides)) {
+    const bad = Object.keys(ext).filter((k) => !k.startsWith('x-'));
+    if (bad.length) throw new Error(`schemaExtensions[${key}]: only x- keys allowed, got: ${bad.join(', ')}`);
+    const target = resolveSchemaTarget(spec, key);
+    if (target) Object.assign(target, ext);
+  }
+  return spec;
+}
+
+// Same tripwire as the descriptions: a marker whose target has been renamed or
+// dropped upstream stops shipping silently, and the field it was flagging goes
+// unflagged. Fail the run instead.
+export function findMissingSchemaExtensions(spec, overrides) {
+  return Object.keys(overrides || {}).filter((key) => !resolveSchemaTarget(spec, key));
+}
+
 // Inline `example` values live all over the source paths (not just
 // components.schemas), so they can't be reached by name. Rewrite them by literal
 // substring — used to keep storage-vendor hostnames and placeholder filenames out
@@ -288,6 +315,8 @@ function main() {
     // After pruning, so overrides are only required for schemas that ship.
     const missing = findMissingSchemaDescriptions(spec, s.schemaDescriptions);
     spec = applySchemaDescriptions(spec, s.schemaDescriptions);
+    const missingExt = findMissingSchemaExtensions(spec, s.schemaExtensions);
+    spec = applySchemaExtensions(spec, s.schemaExtensions);
     const replaced = applyStringReplacements(spec, s.replacements);
     spec = replaced.spec;
     if (replaced.unused.length) console.warn(`  ! ${s.output}: replacements matched nothing (source may be fixed): ${replaced.unused.join(', ')}`);
@@ -296,6 +325,7 @@ function main() {
     const broken = findBrokenRefs(spec);
     if (broken.length) { console.error(`✗ ${s.output}: broken refs: ${broken.join(', ')}`); failures++; }
     if (missing.length) { console.error(`✗ ${s.output}: schemaDescriptions no longer match: ${missing.join(', ')}`); failures++; }
+    if (missingExt.length) { console.error(`✗ ${s.output}: schemaExtensions no longer match: ${missingExt.join(', ')}`); failures++; }
 
     const opCount = Object.values(spec.paths || {}).reduce((n, ops) => n + Object.keys(ops).filter((m) => HTTP_METHODS.includes(m)).length, 0);
     fs.writeFileSync(path.join(outDir, s.output), JSON.stringify(spec, null, 2) + '\n');

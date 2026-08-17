@@ -30,7 +30,7 @@
           "devices"
         ],
         "summary": "Search device catalog",
-        "description": "Find the catalog `device_id` for a product. Use this to map your product catalog to Leap's programmatically instead of by hand, and to keep the mapping current as the catalog grows.\n\nSearch with `q` over manufacturer, model name, and model number: every whitespace-separated term must match, and results are ranked by closeness. Leave `q` off to browse instead. `category` and `subcategory` narrow either mode, and `ids` turns catalog device UUIDs you already hold back into full catalog records, up to 100 per call.\n\nPage with `page_size` and `page_token`, following `next_page_token` until it is absent. The older `limit` and `offset` pair still works, but the two paging styles cannot be mixed in one request. A query parameter this endpoint does not recognise is rejected with 400 rather than ignored, so a misspelled filter fails loudly instead of quietly returning the unfiltered catalog.",
+        "description": "Find the catalog `device_id` for a product, or browse the catalog when you have no search term. Use it to map your product catalog to Leap's programmatically instead of by hand. A query parameter this endpoint does not recognise returns 400 rather than being ignored, so a misspelled filter fails loudly.",
         "operationId": "searchDevices",
         "parameters": [
           {
@@ -213,7 +213,7 @@
           "devices"
         ],
         "summary": "Save a device",
-        "description": "Add a catalog device to your saved list, or relabel one you already saved. The `label` is your own name for the device and is optional: omit the key to keep the current label, send null or a blank string to clear it, send text to set it. Repeating the call is safe, because the same `device_id` updates the existing entry instead of adding a second one. Catalog devices that Leap has retired return 404.",
+        "description": "Add a catalog device to your saved list, or relabel one you already saved. Repeating the call updates the existing entry instead of adding a second one. A catalog device Leap has retired returns 404.",
         "operationId": "upsertSavedDevice",
         "parameters": [
           {

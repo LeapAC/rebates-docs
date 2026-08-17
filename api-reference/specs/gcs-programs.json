@@ -30,13 +30,13 @@
           "programs"
         ],
         "summary": "List programs",
-        "description": "Browse Leap's catalog of rebate programs. The catalog is shared across partners and is not scoped to your account, so a program you read here is not necessarily one your account can claim.\n\nFiltering runs through the `filter` query parameter rather than a separate search route: pass comma-separated `field=value` pairs. Three fields are supported, `program_type`, `transmission_region` and `enabled`, and Leap combines them with AND. For example, `filter=transmission_region=CAISO,enabled=true` returns the enabled CAISO programs. Leap ignores a field name it does not recognise instead of rejecting it, so check your spelling. The `enabled` value must be `true` or `false`; anything else returns 400. With no `enabled` filter the response mixes enabled and disabled programs, and each row carries its own `enabled` flag.\n\nResults are paged with an opaque cursor: read `page_size` rows at a time and follow `next_page_token` until it is absent. `page_size` defaults to 50 and is capped at 200, and a larger value is clamped rather than rejected. Replay a `page_token` only with the filter that produced it. Programs are ordered by `program_identifier`, so a program added below your cursor part-way through a walk is missed rather than duplicated. This endpoint pages with `page_size` and `page_token` only: `limit` and `offset` are rejected with 400, because a caller that reads one page and believes it read the whole catalog needs an error, not a page.",
+        "description": "Browse Leap's catalog of rebate programs. The catalog is shared across partners, so a program you read here is not necessarily one your account can claim. Narrow it with `filter`, and page through it with `page_size` and `page_token`.",
         "operationId": "listPrograms",
         "parameters": [
           {
             "name": "filter",
             "in": "query",
-            "description": "Filter DSL. Comma-separated field=value pairs. Supported fields: program_type, transmission_region, enabled. Example: transmission_region=CAISO,enabled=true\n",
+            "description": "Comma-separated `field=value` pairs, combined with AND. Three fields are supported: `program_type`, `transmission_region` and `enabled`. For example, `filter=transmission_region=CAISO,enabled=true` returns the enabled CAISO programs.\n\nLeap ignores a field name it does not recognise rather than rejecting it, so check your spelling. `enabled` must be `true` or `false`; anything else returns 400. With no `enabled` filter the response mixes enabled and disabled programs, and each row carries its own `enabled` flag.\n",
             "required": false,
             "schema": {
               "type": "string"
@@ -108,7 +108,7 @@
             "$ref": "#/components/responses/InternalServerError"
           }
         },
-        "description": "Retrieve one program by its `program_identifier`. That is the same value **Look up incentives** returns as `program_identifier` on each eligible program, so you can go from a lookup result straight to the program's catalog record.\n\nThe response carries the program's label, description, type, device category, the customer classification it serves, the full set of utility EIA ids it's available to, its dates and rebate caps, the conditions it attaches (homeowner, income qualification, permits, inspection), and where the definition came from (a Leap-maintained program or your own partner offer). It also carries `upstream_program_id`, which joins a catalog program to the `program_id` an application reports. An identifier Leap does not hold returns 404."
+        "description": "Retrieve one program by its `program_identifier`, the same value **Look up incentives** returns on each eligible program. An identifier Leap does not hold returns 404."
       }
     },
     "/beta/incentives/programs/{programIdentifier}/approved-devices": {
@@ -117,7 +117,7 @@
           "programs"
         ],
         "summary": "List approved devices",
-        "description": "List the Approved Product List (APL) entries for a program: the catalog devices this program pays a rebate on. Each entry names the catalog `device_id`, the tier it is bound to when the program restricts it to one, and the APL publication and version it came from.\n\nEntries identify devices by catalog UUID and nothing else. Leap does not publish a get-a-device-by-id route, and **Search device catalog** matches free text rather than identifiers, so you cannot resolve an unfamiliar `device_id` to a manufacturer and model through this API today.\n\nThe path segment on this route is `programIdentifier`, while every other program route uses `program_id`. Both take the same value. A program identifier Leap does not hold returns 404.",
+        "description": "List the Approved Product List (APL) entries for a program: the catalog devices it pays a rebate on. Each entry names the catalog `device_id`, the tier it is bound to when it is tier-specific, and the APL publication it came from. Resolve a `device_id` with **Search device catalog**.",
         "operationId": "listApprovedDevices",
         "parameters": [
           {
@@ -169,7 +169,7 @@
         "name": "programIdentifier",
         "in": "path",
         "required": true,
-        "description": "Unique program identifier",
+        "description": "The program's `program_identifier`. This route spells the path segment `programIdentifier` while every other program route uses `program_id`; both take the same value.",
         "schema": {
           "type": "string"
         }
@@ -178,7 +178,7 @@
         "name": "page_token",
         "in": "query",
         "required": false,
-        "description": "Token for cursor-based pagination",
+        "description": "Cursor from a previous response's `next_page_token`. Follow it until it is absent to walk the whole catalog. Replay a token only with the `filter` that produced it. Programs are ordered by `program_identifier`, so a program added below your cursor part-way through a walk is missed rather than duplicated. This route pages with `page_size` and `page_token` only: `limit` and `offset` return 400.",
         "schema": {
           "type": "string"
         }
@@ -187,7 +187,7 @@
         "name": "page_size",
         "in": "query",
         "required": false,
-        "description": "Number of items per page (default 50)",
+        "description": "Rows per page. Defaults to 50 and is capped at 200; a larger value is clamped rather than rejected.",
         "schema": {
           "type": "integer",
           "default": 50
@@ -424,10 +424,6 @@
           "apl_version": {
             "type": "string",
             "description": "The version of that Approved Product List publication."
-          },
-          "notes": {
-            "type": "string",
-            "description": "Free text Leap's data team recorded against this entry. Not part of the published contract."
           }
         },
         "description": "One Approved Product List entry: a catalog device this program pays a rebate on."

@@ -674,7 +674,7 @@
           "operator_name": {
             "type": "string",
             "nullable": true,
-            "description": "Name of the operating utility / agency. Currently null until the display source is wired in a follow-up.\n"
+            "description": "The utility or agency that operates the program, as shown to the customer. On your own partner offer it is the operator name you configure in the portal. Null when Leap holds no display name for the program."
           },
           "device_category": {
             "type": "string",

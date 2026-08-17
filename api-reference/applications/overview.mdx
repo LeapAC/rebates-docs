@@ -19,12 +19,16 @@ Send `create_application: true` on [Look up incentives](/api-reference/incentive
 
 ## Endpoints
 
-The API has four operations:
+Three operations act on the application itself, and five more manage its attachments:
 
 - **Search applications**: filter by reference ID or status. Each result's top-level `id` is the application ID you pass as `application_id` everywhere else.
 - **Get application**: one application in full, with customer and device detail.
 - **Update application**: supply data on the customer's behalf. Only the fields you include change; `null` clears one. Status and system identifiers (`id`, `customer_id`, `program_id`) are read-only.
 - **Attachments**: upload, list, download, and delete supporting files. See the [Attachments Guide](/api-reference/applications/attachments).
+
+## Identifiers on this API
+
+Applications, customers, and installations are numbered, so `id`, `customer_id`, and the entries in `customer_device_id[]` are integers. The catalog `device_id` on a device is not: it's the same UUID the incentives lookup takes and returns. Read an identifier back from the application rather than constructing one, and the difference stays invisible.
 
 ## Supplying data on the customer's behalf
 

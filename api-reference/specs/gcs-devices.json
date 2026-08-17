@@ -457,9 +457,6 @@
           "manufacture_year": {
             "type": "integer"
           },
-          "is_customer_submitted": {
-            "type": "boolean"
-          },
           "charger_level": {
             "type": "string"
           },
@@ -516,18 +513,6 @@
           },
           "is_mobile_plugin_charger": {
             "type": "boolean"
-          },
-          "msrp_updated_at": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "msrp_source": {
-            "type": "string"
-          },
-          "msrp_confidence": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 1
           }
         },
         "description": "One device in Leap's catalog. Send its `id` as the `device_id` on a lookup. Specification fields such as `capacity_kw` or `seer2_rating` are populated where Leap holds data for that device type, and are null otherwise."

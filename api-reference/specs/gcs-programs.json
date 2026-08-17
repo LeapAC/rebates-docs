@@ -315,6 +315,11 @@
           "source": {
             "$ref": "#/components/schemas/RequirementSource"
           },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Catalog detail that has no column of its own, as a flat map of string keys. A program describes itself here with `url`, `operator_name`, `operator_type`, `device_category`, `application_path`, `state_province` and `country`. A published partner offer adds what it shows about itself: `display_name`, `operator_display_name`, `logo_url`, `terms_url` and `description`. Those twelve keys are the whole contract. Any key not listed is Leap's own working state and is dropped before the response is sent, so treat an absent key as absent data rather than reading anything into it. A program with none of them returns an empty object."
+          },
           "eiaids": {
             "type": "array",
             "items": {

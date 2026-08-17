@@ -432,6 +432,11 @@
             "type": "string",
             "minLength": 1,
             "description": "Optional utility override, matching the one on **Look up incentives**. Supply an EIA utility id to re-resolve the customer's serving utility instead of reusing the one on file. Leap re-selects candidate programs against it, re-runs eligibility, and keeps the override for later calls on this customer."
+          },
+          "create_application": {
+            "type": "boolean",
+            "default": false,
+            "description": "Create the Connect application records for this refresh's eligible programs, so the returned `connect_url` is a link the customer can open. It matches the flag on **Look up incentives** and defaults to `false`. Only a refresh that changes something has anything to create: one that supplies `customer_devices`, `customer_details` or a removal. A bare re-evaluation creates nothing, flag or no flag. No effect on billing or rate limits."
           }
         }
       },
@@ -744,15 +749,19 @@
       "MatchedTier": {
         "type": "object",
         "required": [
-          "tier_name",
+          "tier_id",
           "payment_type",
           "incentive_amount",
           "device_results"
         ],
         "properties": {
+          "tier_id": {
+            "type": "string",
+            "description": "Stable tier identifier: the spec tier id for non-offer programs, or the offer spec's payment-leg tier id for Partner Offer rows. Always present. Prefer `tier_name` for display when it is present; this field is stable across relabeling and safe to use as a join key.\n"
+          },
           "tier_name": {
             "type": "string",
-            "description": "Display name for the tier. Non-offer programs surface their spec tier id; Partner Offer legs surface customer-facing names — \"Enrollment Incentive\" (up-front leg) / \"Participation Incentive\" (recurring leg). Partner Offers emit one tier per payment leg.\n"
+            "description": "Customer-facing display name for the tier, when one exists. Non-offer programs surface the spec tier's `label` when the author set one; absent when the tier has no authored label — this field never falls back to `tier_id`. Partner Offer legs always populate this — \"Enrollment Incentive\" (up-front leg) / \"Participation Incentive\" (recurring leg). Partner Offers emit one tier per payment leg.\n"
           },
           "payment_type": {
             "$ref": "#/components/schemas/PaymentType"
@@ -845,7 +854,7 @@
           },
           "code": {
             "type": "string",
-            "description": "Stable check code (e.g., `SMUD_TC`, `DEV-CL-001`)."
+            "description": "Categorical requirement-type code. Says what KIND of requirement this is, not which individual check produced it.\n\nThe vocabulary is `UTIL-*` (utility relationship), `EQUIP-*` (equipment identity, rating and condition), `CONT-*` (contractor, permit and inspection), `VEH-*` (vehicle), `CUST-*` (who the customer is and what they live in), `APP-*` (application timing and signatures) and `MISC`. Prefixes are stable and matchable, so `code.startsWith(\"EQUIP-\")` is a supported way to group.\n\n`APP-002` is defined by the axis \"this requires a signature or declaration from the customer\", regardless of subject matter — a terms-and-conditions acceptance, a one-rebate-per-address attestation and a trade-ally confirmation are all `APP-002`.\n\nTHE SAME CODE CAN APPEAR ON SEVERAL CHECKS IN ONE RESPONSE. Twenty distinct agreement checks all carry `APP-002`, and a program can require more than one of them, so a single card can show several `APP-002` rows that the customer must each act on. Do not treat `code` as a key: group or de-duplicate by it deliberately, and use `requirement` to tell two rows of the same code apart.\n\nCodes are additive and stable: an existing code is never renumbered or repurposed, and new kinds arrive as new codes. A check whose kind has not been categorised yet reports `MISC`.\n"
           },
           "reason": {
             "type": "string",
@@ -855,6 +864,29 @@
             "type": "string",
             "nullable": true,
             "description": "On a partner offer, the program this check came from — your offer's identifier for checks on the offer itself, or the identifier of an underlying program for checks it inherits. Null on rebate programs."
+          },
+          "expected_values": {
+            "type": "array",
+            "nullable": true,
+            "description": "The values on the far side of the comparison, in the same display spelling as `reason`. Read with `operator`: for `eq`/`in` these are the values the program accepts, for `neq`/`not_in` the values it rejects, and for `gt`/`gte`/`lt`/`lte`/`between` the bounds. Casing permutations a spec enumerates are collapsed, so a spec listing `LEVEL_2`, `LEVEL 2` and `level_2` yields one entry. Null on checks that compare nothing, and on `present`/`absent`.\n",
+            "items": {
+              "type": "string"
+            }
+          },
+          "actual_value": {
+            "type": "string",
+            "nullable": true,
+            "description": "The customer's value, in the same display spelling as `reason`. Null when the customer has no value on file, and on checks that compare nothing.\n"
+          },
+          "operator": {
+            "type": "string",
+            "nullable": true,
+            "description": "The comparison applied: `eq`, `neq`, `in`, `not_in`, `gt`, `gte`, `lt`, `lte`, `between`, `present`, `absent`. Null on checks that compare nothing.\n"
+          },
+          "severity": {
+            "type": "string",
+            "nullable": true,
+            "description": "What this check means for the application, derived from `status`: `met` (COMPLETED), `pending` (IGNORED — the customer still has to supply or agree to something) or `blocking` (FAILED). Null when the status is not one of those three.\n"
           }
         }
       },

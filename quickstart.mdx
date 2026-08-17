@@ -16,7 +16,7 @@ Check a customer's incentive eligibility, share a Connect URL they apply through
 </Step>
 
 <Step title="Get device IDs">
-  Map your product catalog to Leap's under [**Settings → Device profile**](https://partner.incentives.leap.energy/settings/device-profile). Each mapping gives you a `device_id` to pass in lookup requests. To build that mapping in code instead, call [Search device catalog](/api-reference/devices/search-device-catalog): free text in, matching `device_id`s out. Keep the products you sell on hand with [Save a device](/api-reference/devices/save-a-device).
+  Map your product catalog to Leap's under [**Settings → Device profile**](https://partner.incentives.leap.energy/settings/device-profile). Each mapping gives you a `device_id` to pass in lookup requests. To build that mapping in code instead, call [Search device catalog](/api-reference/devices/search-device-catalog): free text in, matching `device_id`s out. The same endpoint browses by `category` when you have no search term, and resolves up to 100 `device_id`s you already hold back into full catalog records. Keep the products you sell on hand with [Save a device](/api-reference/devices/save-a-device).
 </Step>
 
 <Step title="Set up data preferences">
@@ -95,7 +95,7 @@ Store each `customer_device_id` alongside your own order record: it identifies t
 </Note>
 
 <Tip>
-  For returning customers, [Refresh incentives](/api-reference/incentives-lookups/refresh-incentives) re-evaluates from stored data and fills in details as you learn them, while [Override incentives](/api-reference/incentives-lookups/override-incentives) discards the devices on file and starts over. The [Incentives Guide](/api-reference/incentives-lookups/overview) compares all three endpoints.
+  For returning customers, [Refresh incentives](/api-reference/incentives-lookups/refresh-incentives) re-evaluates from stored data, adds devices, and fills in details as you learn them. It takes the same `create_application` flag. [Override incentives](/api-reference/incentives-lookups/override-incentives) rebuilds the customer from a fresh body, address included, and discards everything on file. The [Incentives Guide](/api-reference/incentives-lookups/overview) compares all three endpoints.
 </Tip>
 
 Show the Connect URL wherever it fits: order confirmation, follow-up email, product setup.
@@ -144,6 +144,8 @@ curl -X PATCH "https://api.incentives.leap.energy/alpha/applications/123" \
 <Note>
   Only include the fields you want to change: omitted fields keep their current values, and `null` clears one. Status and system identifiers (`id`, `customer_id`, `program_id`) are read-only.
 </Note>
+
+Two identifiers named `id` appear in that request, and they are different things. The `id` in the URL is the application. The `id` inside `customer_devices[]` is one installation on that application, which you get from the application you fetched. Neither is the catalog `device_id` from the lookup: that one identifies the product, not the customer's copy of it.
 
 ## Next steps
 

@@ -4,6 +4,25 @@ The API-reference specs in `api-reference/specs/*.json` are **generated** from t
 upstream services (`global-connect-service`, `incentives-service`). Do not edit
 them by hand — edit the config and re-run the sync.
 
+## Every Markdown file in this repo is a public page
+
+Mintlify publishes every `.md` and `.mdx` file it finds. `docs.json` navigation
+controls the sidebar, not what is reachable: a file left out of the nav is still
+served at `docs.incentives.leap.energy/<path-without-extension>`, and Google can
+index it. This file used to sit at the repo root, which published it, along with
+`CLAUDE.md` and its "Internal Implementation Details (Do Not Expose)" section.
+
+Two directories are excluded from the build, verified by request against a local
+`mint dev`: **`.github/`** and **`.claude/`**. A `README.md` is skipped anywhere.
+Nothing else is: other dot-directories, `.txt` files and files absent from the
+nav are all served, and a `docs.json` redirect does not shadow a generated page.
+
+So: **maintainer-facing prose goes in `.github/` (this file) or `.claude/`
+(agent instructions), never at the repo root.** Before adding any Markdown file
+outside those two directories, assume a partner will read it. After deploying,
+`curl -o /dev/null -w '%{http_code}' https://docs.incentives.leap.energy/<name>`
+should return 404 for anything maintainer-facing.
+
 ## Refresh the specs
 
 Regenerate from local sibling checkouts (the supported path):
@@ -147,7 +166,7 @@ through.
 npm run test:sync            # unit-tests the transform functions
 GCS_REPO=... INCENTIVES_REPO=... npm run sync:openapi -- --local
 npx mint dev --port 3333     # http://localhost:3333
-npx mint broken-links        # (pre-existing failures in essentials/ + incentive-aggregator-api.md are unrelated)
+npx mint broken-links        # (pre-existing failures in essentials/ are unrelated)
 ```
 
 On an API endpoint page, confirm the method+path header shows **Try it**, the

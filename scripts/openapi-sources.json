@@ -36,6 +36,7 @@
         "EligibleProgram.upfront_amount": "Reserved for a payment kind Leap does not pay yet, so it is always 0. Read `install_amount` for this program's one-time incentive.",
         "EligibleProgram.install_amount": "This program's one-time incentive, paid at install time.",
         "EligibleProgram.ongoing_amount": "This program's recurring incentive, **per year**.",
+        "RefreshIncentivesRequest.create_application": "Create the Connect application records for this refresh's eligible programs, so the returned `connect_url` is a link the customer can open. It matches the flag on **Look up incentives** and defaults to `false`. Only a refresh that changes something has anything to create: one that supplies `customer_devices`, `customer_details` or a removal. A bare re-evaluation creates nothing, flag or no flag. No effect on billing or rate limits.",
         "RefreshIncentivesRequest.eiaid": "Optional utility override, matching the one on **Look up incentives**. Supply an EIA utility id to re-resolve the customer's serving utility instead of reusing the one on file. Leap re-selects candidate programs against it, re-runs eligibility, and keeps the override for later calls on this customer.",
         "EligibleProgram.name": "Program name as shown to the customer. Leap sets this for utility, state, and market programs; for your own partner offer it is the offer name you configure in the portal.",
         "EligibleProgram.program_identifier": "Stable identifier for this program — your offer's identifier for a partner offer, or the catalog identifier (for example `PGE-ART`) otherwise. Use it to correlate the same program across lookups.",
@@ -72,7 +73,7 @@
       "security": "bearer",
       "tag": "devices",
       "source": { "repo": "LeapAC/global-connect-service", "ref": "origin/main", "entry": "src/main/resources/openapi/programs.yaml", "deps": ["src/main/resources/openapi/common-schemas.yaml"] },
-      "removeProperties": ["DeviceResponse.source_id", "DeviceResponse.device_category_source_id", "DeviceResponse.is_test"],
+      "removeProperties": ["DeviceResponse.source_id", "DeviceResponse.device_category_source_id", "DeviceResponse.is_test", "DeviceResponse.msrp_source", "DeviceResponse.msrp_confidence", "DeviceResponse.msrp_updated_at", "DeviceResponse.is_customer_submitted"],
       "replacements": [
         { "from": "The category UUID is deliberately not accepted here — `device_category.id` is minted per environment, so a UUID that works against staging does not address the same category in production.", "to": "Address a category by name: the category's own id is specific to one Leap environment and is not accepted here.", "required": true },
         { "from": "An id that matches no active, non-test device is simply absent from the results rather than an error, so a caller must match responses back to the ids it asked for.", "to": "An id that matches no device currently in the catalog is simply absent from the results rather than an error, so match the responses back to the ids you asked for.", "required": true }
@@ -101,7 +102,7 @@
       "security": "bearer",
       "tag": "programs",
       "source": { "repo": "LeapAC/global-connect-service", "ref": "origin/main", "entry": "src/main/resources/openapi/programs.yaml", "deps": ["src/main/resources/openapi/common-schemas.yaml"] },
-      "removeProperties": ["ProgramResponse.metadata", "ProgramResponse.eiaid"],
+      "removeProperties": ["ProgramResponse.eiaid"],
       "include": [
         { "method": "get", "path": "/beta/incentives/programs", "title": "List programs", "description": "Browse Leap's catalog of rebate programs. The catalog is shared across partners and is not scoped to your account, so a program you read here is not necessarily one your account can claim.\n\nFiltering runs through the `filter` query parameter rather than a separate search route: pass comma-separated `field=value` pairs. Three fields are supported, `program_type`, `transmission_region` and `enabled`, and Leap combines them with AND. For example, `filter=transmission_region=CAISO,enabled=true` returns the enabled CAISO programs. Leap ignores a field name it does not recognise instead of rejecting it, so check your spelling. The `enabled` value must be `true` or `false`; anything else returns 400. With no `enabled` filter the response mixes enabled and disabled programs, and each row carries its own `enabled` flag.\n\nResults are paged with an opaque cursor: read `page_size` rows at a time and follow `next_page_token` until it is absent. `page_size` defaults to 50 and is capped at 200, and a larger value is clamped rather than rejected. Replay a `page_token` only with the filter that produced it. Programs are ordered by `program_identifier`, so a program added below your cursor part-way through a walk is missed rather than duplicated. This endpoint pages with `page_size` and `page_token` only: `limit` and `offset` are rejected with 400, because a caller that reads one page and believes it read the whole catalog needs an error, not a page." },
         { "method": "get", "path": "/beta/incentives/programs/{program_id}", "title": "Get a program", "description": "Retrieve one program by its `program_identifier`. That is the same value **Look up incentives** returns as `program_identifier` on each eligible program, so you can go from a lookup result straight to the program's catalog record.\n\nThe response carries the program's label, description, type, device category, the customer classification it serves, the full set of utility EIA ids it's available to, its dates and rebate caps, the conditions it attaches (homeowner, income qualification, permits, inspection), and where the definition came from (a Leap-maintained program or your own partner offer). An identifier Leap does not hold returns 404." },
@@ -111,6 +112,7 @@
         "ProgramResponse": "One program in Leap's rebate catalog. The catalog is shared across partners and covers utility, state and market programs, so a program you read here is not necessarily one your account can claim.",
         "ProgramResponse.program_identifier": "Stable identifier for the program, and the value **Look up incentives** returns as `program_identifier` on each eligible program. Send it as the `program_id` path segment on the other program routes.",
         "ProgramResponse.eiaids": "Every EIA utility id this program serves. A customer qualifies on the utility dimension when the utility resolved from their address appears in this list. An empty list means the program has no utility footprint and is never selected on that dimension.",
+        "ProgramResponse.metadata": "Catalog detail that has no column of its own, as a flat map of string keys. A program describes itself here with `url`, `operator_name`, `operator_type`, `device_category`, `application_path`, `state_province` and `country`. A published partner offer adds what it shows about itself: `display_name`, `operator_display_name`, `logo_url`, `terms_url` and `description`. Those twelve keys are the whole contract. Any key not listed is Leap's own working state and is dropped before the response is sent, so treat an absent key as absent data rather than reading anything into it. A program with none of them returns an empty object.",
         "ProgramResponse.enabled": "Whether Leap currently evaluates this program. A disabled program never appears in a lookup result. Filter on it with `filter=enabled=true` or `filter=enabled=false`.",
         "ProgramListResponse": "One page of catalog programs, plus the cursor for the next page.",
         "ProgramListResponse.next_page_token": "Cursor for the next page, absent on the last page. Pass it back as `page_token`, with the same filter that produced it.",
@@ -134,7 +136,7 @@
       "security": "apikey",
       "tag": "applications",
       "source": { "repo": "LeapAC/incentives-service", "ref": "origin/develop", "entry": "supabase/functions/applications/openapi.json", "deps": [] },
-      "removeProperties": ["Application.recaptcha_token", "Customer.is_test"],
+      "removeProperties": ["Application.recaptcha_token", "Customer.is_test", "ApplicationSearchResult.organization_id"],
       "replacements": [
         { "from": "https://your-project.supabase.co/storage/v1/object/sign/attachments/", "to": "https://<storage-host>/attachments/" },
         { "from": "https://your-project.supabase.co/storage/v1/object/public/attachments/", "to": "https://<storage-host>/attachments/" },

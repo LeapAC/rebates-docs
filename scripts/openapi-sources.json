@@ -102,7 +102,7 @@
       "security": "bearer",
       "tag": "programs",
       "source": { "repo": "LeapAC/global-connect-service", "ref": "origin/main", "entry": "src/main/resources/openapi/programs.yaml", "deps": ["src/main/resources/openapi/common-schemas.yaml"] },
-      "removeProperties": ["ProgramResponse.eiaid", "ProgramApprovedDeviceResponse.notes"],
+      "removeProperties": ["ProgramResponse.eiaid", "ProgramApprovedDeviceResponse.notes", "ProgramResponse.program_year", "ProgramResponse.start_date", "ProgramResponse.end_date", "ProgramResponse.application_deadline_days", "ProgramResponse.max_rebates_per_customer", "ProgramResponse.max_rebates_per_address", "ProgramResponse.min_building_age_years", "ProgramResponse.requires_homeowner", "ProgramResponse.requires_income_qualification", "ProgramResponse.requires_contractor_participation", "ProgramResponse.requires_permits", "ProgramResponse.requires_inspection", "ProgramResponse.new_construction_eligible", "ProgramResponse.prohibits_fossil_backup"],
       "replacements": [
         { "from": "The underlying column is open jsonb that internal tooling writes to freely, so responses carry an allowlist rather than the whole map.", "to": "Responses carry an allowlist of keys rather than everything Leap stores against a program.", "required": true },
         { "from": "including an offer's `portal_config` economics.", "to": "including a partner offer's private configuration.", "required": true },

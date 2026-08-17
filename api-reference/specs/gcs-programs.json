@@ -332,52 +332,8 @@
             },
             "description": "Every EIA utility id this program serves. A customer qualifies on the utility dimension when the utility resolved from their address appears in this list. An empty list means the program has no utility footprint and is never selected on that dimension."
           },
-          "program_year": {
-            "type": "integer"
-          },
-          "start_date": {
-            "type": "string",
-            "format": "date"
-          },
-          "end_date": {
-            "type": "string",
-            "format": "date"
-          },
-          "application_deadline_days": {
-            "type": "integer"
-          },
-          "max_rebates_per_customer": {
-            "type": "integer"
-          },
-          "max_rebates_per_address": {
-            "type": "integer"
-          },
-          "min_building_age_years": {
-            "type": "integer"
-          },
           "customer_classification": {
             "$ref": "#/components/schemas/CustomerClassification"
-          },
-          "requires_homeowner": {
-            "type": "boolean"
-          },
-          "requires_income_qualification": {
-            "type": "boolean"
-          },
-          "requires_contractor_participation": {
-            "type": "boolean"
-          },
-          "requires_permits": {
-            "type": "boolean"
-          },
-          "requires_inspection": {
-            "type": "boolean"
-          },
-          "new_construction_eligible": {
-            "type": "boolean"
-          },
-          "prohibits_fossil_backup": {
-            "type": "boolean"
           },
           "device_category": {
             "type": "string"

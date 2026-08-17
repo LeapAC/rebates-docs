@@ -412,7 +412,7 @@
           }
         }
       },
-      "DeviceResponse": {
+      "PartnerDeviceResponse": {
         "type": "object",
         "properties": {
           "id": {
@@ -526,7 +526,7 @@
           "results": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/DeviceResponse"
+              "$ref": "#/components/schemas/PartnerDeviceResponse"
             }
           },
           "next_offset": {
@@ -576,7 +576,7 @@
             "description": "When you first saved this device."
           },
           "device": {
-            "$ref": "#/components/schemas/DeviceResponse"
+            "$ref": "#/components/schemas/PartnerDeviceResponse"
           }
         }
       },

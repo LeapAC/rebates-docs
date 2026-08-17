@@ -73,7 +73,6 @@
       "security": "bearer",
       "tag": "devices",
       "source": { "repo": "LeapAC/global-connect-service", "ref": "origin/main", "entry": "src/main/resources/openapi/programs.yaml", "deps": ["src/main/resources/openapi/common-schemas.yaml"] },
-      "removeProperties": ["DeviceResponse.source_id", "DeviceResponse.device_category_source_id", "DeviceResponse.is_test", "DeviceResponse.msrp_source", "DeviceResponse.msrp_confidence", "DeviceResponse.msrp_updated_at", "DeviceResponse.is_customer_submitted"],
       "replacements": [
         { "from": "The category UUID is deliberately not accepted here — `device_category.id` is minted per environment, so a UUID that works against staging does not address the same category in production.", "to": "Address a category by name: the category's own id is specific to one Leap environment and is not accepted here.", "required": true },
         { "from": "An id that matches no active, non-test device is simply absent from the results rather than an error, so a caller must match responses back to the ids it asked for.", "to": "An id that matches no device currently in the catalog is simply absent from the results rather than an error, so match the responses back to the ids you asked for.", "required": true }
@@ -85,9 +84,9 @@
         { "method": "delete", "path": "/beta/incentives/devices/saved/{device_id}", "title": "Remove a saved device", "description": "Remove a device from your saved list. The catalog device is untouched, and so is any lookup that referenced it. Removing a device you have not saved also returns 204, so retries are safe." }
       ],
       "schemaDescriptions": {
-        "DeviceResponse": "One device in Leap's catalog. Send its `id` as the `device_id` on a lookup. Specification fields such as `capacity_kw` or `seer2_rating` are populated where Leap holds data for that device type, and are null otherwise.",
-        "DeviceResponse.device_category": "The device's category name, and the stable way to address a category: `hvac`, `ev_charger`, `solar_storage`, `water_heater`, `smart_thermostat`, `weatherization`, `vehicle`, `meter`, `panel_make_ready`, `solar_panel`. It is the same value the `category` query parameter takes, so you can bucket a page of results without a second call.",
-        "DeviceResponse.device_category_id": "Leap's identifier for the device's category. It is specific to one Leap environment, so key on `device_category` instead when you store or compare categories.",
+        "PartnerDeviceResponse": "One device in Leap's catalog. Send its `id` as the `device_id` on a lookup. Specification fields such as `capacity_kw` or `seer2_rating` are populated where Leap holds data for that device type, and are null otherwise.",
+        "PartnerDeviceResponse.device_category": "The device's category name, and the stable way to address a category: `hvac`, `ev_charger`, `solar_storage`, `water_heater`, `smart_thermostat`, `weatherization`, `vehicle`, `meter`, `panel_make_ready`, `solar_panel`. It is the same value the `category` query parameter takes, so you can bucket a page of results without a second call.",
+        "PartnerDeviceResponse.device_category_id": "Leap's identifier for the device's category. It is specific to one Leap environment, so key on `device_category` instead when you store or compare categories.",
         "SavedDeviceUpsertRequest.label": "Your own name for the device, to help you find it later. Omit the key to keep the current label, send null or a blank string to clear it, send text to set it. Maximum 256 characters.",
         "SavedDeviceResponse.device_id": "Catalog device UUID. This is the `device_id` you send on a lookup.",
         "SavedDeviceResponse.label": "Your own name for the device, when you set one. Null otherwise.",

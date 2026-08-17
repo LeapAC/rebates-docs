@@ -2105,10 +2105,11 @@
             "example": 609
           },
           "device_id": {
-            "type": "integer",
+            "type": "string",
+            "format": "uuid",
             "nullable": true,
-            "description": "ID of the device from the devices catalog",
-            "example": 240
+            "description": "ID of the device from the devices catalog. Device catalog ID (UUID); integer IDs were the pre-migration form.",
+            "example": "018f2c3a-1111-4222-8333-444455556666"
           },
           "quantity": {
             "type": "integer",
@@ -2663,8 +2664,18 @@
             "example": 78
           },
           "device_id": {
-            "type": "integer",
-            "nullable": true
+            "oneOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "nullable": true,
+            "description": "Device catalog IDs are UUIDs; integer IDs remain accepted for backward compatibility.",
+            "example": "018f2c3a-1111-4222-8333-444455556666"
           },
           "quantity": {
             "type": "integer"

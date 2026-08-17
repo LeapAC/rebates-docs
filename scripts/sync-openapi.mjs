@@ -102,13 +102,16 @@ export function findMissingSchemaDescriptions(spec, overrides) {
   return Object.keys(overrides || {}).filter((key) => !resolveSchemaTarget(spec, key));
 }
 
-// Inline `example` values live all over the source paths (not just
-// components.schemas), so they can't be reached by name. Rewrite them by literal
-// substring — used to keep storage-vendor hostnames and placeholder filenames out
-// of the rendered samples. Returns the rules that matched nothing.
+// Some source prose can't be reached by name: inline `example` values, response
+// and parameter descriptions, a clause inside an otherwise-good paragraph.
+// Rewrite those by literal substring — used to keep storage-vendor hostnames,
+// database constraint names and other maintainer-facing detail out of the
+// rendered reference. Returns the rules that matched nothing, split by whether
+// the rule is marked `required`.
 export function applyStringReplacements(spec, replacements) {
   const unused = new Set((replacements || []).map((r) => r.from));
-  if (!replacements?.length) return { spec, unused: [] };
+  const requiredRules = new Set((replacements || []).filter((r) => r.required).map((r) => r.from));
+  if (!replacements?.length) return { spec, unused: [], missingRequired: [] };
   const rewrite = (node) => {
     if (Array.isArray(node)) return node.map(rewrite);
     if (node && typeof node === 'object') {
@@ -124,7 +127,30 @@ export function applyStringReplacements(spec, replacements) {
     }
     return node;
   };
-  return { spec: rewrite(spec), unused: [...unused] };
+  const out = rewrite(spec);
+  return { spec: out, unused: [...unused], missingRequired: [...unused].filter((f) => requiredRules.has(f)) };
+}
+
+// Retired and maintainer-only fields survive in the source specs long after they
+// stop working — a legacy identifier kept on the wire for compatibility, a
+// storage-lineage column, a free-form `metadata` bag. Publishing them invites
+// partners to integrate against something that is dead or private, so drop them
+// from the generated spec entirely. Keyed `Schema.property`; also strips the
+// property from that schema's `required`. Returns the keys that matched nothing
+// (the upstream field is already gone — drop the config entry).
+export function removeProperties(spec, keys) {
+  const unmatched = [];
+  for (const key of keys || []) {
+    const [name, prop] = key.split('.');
+    const schema = spec.components?.schemas?.[name];
+    if (!prop || !schema?.properties || !(prop in schema.properties)) { unmatched.push(key); continue; }
+    delete schema.properties[prop];
+    if (Array.isArray(schema.required)) {
+      schema.required = schema.required.filter((r) => r !== prop);
+      if (schema.required.length === 0) delete schema.required;
+    }
+  }
+  return unmatched;
 }
 
 function resolveSchemaTarget(spec, key) {
@@ -246,11 +272,24 @@ export function findBrokenRefs(spec) {
 
 // ---- I/O (not unit-tested; exercised by a real run) ----
 
-function fetchFile(repoCfg, repoKey, filePath, destDir, opts) {
+function fetchFile(repoCfg, repoKey, filePath, destDir, opts, ref) {
   const dest = path.join(destDir, path.basename(filePath));
   if (opts.local) {
     const base = process.env[repoCfg.localEnv] || repoCfg.localDefault;
-    fs.copyFileSync(path.join(base, filePath), dest);
+    if (ref) {
+      // Read the file out of a pinned ref instead of the checkout, so a run does
+      // not depend on which branch the local clone happens to sit on. Fetch the
+      // repo first — `git show` reads only what is already local.
+      let raw;
+      try {
+        raw = execFileSync('git', ['-C', base, 'show', `${ref}:${filePath}`], { maxBuffer: 1 << 26 });
+      } catch {
+        throw new Error(`cannot read ${filePath} at ${ref} in ${base} — run \`git -C ${base} fetch origin\` first`);
+      }
+      fs.writeFileSync(dest, raw);
+    } else {
+      fs.copyFileSync(path.join(base, filePath), dest);
+    }
   } else {
     const raw = execFileSync('gh', ['api', `repos/${repoKey}/contents/${filePath}?ref=${opts.ref}`, '-H', 'Accept: application/vnd.github.raw'], { maxBuffer: 1 << 26 });
     fs.writeFileSync(dest, raw);
@@ -274,8 +313,8 @@ function main() {
   for (const s of cfg.specs) {
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'oas-'));
     const repoCfg = cfg.repos[s.source.repo];
-    const entry = fetchFile(repoCfg, s.source.repo, s.source.entry, tmp, opts);
-    for (const dep of s.source.deps || []) fetchFile(repoCfg, s.source.repo, dep, tmp, opts);
+    const entry = fetchFile(repoCfg, s.source.repo, s.source.entry, tmp, opts, s.source.ref);
+    for (const dep of s.source.deps || []) fetchFile(repoCfg, s.source.repo, dep, tmp, opts, s.source.ref);
 
     let spec = bundle(entry);
     if (s.include !== 'all') spec = filterOperations(spec, s.include, s.exclude);
@@ -284,18 +323,24 @@ function main() {
     if (s.tag) spec = applyTag(spec, s.tag);
     spec = retargetServers(spec, s.servers || cfg[s.serversRef]);
     spec = ensureSecurity(spec, s.security);
+    // Before pruning, so a schema that only the removed property referenced goes
+    // with it.
+    const unremoved = removeProperties(spec, s.removeProperties);
     spec = pruneUnusedComponents(spec);
     // After pruning, so overrides are only required for schemas that ship.
     const missing = findMissingSchemaDescriptions(spec, s.schemaDescriptions);
     spec = applySchemaDescriptions(spec, s.schemaDescriptions);
     const replaced = applyStringReplacements(spec, s.replacements);
     spec = replaced.spec;
-    if (replaced.unused.length) console.warn(`  ! ${s.output}: replacements matched nothing (source may be fixed): ${replaced.unused.join(', ')}`);
-    spec.info = { ...(spec.info || {}), title: s.title };
+    const optionalUnused = replaced.unused.filter((f) => !replaced.missingRequired.includes(f));
+    if (optionalUnused.length) console.warn(`  ! ${s.output}: replacements matched nothing (source may be fixed): ${optionalUnused.join(', ')}`);
+    if (unremoved.length) console.warn(`  ! ${s.output}: removeProperties matched nothing (field already gone upstream): ${unremoved.join(', ')}`);
+    spec.info = { ...(spec.info || {}), title: s.title, ...(s.description ? { description: s.description } : {}) };
 
     const broken = findBrokenRefs(spec);
     if (broken.length) { console.error(`✗ ${s.output}: broken refs: ${broken.join(', ')}`); failures++; }
     if (missing.length) { console.error(`✗ ${s.output}: schemaDescriptions no longer match: ${missing.join(', ')}`); failures++; }
+    if (replaced.missingRequired.length) { console.error(`✗ ${s.output}: required replacements matched nothing: ${replaced.missingRequired.join(', ')}`); failures++; }
 
     const opCount = Object.values(spec.paths || {}).reduce((n, ops) => n + Object.keys(ops).filter((m) => HTTP_METHODS.includes(m)).length, 0);
     fs.writeFileSync(path.join(outDir, s.output), JSON.stringify(spec, null, 2) + '\n');

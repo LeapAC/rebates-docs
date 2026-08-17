@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { filterOperations, retargetServers, ensureSecurity, findBrokenRefs, applyOperationTitles, applyOperationDescriptions, applySchemaDescriptions, findMissingSchemaDescriptions, applyStringReplacements, applyTag, pruneUnusedComponents } from './sync-openapi.mjs';
+import { filterOperations, retargetServers, ensureSecurity, findBrokenRefs, applyOperationTitles, applyOperationDescriptions, applySchemaDescriptions, findMissingSchemaDescriptions, applyStringReplacements, removeProperties, applyTag, pruneUnusedComponents } from './sync-openapi.mjs';
 
 const sample = () => ({
   openapi: '3.0.0',
@@ -97,6 +97,33 @@ test('applyStringReplacements rewrites nested example strings and reports unused
   ]);
   assert.equal(out.paths['/a'].get.responses[200].schema.properties.url.example, 'https://<storage-host>/file.pdf');
   assert.deepEqual(unused, ['not-present']);
+});
+
+test('applyStringReplacements reports a required rule that matched nothing', () => {
+  const spec = { components: { responses: { Conflict: { description: 'the constraint uc_customer_partner_address makes it unique' } } } };
+  const { spec: out, missingRequired } = applyStringReplacements(spec, [
+    { from: 'the constraint uc_customer_partner_address makes it unique', to: 'one address belongs to one customer', required: true },
+    { from: 'reworded upstream', to: 'x', required: true },
+    { from: 'also gone', to: 'y' },
+  ]);
+  assert.equal(out.components.responses.Conflict.description, 'one address belongs to one customer');
+  assert.deepEqual(missingRequired, ['reworded upstream'], 'only required rules are reported as failures');
+});
+
+test('removeProperties drops the property and its required entry, reporting unmatched keys', () => {
+  const spec = {
+    components: {
+      schemas: {
+        DeviceRef: { type: 'object', required: ['device_id', 'device_source_id'], properties: { device_id: { type: 'string' }, device_source_id: { type: 'integer' } } },
+        Program: { type: 'object', required: ['metadata'], properties: { metadata: { type: 'object' } } },
+      },
+    },
+  };
+  const unmatched = removeProperties(spec, ['DeviceRef.device_source_id', 'Program.metadata', 'DeviceRef.already_gone', 'Missing.thing']);
+  assert.deepEqual(Object.keys(spec.components.schemas.DeviceRef.properties), ['device_id']);
+  assert.deepEqual(spec.components.schemas.DeviceRef.required, ['device_id']);
+  assert.ok(!('required' in spec.components.schemas.Program), 'an emptied required list is dropped');
+  assert.deepEqual(unmatched, ['DeviceRef.already_gone', 'Missing.thing']);
 });
 
 test('applyTag normalizes every operation to a single tag', () => {

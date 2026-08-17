@@ -30,13 +30,13 @@
           "programs"
         ],
         "summary": "List programs",
-        "description": "Browse Leap's catalog of rebate programs. The list returns enabled programs only by default: `enabled` is no longer a field in the response, so pass `filter=enabled=false` to read the disabled rows instead. There is no filter value meaning \"all\": retrieving the full catalog regardless of state takes two calls, `filter=enabled=true` and `filter=enabled=false`, which return disjoint sets.\n\nFiltering runs through the `filter` query parameter rather than a separate search route: pass comma-separated `field=value` pairs. Three fields are supported, `program_type`, `transmission_region` and `enabled`, and Leap combines them with AND. `transmission_region` stays filterable even though it no longer appears in the response. For example, `filter=transmission_region=CAISO,enabled=true` returns the enabled CAISO programs. Leap ignores a field name it does not recognise instead of rejecting it, so check your spelling. The `enabled` value must be `true` or `false`; anything else returns 400.\n\nThe catalog is shared across partners and is not scoped to your account. `data` carries the full matching set: `page_token` and `page_size` are reserved and have no effect yet, and `next_page_token` is never populated.",
+        "description": "Browse Leap's catalog of rebate programs. The catalog is shared across partners, so a program you read here is not necessarily one your account can claim. Narrow it with `filter`, and page through it with `page_size` and `page_token`.",
         "operationId": "listPrograms",
         "parameters": [
           {
             "name": "filter",
             "in": "query",
-            "description": "Filter DSL. Comma-separated field=value pairs. Supported fields: program_type, transmission_region, enabled. Example: transmission_region=CAISO,enabled=true. `transmission_region` remains a valid filter field even though it no longer appears in the response. Omitting `enabled` means enabled=true; pass enabled=false to read the disabled rows.\n",
+            "description": "Comma-separated `field=value` pairs, combined with AND. Three fields are supported: `program_type`, `transmission_region` and `enabled`. For example, `filter=transmission_region=CAISO,enabled=true` returns the enabled CAISO programs.\n\nLeap ignores a field name it does not recognise rather than rejecting it, so check your spelling. `enabled` must be `true` or `false`; anything else returns 400. With no `enabled` filter the response mixes enabled and disabled programs, and each row carries its own `enabled` flag.\n",
             "required": false,
             "schema": {
               "type": "string"
@@ -90,7 +90,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProgramSummaryResponse"
+                  "$ref": "#/components/schemas/ProgramResponse"
                 }
               }
             }
@@ -108,7 +108,7 @@
             "$ref": "#/components/responses/InternalServerError"
           }
         },
-        "description": "Retrieve one program by its `program_identifier`. That is the same value **Look up incentives** returns as `program_identifier` on each eligible program, so you can go from a lookup result straight to the program's catalog record.\n\nThe response carries the program's label, description, type, device category, the customer classification it serves, the full set of utility EIA ids it's available to, and where the definition came from (a Leap-maintained program or your own partner offer). An identifier Leap does not hold returns 404."
+        "description": "Retrieve one program by its `program_identifier`, the same value **Look up incentives** returns on each eligible program. An identifier Leap does not hold returns 404."
       }
     },
     "/beta/incentives/programs/{programIdentifier}/approved-devices": {
@@ -117,7 +117,7 @@
           "programs"
         ],
         "summary": "List approved devices",
-        "description": "List the Approved Product List (APL) entries for a program: the catalog devices this program pays a rebate on. Each entry names the catalog `device_id`, the tier it is bound to when the program restricts it to one, and the APL publication and version it came from.\n\nEntries identify devices by catalog UUID and nothing else. Leap does not publish a get-a-device-by-id route, and **Search device catalog** matches free text rather than identifiers, so you cannot resolve an unfamiliar `device_id` to a manufacturer and model through this API today.\n\nThe path segment on this route is `programIdentifier`, while every other program route uses `program_id`. Both take the same value. A program identifier Leap does not hold returns 404.",
+        "description": "List the Approved Product List (APL) entries for a program: the catalog devices it pays a rebate on. Each entry names the catalog `device_id`, the tier it is bound to when it is tier-specific, and the APL publication it came from. Resolve a `device_id` with **Search device catalog**.",
         "operationId": "listApprovedDevices",
         "parameters": [
           {
@@ -169,7 +169,7 @@
         "name": "programIdentifier",
         "in": "path",
         "required": true,
-        "description": "Unique program identifier",
+        "description": "The program's `program_identifier`. This route spells the path segment `programIdentifier` while every other program route uses `program_id`; both take the same value.",
         "schema": {
           "type": "string"
         }
@@ -178,7 +178,7 @@
         "name": "page_token",
         "in": "query",
         "required": false,
-        "description": "Token for cursor-based pagination",
+        "description": "Cursor from a previous response's `next_page_token`. Follow it until it is absent to walk the whole catalog. Replay a token only with the `filter` that produced it. Programs are ordered by `program_identifier`, so a program added below your cursor part-way through a walk is missed rather than duplicated. This route pages with `page_size` and `page_token` only: `limit` and `offset` return 400.",
         "schema": {
           "type": "string"
         }
@@ -187,7 +187,7 @@
         "name": "page_size",
         "in": "query",
         "required": false,
-        "description": "Number of items per page (default 50)",
+        "description": "Rows per page. Defaults to 50 and is capped at 200; a larger value is clamped rather than rejected.",
         "schema": {
           "type": "integer",
           "default": 50
@@ -289,9 +289,8 @@
           }
         }
       },
-      "ProgramSummaryResponse": {
+      "ProgramResponse": {
         "type": "object",
-        "description": "One program in Leap's rebate catalog. The catalog is shared across partners and covers utility, state and market programs, so a program you read here is not necessarily one your account can claim.",
         "properties": {
           "program_identifier": {
             "type": "string",
@@ -306,6 +305,26 @@
           "program_type": {
             "type": "string"
           },
+          "transmission_region": {
+            "$ref": "#/components/schemas/TransmissionRegion"
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "Whether Leap currently evaluates this program. A disabled program never appears in a lookup result. Filter on it with `filter=enabled=true` or `filter=enabled=false`."
+          },
+          "source": {
+            "$ref": "#/components/schemas/RequirementSource"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "The partner-visible subset of the program's stored metadata. Responses carry an allowlist of keys rather than everything Leap stores against a program. Catalog description: `url`, `operator_name`, `operator_type`, `device_category`, `application_path`, `state_province`, `country`. Partner offer publication, present on `PARTNER_OFFER` rows: `display_name`, `operator_display_name`, `logo_url`, `terms_url`, `description`. Any other key is omitted, including keys added after this was written, and including a partner offer's private configuration. Present but empty when the program carries none of the twelve.\n\nValues are constrained as well as names. An allowlisted key survives only when its value is a string, a number or a boolean; a key whose value is an object or an array is omitted, because a nested value can carry fields nobody reviewed. Strings longer than 2048 characters are omitted rather than truncated, so a value you receive is always the whole value. No stored value under the seven catalog keys comes close to that bound."
+          },
+          "upstream_program_id": {
+            "type": "string",
+            "nullable": true,
+            "description": "The program's identifier in the upstream incentives system that owns application records. Stable, and the intended join key between this catalog and any API that reports a program in that id space, such as the applications feed. Always a positive integer, rendered as a string so the id stays exact for clients whose numbers are IEEE doubles.\n\nNot to be confused with `source_program_identifier` on the eligibility-details response, which is a program identifier in *this* service's id space, attributing a check to the program that imposed it. The two never hold interchangeable values.\n\nOmitted entirely when the program has no upstream counterpart, so treat an absent field and a null one the same way. That is normal rather than a gap: programs sourced from Leap's own definitions were never defined in the upstream system, so a missing id here says \"this program cannot be joined\", never \"no applications exist\". Programs promoted from that system, including partner offers, always carry one."
+          },
           "eiaids": {
             "type": "array",
             "items": {
@@ -313,16 +332,58 @@
             },
             "description": "Every EIA utility id this program serves. A customer qualifies on the utility dimension when the utility resolved from their address appears in this list. An empty list means the program has no utility footprint and is never selected on that dimension."
           },
-          "device_category": {
-            "type": "string"
+          "program_year": {
+            "type": "integer"
+          },
+          "start_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "end_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "application_deadline_days": {
+            "type": "integer"
+          },
+          "max_rebates_per_customer": {
+            "type": "integer"
+          },
+          "max_rebates_per_address": {
+            "type": "integer"
+          },
+          "min_building_age_years": {
+            "type": "integer"
           },
           "customer_classification": {
             "$ref": "#/components/schemas/CustomerClassification"
           },
-          "source": {
-            "$ref": "#/components/schemas/RequirementSource"
+          "requires_homeowner": {
+            "type": "boolean"
+          },
+          "requires_income_qualification": {
+            "type": "boolean"
+          },
+          "requires_contractor_participation": {
+            "type": "boolean"
+          },
+          "requires_permits": {
+            "type": "boolean"
+          },
+          "requires_inspection": {
+            "type": "boolean"
+          },
+          "new_construction_eligible": {
+            "type": "boolean"
+          },
+          "prohibits_fossil_backup": {
+            "type": "boolean"
+          },
+          "device_category": {
+            "type": "string"
           }
-        }
+        },
+        "description": "One program in Leap's rebate catalog. The catalog is shared across partners and covers utility, state and market programs, so a program you read here is not necessarily one your account can claim."
       },
       "ProgramListResponse": {
         "type": "object",
@@ -330,15 +391,15 @@
           "data": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/ProgramSummaryResponse"
+              "$ref": "#/components/schemas/ProgramResponse"
             }
           },
           "next_page_token": {
             "type": "string",
-            "description": "Reserved for cursor pagination and not populated yet. Read the full matching set from `data`."
+            "description": "Cursor for the next page, absent on the last page. Pass it back as `page_token`, with the same filter that produced it."
           }
         },
-        "description": "A page of catalog programs. `data` carries the full matching set today, because this endpoint does not paginate yet."
+        "description": "One page of catalog programs, plus the cursor for the next page."
       },
       "ProgramApprovedDeviceResponse": {
         "type": "object",
@@ -363,13 +424,22 @@
           "apl_version": {
             "type": "string",
             "description": "The version of that Approved Product List publication."
-          },
-          "notes": {
-            "type": "string",
-            "description": "Free text Leap's data team recorded against this entry. Not part of the published contract."
           }
         },
         "description": "One Approved Product List entry: a catalog device this program pays a rebate on."
+      },
+      "TransmissionRegion": {
+        "type": "string",
+        "enum": [
+          "CAISO",
+          "ERCOT",
+          "NYISO",
+          "ISONE",
+          "PJM",
+          "SERC",
+          "WECC_SW",
+          "WECC_PC"
+        ]
       },
       "CustomerClassification": {
         "description": "The customer or site class this program serves. `RESIDENTIAL` and `COMMERCIAL` are the long-standing values; `MULTIFAMILY` and `MANUFACTURED_HOME` exist because rebate qualification differs across single-family, multifamily and manufactured housing.",

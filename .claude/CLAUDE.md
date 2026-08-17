@@ -2,6 +2,12 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Every Markdown file outside `.claude/` and `.github/` is a public page
+
+Mintlify publishes every `.md` and `.mdx` file in this repo. `docs.json` navigation controls the sidebar, not what is reachable: a file left out of the nav is still served at `docs.incentives.leap.energy/<path-without-extension>`. This file lives in `.claude/` for that reason, and `.github/MAINTAINING.md` alongside it. Only those two directories are excluded, plus any `README.md`.
+
+Write maintainer-facing prose into one of those two locations. Assume a partner reads anything you put anywhere else. `.github/MAINTAINING.md` covers how the generated API-reference specs are produced and curated; read it before touching `api-reference/specs/` or `scripts/`.
+
 ## Repository Overview
 
 This is a Mintlify documentation site that serves as a starter kit for building customizable documentation. The repository uses MDX files for content and is configured via `docs.json`.
@@ -30,12 +36,11 @@ mint broken-links
 
 The documentation is organized into the following key directories:
 
-- `/api-reference/` - API documentation examples with OpenAPI integration
-- `/essentials/` - Core documentation guides (markdown, code samples, images, navigation)
-- `/ai-tools/` - Documentation for AI development tools integration
-- `/snippets/` - Reusable MDX content snippets
+- `/api-reference/` - the partner API reference: guides plus the generated `specs/`
 - `/images/` - Image assets for documentation
 - `/logo/` - Logo SVG files (light and dark variants)
+
+The Mintlify starter kit's own pages (`/essentials/`, `/ai-tools/`, `/snippets/`) were deleted: they documented how to write documentation, they were out of the navigation, and they were still served on a customer-facing domain. Don't reintroduce them by re-running a Mintlify scaffold over this repo.
 
 Key configuration file:
 - `docs.json` - Main configuration for navigation, theming, and site structure

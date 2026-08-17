@@ -13,29 +13,46 @@ Check which utility, market, and state incentives a customer qualifies for, and 
 Authorization: Bearer your_api_key_here
 ```
 
-## Which endpoint do I call?
+## Choosing an endpoint
 
-All three return the same result; they differ in what you send and what they change.
+All three return the same result. They differ in what you send and what they change.
 
 | | **Look up** | **Refresh** | **Override** |
 | --- | --- | --- | --- |
-| Send | Address, classification, devices | `reference_id` only | `reference_id` + full device list |
+| Send | Address, classification, devices | `reference_id`, plus whatever changed | The same body as Look up |
 | Customer | Created if new | Must exist | Must exist |
-| Devices | Added to what's on file | Merged; removals are explicit | **Replaced**: the old set is discarded |
-| Address & utility | Resolved on the first lookup and kept; a new address needs a new `reference_id` | Reused | Reused |
+| Devices | Establishes the device list | Merged: add, update in place, or remove | **Replaced**: every installation on file is discarded |
+| Address and utility | Resolved and stored | Reused | Re-resolved and rewritten from the request |
+| Customer details | Stored | Merged | Wiped, then set from the request |
 
-Call Look up for a new customer or to add a device. Call Refresh to re-run as-is, or to fill in details as you learn them: purchase price, install date, permit status. Call Override when the device list on file is wrong and you want to replace it outright.
+Call Look up for a new customer. Call Refresh to re-run as-is, to add a device to a customer you already know, or to fill in details as you learn them: purchase price, install date, permit status. Call Override to correct the customer record itself, such as a wrong address or a teardown and reinstall.
+
+<Warning>
+  Override rebuilds the customer from the body you send. It re-geocodes the address, replaces the device set, and clears the customer details you supplied earlier. New `customer_device_id`s are issued, and the customer's Connect records are reset to match. The wipe can't be undone, so send a complete body rather than the fields that changed.
+</Warning>
+
+A lookup for a customer who already exists sets nothing new. If an entry names an installation that customer doesn't have, Leap skips it, returns it in `devices_ignored[]`, and still answers the eligibility question with a 200. Send new installations to Refresh instead, and check `devices_ignored[]` before you record a device as registered.
+
+## When a call is refused
+
+Override is a pre-submission correction, so Leap refuses it rather than destroy something you didn't name. A `409` means nothing changed on either side: the address already belongs to another of your customers, an application has already been filed with a program administrator, the customer is shared across organizations, or the `reference_id` belongs to another partner. Read `error_code`, fix the cause, and retry.
+
+A `502` needs more care. `GEOCODING_*` and `CONNECT_RESET_UNAVAILABLE` changed nothing and are safe to retry. The `CONNECT_RESET_FAILED`, `CONNECT_RESET_REJECTED`, and `CONNECT_RESET_REFUSED_AFTER_REBUILD` codes mean the rebuild committed here but Connect didn't confirm its side. Retrying can overlap a reset that is still running and destroy the customer's Connect records. Contact Leap support instead. Each response spells this out in its own description.
 
 ## Reading the results
 
 Leap evaluates each device against each tier's requirements, and every requirement reports a status:
 
-| Status | Meaning |
-| --- | --- |
-| `COMPLETED` | Satisfied. |
-| `FAILED` | Not met. The device doesn't qualify for this tier. |
-| `IGNORED` | Not knowable yet: the input doesn't exist until after the sale (install date, permit approval, new-equipment flag). |
+| Status | `severity` | Meaning |
+| --- | --- | --- |
+| `COMPLETED` | `met` | Satisfied. |
+| `FAILED` | `blocking` | Not met. The device doesn't qualify for this tier. |
+| `IGNORED` | `pending` | Not knowable yet: the input doesn't exist until after the sale (install date, permit approval, new-equipment flag). |
 
 `IGNORED` is not a rejection. A tier whose only open items are `IGNORED` still counts toward `incentive_summary`, so the summary is the customer's potential value, not a guaranteed amount. Supply the missing facts later and the checks resolve. To quote conservatively, sum only the tiers whose `device_results[].status` is `COMPLETED`.
+
+Each check also carries `expected_values`, `actual_value`, and `operator`, which together say what the program wanted and what the customer has. Build a "what's missing" list from those rather than from parsing `reason`, which is display copy Leap rewords. The `code` says what kind of requirement it is: see [Eligibility check codes](/api-reference/incentives-lookups/eligibility-codes).
+
+A tier identifies itself with `tier_id`, which is stable across relabeling. `tier_name` is the customer-facing label and is present only when the program's spec sets one, so show `tier_name` when it exists and key on `tier_id`.
 
 Leap names utility, state, and market programs; your partner offer uses the name you set in the portal.

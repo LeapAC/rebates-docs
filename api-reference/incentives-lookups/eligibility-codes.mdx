@@ -1,9 +1,9 @@
 ---
-title: Eligibility Check Codes
-description: Stable identifiers for every requirement Leap evaluates in an incentives response, and what each one checks.
+title: Eligibility check codes
+description: The requirement-type codes Leap returns on every eligibility check, and what resolves each one.
 ---
 
-Every requirement Leap evaluates comes back with a `code`. The code is the stable part of the check: branch your integration on it, and treat `requirement` and `reason` as display strings Leap can reword at any time. This page lists every code an incentives response can carry and what each one checks.
+Every requirement Leap evaluates comes back with a `code` saying what kind of requirement it is: a utility relationship, an equipment rating, a signature the customer owes. Branch your integration on the code, and treat `requirement` and `reason` as display copy Leap can reword at any time. This page lists every code an incentives response can carry.
 
 ## Where the code appears
 
@@ -13,85 +13,55 @@ Each entry in the `eligibility_details[]` array returned by [Look up incentives]
 {
   "requirement": "Equipment is new",
   "status": "IGNORED",
-  "code": "CD-NEW-001",
+  "severity": "pending",
+  "code": "EQUIP-001",
   "reason": "New-equipment flag not provided",
+  "operator": "eq",
+  "expected_values": ["true"],
+  "actual_value": null,
   "source_program_identifier": null
 }
 ```
 
-Read `status` for the outcome and `code` for the requirement that produced it. The [Incentives Guide](/api-reference/incentives-lookups/overview) covers what `COMPLETED`, `FAILED`, and `IGNORED` mean. A single code appears once per program and tier that gates on it, so the same code can repeat across a response. `source_program_identifier` stays `null` on utility, state, and market programs, and names the source program on partner offers.
+Read `status` and `severity` for the outcome, and `code` for the kind of requirement behind it. The [Incentives Guide](/api-reference/incentives-lookups/overview) covers what `COMPLETED`, `FAILED`, and `IGNORED` mean. `source_program_identifier` stays `null` on utility, state, and market programs, and names the source program on partner offers.
 
-The prefix tells you where the input comes from: `UTIL` and `CUST` for customer facts, `CD` for the device as installed, `DEV` for the device model in Leap’s catalog, `DRV` for values Leap derives, `AGR` for customer agreements, and the remainder for program-level gates.
+## A code is a category, not an identity
 
-## Codes and what they check
+The same code appears on as many checks as the program gates on. Twenty different attestations all carry `APP-002`, and a program can require several of them at once, so one tier can return several `APP-002` rows that the customer must each act on.
 
-The Input column names the field that resolves each check. Send it on a lookup or a refresh, or collect it through Connect, and the check stops returning `IGNORED`. `AGR` checks read `AGREED` or `REJECTED`, written when the customer accepts or declines that agreement in Connect.
+That has two consequences for your code:
 
-| Code | What it checks | Input |
+- **Don't key on `code`.** Use it to group and to route ("show every attestation", "these are equipment problems"). Tell two rows of the same code apart with `requirement`, or with `expected_values` and `actual_value`.
+- **Match on the prefix.** `code.startsWith("EQUIP-")` is supported and stable. Codes are additive: an existing code is never renumbered or reused, and new kinds of requirement arrive as new codes.
+
+A check whose kind Leap hasn't categorized yet reports `MISC`. Expect a handful of them in any large response, and handle `MISC` as "read the `requirement` text" rather than as an error.
+
+## The codes
+
+The Resolved by column names the data that settles each check. Send it on a lookup or a refresh, or let Connect collect it from the customer, and the check stops returning `IGNORED`.
+
+| Code | What it checks | Resolved by |
 | --- | --- | --- |
-| `UTIL-001` | Customer’s utility matches the program’s utility. | `customer.eiaid` |
-| `CUST-AN-001` | A utility account number is on file for the customer. | `customer.utility_account_number` |
-| `CUST-AS-001` | The utility account is active rather than closed. | `customer.utility_account_status` |
-| `CUST-BA-001` | The building is at least the program’s minimum age. | `customer.building_age_years` |
-| `CUST-CL-001` | Customer classification is in the program’s scope, such as residential or commercial. | `customer.customer_classification` |
-| `CUST-DU-001` | The dwelling-unit count at the address meets the program’s rule. | `customer.dwelling_units` |
-| `CUST-HO-001` | The customer owns the home. | `customer.is_homeowner` |
-| `CUST-IND-001` | The customer qualifies under an Indigenous customer program. | `customer.is_indigenous` |
-| `CUST-IQ-001` | The customer meets the program’s income-qualification rule. | `customer.is_income_qualified` |
-| `CUST-PRA-001` | No rebate has been claimed at this address before. | `customer.has_previous_rebate_at_address` |
-| `CUST-RP-001` | The customer is on a utility rate plan the program allows. | `customer.utility_rate_plan` |
-| `CUST-ST-001` | The service address is in a state the program covers. | `customer.state` |
-| `CUST-VC-001` | The customer has at least the required number of vehicles on file. | `customer.vehicle_count` |
-| `CD-IC-001` | Installation cost is within the program’s bounds. | `customer_device.installation_cost` |
-| `CD-ID-001` | The install date falls inside the eligible window. | `customer_device.installation_date` |
-| `CD-IT-001` | The installation method is allowed, such as professional install only. | `customer_device.installation_type` |
-| `CD-NC-001` | Cost net of other utility incentives is within the program’s cap. | `customer_device.net_cost` |
-| `CD-NEW-001` | The equipment is new rather than used. | `customer_device.is_new_equipment` |
-| `CD-PA-001` | The permit for the install is approved. | `customer_device.permit_approved` |
-| `CD-PD-001` | The purchase date falls inside the eligible window. | `customer_device.purchase_date` |
-| `CD-PP-001` | Purchase price is within the program’s bounds. | `customer_device.purchase_price` |
-| `CD-PTO-001` | The permission-to-operate date falls inside the program’s window. Used by battery and generation programs. | `customer_device.pto_date` |
-| `CD-UCI-001` | The utility-side incentive amount, which programs with a net-cost cap measure against. | `customer_device.utility_customer_incentive` |
-| `CD-VR-001` | A vehicle registration is on file for the address. | `customer_device.vehicle_registration` |
-| `CD-VT-001` | The vehicle is an eligible type, such as battery electric or plug-in hybrid. | `customer_device.vehicle_type` |
-| `DEV-BC-001` | Battery capacity is inside the program’s range. | `device.battery_capacity_kwh` |
-| `DEV-CL-001` | The charger is at the level the program requires. | `device.charger_level` |
-| `DEV-CON-001` | The device offers a connector type the program allows. | `device.connector_types` |
-| `DEV-DC-001` | The device category is in the program’s scope. | `device.device_category_id` |
-| `DEV-ES-001` | The device is ENERGY STAR certified. | `device.is_energy_star_certified` |
-| `DEV-MFR-001` | The manufacturer is on the program’s approved-brand list. | `device.manufacturer` |
-| `DEV-MPC-001` | The device is a mobile plug-in charger, which some programs price separately. | `device.is_mobile_plugin_charger` |
-| `DEV-MSRP-001` | The manufacturer’s suggested retail price is inside the program’s range. | `device.msrp` |
-| `DEV-NW-001` | The device is networked, also described as smart or connected. | `device.is_networked` |
-| `DEV-PV-001` | Solar capacity is inside the program’s range. | `device.pv_capacity_kw` |
-| `DEV-PW-001` | Charging power is within the program’s limit. | `device.charging_power_kw` |
-| `DEV-SC-001` | The device subcategory is in the program’s scope. | `device.subcategory` |
-| `DEV-UL-001` | The device carries a UL or ETL safety listing. | `device.is_ul_listed` |
-| `DRV-DSI-001` | The application arrives within the program’s post-install deadline. Leap derives this from the install date. | `derived.days_since_installation` |
-| `AGR-ACE-MR-001` | Customer accepted Atlantic City Electric Residential Make-Ready terms. | `customer.ace_make_ready_terms` |
-| `AGR-CMS-1RPA-001` | Customer attested that no rebate has been claimed at this address, for Consumers Energy. | `customer.cms_one_rebate_per_address` |
-| `AGR-CMS-NS-001` | Customer consented to Consumers Energy Nighttime Savers off-peak rate enrollment. | `customer.cms_nighttime_savers_consent` |
-| `AGR-CMS-TC-001` | Customer accepted Consumers Energy program terms. | `customer.cms_terms_and_conditions` |
-| `AGR-DEC-EV-001` | Customer attested to owning or leasing a registered electric vehicle, for Duke Energy Carolinas. | `customer.dec_ev_ownership` |
-| `AGR-DEC-TC-001` | Customer accepted Duke Energy Carolinas program terms. | `customer.dec_terms_and_conditions` |
-| `AGR-DEF-TC-001` | Customer accepted Duke Energy Florida program terms, which also cover inspection consent and one rebate per address. | `customer.def_terms_and_conditions` |
-| `AGR-GPC-TC-001` | Customer accepted Georgia Power EV Charger Rebate terms. | `customer.gpc_terms_and_conditions` |
-| `AGR-PBSR-001` | Customer attested to no prior battery rebate, for the PG&E battery storage rebate. | `customer.pge_pbsr_first_time_battery` |
-| `AGR-PBSR-002` | Customer agreed to PG&E time-of-use rate enrollment for the battery. | `customer.pge_pbsr_tou_enrollment` |
-| `AGR-PBSR-003` | Customer agreed to PG&E Automated Response Technology enrollment for the battery. | `customer.pge_pbsr_art_enrollment` |
-| `AGR-PGE-001` | Customer agreed to PG&E Automated Response Technology enrollment for the thermostat. | `customer.pge_art_enrollment` |
-| `AGR-PGE-SAC-IC-001` | Customer consented to PG&E installing a SmartAC switch on their heating and cooling equipment. | `customer.pge_smartac_install_consent` |
-| `AGR-PGE-SAC-LC-001` | Customer consented to PG&E cycling their air conditioning during peak demand. | `customer.pge_smartac_load_control_consent` |
-| `AGR-PSELI-TC-001` | Customer accepted PSEG Long Island program terms. | `customer.psegli_terms_and_conditions` |
-| `AGR-SMUD-CN-001` | Customer attested that the installer is on SMUD’s approved-contractor network. | `customer.smud_contractor_network_attestation` |
-| `AGR-SMUD-HH-001` | Customer attested that the household has not received this rebate before. | `customer.smud_household_lifetime_attestation` |
-| `AGR-SMUD-TC-001` | Customer accepted SMUD Charge@Home program terms. | `customer.smud_terms_and_conditions` |
-| `APL-001` | The device is on the program’s approved-product list. | `program.approved_product` |
-| `REB-001` | The customer or household is under the program’s rebate cap. | `program.one_rebate_per_x` |
-| `FET-001` | The device is the first eligible one in its award track. Later devices lose to the earlier winner. | `program.first_eligible_in_track` |
-| `MAP-001` | The service address falls inside the program’s mapped service territory. | `program.map_verification` |
-| `VA-LOOK-001` | A revenue projection resolved for this program and partner. Applies to partner offers priced per unit. | `value_automation_lookup` |
+| `UTIL-001` | The customer is an active account holder with the program's utility, on an eligible rate plan. | `customer.eiaid`, `customer.utility_account_number`, `customer.utility_account_status`, `customer.utility_rate_plan` |
+| `EQUIP-001` | The equipment is new rather than used, and recent enough for the program. | `customer_device.is_new_equipment`, `customer_device.purchase_date`, `device.manufacture_year` |
+| `EQUIP-002` | The charger is at the level the program requires. | `device.charger_level` |
+| `EQUIP-003` | The device is on the program's approved product list, or from an approved brand. | `program.approved_product`, `device.manufacturer`, `device.model_name` |
+| `EQUIP-004` | The device carries a UL, ETL, or other NRTL safety listing. | `device.is_ul_listed` |
+| `EQUIP-005` | The device is ENERGY STAR certified. | `device.is_energy_star_certified` |
+| `EQUIP-006` | Charging power is inside the program's range. | `device.charging_power_kw` |
+| `EQUIP-007` | The device is networked, also described as smart or connected. | `device.is_networked`, `device.is_ocpp_compliant` |
+| `EQUIP-008` | The device offers a connector type the program allows. | `device.connector_types` |
+| `EQUIP-009` | The charger is permanently installed rather than portable. | `device.is_mobile_plugin_charger`, `customer_device.mounting_type` |
+| `CONT-001` | A licensed or in-network contractor did the install. | `customer_device.contractor_name`, `customer_device.installer_license`, `customer_device.installation_type`, `program.contractor_network` |
+| `CONT-002` | The electrical permit is approved and the inspection passed. | `customer_device.permit_approved`, `customer_device.permit_number`, `customer_device.inspection_passed` |
+| `VEH-001` | The customer has an eligible registered vehicle. | `customer.vehicle_count`, `customer_device.vehicle_type`, `customer_device.vehicle_registration` |
+| `CUST-001` | The customer or household is under the program's rebate limit, and hasn't already won an award in this track. | `customer.has_previous_rebate_at_address`, `program.one_rebate_per_x`, `program.first_eligible_in_track` |
+| `CUST-002` | The building and customer class are in the program's scope. | `customer.customer_classification`, `customer.is_homeowner`, `customer.building_age_years`, `customer.dwelling_units` |
+| `CUST-003` | The customer meets the program's income-qualification rule, which can also route them to a different tier. | `customer.is_income_qualified` |
+| `APP-001` | The claim arrives inside the program's window after install or permission to operate. | `customer_device.installation_date`, `customer_device.pto_date` |
+| `APP-002` | The customer signed, accepted, or attested to something the program requires. | The specific agreement, collected in Connect |
+| `MISC` | A real requirement that fits no category above, such as a service-territory map check, a device specification the program prices on, or a state-level rule. | Named in `requirement` |
 
 <Note>
-  Agreement codes are program-specific. A response carries only the `AGR` codes belonging to programs the customer matched, so most responses show a handful rather than the full list.
+  `APP-002` covers terms and conditions, program enrollments, and one-rebate-per-address declarations alike, because all of them are a signature the customer gives. A response carries only the agreements belonging to programs the customer matched, so expect a handful rather than the full catalog.
 </Note>

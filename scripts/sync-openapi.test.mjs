@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { filterOperations, retargetServers, ensureSecurity, findBrokenRefs, applyOperationTitles, applyOperationDescriptions, applySchemaDescriptions, findMissingSchemaDescriptions, applyStringReplacements, applyTag, pruneUnusedComponents } from './sync-openapi.mjs';
+import { filterOperations, retargetServers, ensureSecurity, findBrokenRefs, applyOperationTitles, applyOperationDescriptions, applySchemaDescriptions, findMissingSchemaDescriptions, applySchemaExtensions, findMissingSchemaExtensions, applyStringReplacements, applyTag, pruneUnusedComponents } from './sync-openapi.mjs';
 
 const sample = () => ({
   openapi: '3.0.0',
@@ -87,6 +87,31 @@ test('findMissingSchemaDescriptions reports overrides that no longer match', () 
   const spec = schemaSample();
   assert.deepEqual(findMissingSchemaDescriptions(spec, { Req: 'a', 'Req.flag': 'b' }), []);
   assert.deepEqual(findMissingSchemaDescriptions(spec, { 'Req.renamed': 'a', Gone: 'b' }), ['Req.renamed', 'Gone']);
+});
+
+test('applySchemaExtensions merges x- markers without disturbing the declared type', () => {
+  const spec = applySchemaExtensions(schemaSample(), {
+    Req: { 'x-leap-migration': 'device-id-uuid' },
+    'Req.flag': { 'x-leap-migration': 'device-id-uuid' },
+  });
+  assert.equal(spec.components.schemas.Req['x-leap-migration'], 'device-id-uuid');
+  assert.equal(spec.components.schemas.Req.properties.flag['x-leap-migration'], 'device-id-uuid');
+  assert.equal(spec.components.schemas.Req.properties.flag.type, 'boolean', 'declared type untouched');
+  assert.equal(spec.components.schemas.Req.properties.flag.description, 'internal prose', 'description untouched');
+  assert.ok(!('x-leap-migration' in spec.components.schemas.Req.properties.other), 'properties without a marker are left alone');
+});
+
+test('applySchemaExtensions refuses non-x- keys rather than rewriting the schema', () => {
+  assert.throws(
+    () => applySchemaExtensions(schemaSample(), { 'Req.flag': { type: 'string' } }),
+    /only x- keys allowed/,
+  );
+});
+
+test('findMissingSchemaExtensions reports markers that no longer match', () => {
+  const spec = schemaSample();
+  assert.deepEqual(findMissingSchemaExtensions(spec, { 'Req.flag': { 'x-a': 1 } }), []);
+  assert.deepEqual(findMissingSchemaExtensions(spec, { 'Req.renamed': { 'x-a': 1 }, Gone: { 'x-a': 1 } }), ['Req.renamed', 'Gone']);
 });
 
 test('applyStringReplacements rewrites nested example strings and reports unused rules', () => {

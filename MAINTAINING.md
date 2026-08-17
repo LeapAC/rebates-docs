@@ -68,6 +68,38 @@ The sync **fails** if a key stops matching after an upstream rename — otherwis
 internal description would silently ship in its place. When that happens, re-point
 the key (or drop it if the property is gone).
 
+## Mark a schema or property for a migration
+
+`schemaExtensions` merges `x-` extensions onto a schema or property, keyed the same
+way as `schemaDescriptions`:
+
+```json
+"schemaExtensions": {
+  "SomeSchema.some_field": { "x-leap-migration": "some-migration-slug" }
+}
+```
+
+Use it when a field is changing across services and both partners and our own
+tooling need to enumerate every affected field without parsing prose. A marker can
+be read straight off the published spec:
+
+```bash
+jq -r '.components.schemas | to_entries[] | .key as $s | .value.properties // {}
+       | to_entries[] | select(.value["x-leap-migration"] == "some-migration-slug")
+       | "\($s).\(.key)"' api-reference/specs/<spec>.json
+```
+
+Only `x-` keys are accepted, and the sync **throws** on anything else: these
+overrides land next to `type`, and a typo that silently retyped a published field
+would be worse than a failed run. Like `schemaDescriptions`, a key that stops
+matching after an upstream rename **fails** the sync, so a field can't quietly lose
+its marker.
+
+There are no `schemaExtensions` in the config today — the mechanism is here for the
+next cross-service change that needs announcing. Prefer carrying the note in the
+**source** spec, where the field is defined, and reach for a marker here only when
+the source can't express it or the docs need to flag it before the source does.
+
 ## Rewrite example values
 
 Inline `example` strings live throughout the source paths and can't be addressed by

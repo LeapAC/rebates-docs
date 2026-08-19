@@ -135,5 +135,10 @@
       "x": "https://x.com/leapdex",
       "linkedin": "https://www.linkedin.com/company/leap-dex/"
     }
+  },
+  "integrations": {
+    "ga4": {
+      "measurementId": "G-PF7MQ92GG6"
+    }
   }
 }

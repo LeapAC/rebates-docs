@@ -700,11 +700,16 @@
                 "INCOME_FORM",
                 "W9",
                 "OTHER",
+                "MODEL_TECH_SPECS",
                 "VEHICLE_PURCHASE",
                 "UTILITY_BILL",
                 "VEHICLE_REGISTRATION",
                 "SIGNATURE",
-                "TARIFF_CONFIRMATION"
+                "TARIFF_CONFIRMATION",
+                "SPEC_SHEET_INVERTER",
+                "DIAGRAM_ONE_LINE",
+                "DIAGRAM_SITE_PLAN",
+                "PHOTO_SERIAL_NUMBER"
               ]
             },
             "example": "INVOICE_EQUIPMENT"
@@ -833,7 +838,11 @@
                       "UTILITY_BILL",
                       "VEHICLE_REGISTRATION",
                       "SIGNATURE",
-                      "TARIFF_CONFIRMATION"
+                      "TARIFF_CONFIRMATION",
+                      "SPEC_SHEET_INVERTER",
+                      "DIAGRAM_ONE_LINE",
+                      "DIAGRAM_SITE_PLAN",
+                      "PHOTO_SERIAL_NUMBER"
                     ],
                     "description": "Type of attachment being uploaded",
                     "example": "INVOICE_EQUIPMENT"
@@ -1157,7 +1166,11 @@
                       "UTILITY_BILL",
                       "VEHICLE_REGISTRATION",
                       "SIGNATURE",
-                      "TARIFF_CONFIRMATION"
+                      "TARIFF_CONFIRMATION",
+                      "SPEC_SHEET_INVERTER",
+                      "DIAGRAM_ONE_LINE",
+                      "DIAGRAM_SITE_PLAN",
+                      "PHOTO_SERIAL_NUMBER"
                     ],
                     "description": "Type of attachment",
                     "example": "INVOICE_EQUIPMENT"
@@ -2046,7 +2059,11 @@
               "UTILITY_BILL",
               "VEHICLE_REGISTRATION",
               "SIGNATURE",
-              "TARIFF_CONFIRMATION"
+              "TARIFF_CONFIRMATION",
+              "SPEC_SHEET_INVERTER",
+              "DIAGRAM_ONE_LINE",
+              "DIAGRAM_SITE_PLAN",
+              "PHOTO_SERIAL_NUMBER"
             ],
             "description": "Type of attachment",
             "example": "INVOICE_EQUIPMENT"

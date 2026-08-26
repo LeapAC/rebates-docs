@@ -3,7 +3,7 @@ title: Attachments Guide
 description: Upload invoices, permits, and photos to an application in three steps.
 ---
 
-Programs ask for documentation to substantiate a claim. The required types vary by program; common ones are `INVOICE_EQUIPMENT`, `INVOICE_INSTALL`, `PERMIT`, `PHOTO_INSTALL`, `PHOTO_NAMEPLATE`, and `PHOTO_METER`. You don't have to hold them all: Leap Connect collects any types you haven't claimed under **Data Preferences** from the customer, so claim only what you can reliably supply.
+Programs ask for documentation to substantiate a claim. The required types vary by program; common ones are `INVOICE_EQUIPMENT`, `INVOICE_INSTALL`, `PERMIT`, `PHOTO_INSTALL`, `PHOTO_NAMEPLATE`, and `PHOTO_METER`. [Attachment types](#attachment-types) defines every value the API accepts. You don't have to hold them all: Leap Connect collects any types you haven't claimed under **Data Preferences** from the customer, so claim only what you can reliably supply.
 
 ## Uploading a file
 
@@ -45,4 +45,56 @@ File bytes never pass through the Applications API. You upload them directly to 
 </Step>
 </Steps>
 
+## Downloading a file
+
 To read a file back, call **Download attachment** for a signed URL, valid for one hour.
+
+## Attachment types
+
+`attachment_type` records what a file proves, so pick the value that matches the document rather than the file format: a photo of a permit is a `PERMIT`, not a `PHOTO_INSTALL`. Every upload and commit call carries one, and a value outside this list returns 400 `bad_request` listing the accepted values. Which types a program asks for varies, so treat the tables below as definitions rather than a checklist.
+
+### Purchase and cost
+
+| Type | What it establishes |
+|---|---|
+| `INVOICE_EQUIPMENT` | The customer bought the equipment. An itemized receipt or invoice naming the retailer, purchase date, manufacturer, model, quantity, and price paid. |
+| `INVOICE_INSTALL` | A contractor did the installation work and was paid for it. The installer's invoice, showing the installation date, total cost, and the contractor's name and address. |
+| `VEHICLE_PURCHASE` | The customer acquired the vehicle. A purchase or lease agreement, or a bill of sale, showing the Vehicle Identification Number (VIN), transaction date, and price. |
+
+### Installation and inspection
+
+| Type | What it establishes |
+|---|---|
+| `PHOTO_INSTALL` | The equipment is installed at the service address. A photo of the finished installation in place, rather than one of the work in progress. |
+| `PHOTO_NAMEPLATE` | The unit installed is the model the application claims. A close-up of the manufacturer's nameplate, with the model number and electrical ratings legible. |
+| `PHOTO_SERIAL_NUMBER` | The unit installed is one specific unit. A close-up of the serial number label, for programs that track serials as well as models. |
+| `PHOTO_METER` | The utility can tie the installation to a service point. A photo of the utility meter at the property, with the meter number readable. |
+| `PERMIT` | The work was permitted and inspected. The building or electrical permit from the local authority. Programs that require it usually want the record marked final, passed, or completed. |
+
+### Equipment specifications
+
+| Type | What it establishes |
+|---|---|
+| `MODEL_TECH_SPECS` | The model installed meets the capacity or certification the program pays on. The manufacturer's specification sheet for that exact model, such as a battery or photovoltaic (PV) module datasheet. |
+| `SPEC_SHEET_INVERTER` | The inverter meets its own rated specification, which solar and storage programs check separately from the panels or battery. The manufacturer's inverter datasheet. |
+| `AHRI_CERT` | A heat pump or air conditioner meets its rated efficiency as installed. The Air-Conditioning, Heating, and Refrigeration Institute (AHRI) certificate for the matched indoor and outdoor combination. |
+| `DIAGRAM_ONE_LINE` | The electrical design matches what the program approved. The one-line diagram for the system. |
+| `DIAGRAM_SITE_PLAN` | The equipment sits where the design puts it. The site plan showing equipment placement on the property. |
+
+### Account and eligibility
+
+| Type | What it establishes |
+|---|---|
+| `UTILITY_BILL` | The customer holds the utility account at that address. A recent bill showing the account number, the rate the customer is on, and the customer's name. |
+| `TARIFF_CONFIRMATION` | The customer is enrolled on the rate the program requires. The utility's confirmation of that enrollment, such as an hourly pricing enrollment email. |
+| `VEHICLE_REGISTRATION` | The vehicle is registered to the customer. The state registration card, showing the VIN plus the registered owner's name and address. |
+| `INCOME_FORM` | The customer qualifies for an income-qualified incentive tier. The signed income verification form, or the proof behind it. |
+| `NEAT_REPORT` | A weatherization project clears the savings threshold its program sets. The National Energy Audit Tool (NEAT) output, including the savings-to-investment ratio. |
+
+### Payment and authorization
+
+| Type | What it establishes |
+|---|---|
+| `W9` | The party receiving the rebate can be paid and reported to the IRS. Form W-9 for that payee. |
+| `SIGNATURE` | The customer or contractor accepted the program's terms or attestation. What counts varies by program: a typed full name, initials, or a signed PDF. |
+| `OTHER` | Nothing above fits. Use it for a document a program asks for that has no dedicated type. The type alone does not say which requirement the file satisfies, so prefer a specific type wherever one applies. |

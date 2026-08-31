@@ -34,7 +34,8 @@
         "group": "Get Started",
         "pages": [
           "index",
-          "quickstart"
+          "quickstart",
+          "setup-claimed-fields"
         ]
       },
       {

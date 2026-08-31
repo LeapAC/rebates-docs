@@ -3,7 +3,7 @@ title: Field reference and claimed fields
 description: Every customer and installation field the two Leap APIs accept, which ones an incentives lookup reads, and how to plan what you supply for customers.
 ---
 
-Two Leap APIs take customer and installation data, and they spell the same facts differently. This page maps each field to the property name the Applications API takes, the prefixed key an incentives lookup takes, and its type. Use it to plan which fields you claim under **Data Preferences**, and to build request bodies that pass validation on the first call.
+Two Leap APIs take customer and installation data, and they spell the same facts differently. This page gives every field three things: the Applications API property name, the prefixed key a lookup takes, and the type. Use it to plan what you claim under **Data Preferences**, and to build bodies that pass validation first time.
 
 ## How the two APIs name the same field
 
@@ -47,9 +47,9 @@ The Applications API takes bare property names nested under `customer` or `custo
 One fact, two spellings: the equipment price is `customer_device.purchase_price` as a string on a lookup, and `purchase_price` as a number on an application.
 
 <Warning>
-  The lookup key set is closed, even though the schema accepts any string key. An unrecognised key is rejected with 400 for the whole request, so one typo costs the eligibility answer for every program, not only that field. Leap checks `customer_details` and every device's `details` together before it writes anything, so one call reports every bad key.
+  The lookup key set is closed, even though the schema accepts any string key. An unrecognised key returns 400 for the whole request. One typo therefore costs you the eligibility answer for every program, not only that field. Leap checks `customer_details` and every device's `details` together before writing, so one call reports every bad key.
 
-  The Applications API behaves the other way. It drops a property it does not recognise and still returns success, so a misspelled name is lost without an error.
+  The Applications API behaves the other way. It drops a property it does not recognise and still returns success, so a misspelled name is lost silently.
 </Warning>
 
 ### Value forms a lookup accepts
@@ -108,7 +108,7 @@ These 31 keys are the whole set. Any other key returns 400.
 | `customer_device.retailer_name` | string |
 | `customer_device.warranty_months` | number |
 
-Every other field on this page belongs to the Applications API alone. Send those with [Update application](/api-reference/applications/overview), which accepts a wider vocabulary than a lookup: 70 customer properties, 65 installation properties, and 35 on the application itself.
+Every other field on this page belongs to the Applications API alone. Send those with [Update application](/api-reference/applications/overview), which accepts a wider vocabulary than a lookup does. Its published schema lists the common properties rather than every one it accepts, so ask Leap if you need a field you cannot find.
 
 ## What claiming a field changes
 
@@ -210,7 +210,7 @@ These fields describe the applicant rather than the equipment. Most partners can
     <ResponseField name="utility_account_status" type="enum">
       **Lookup key:** `customer.utility_account_status`
 
-      Standing of the customer's utility account. The value set is closed: `active`, `delinquent`, `closed`, `inactive`, or `pending`. Programs that require an account in good standing check it.
+      Standing of the customer's utility account. Programs that require an account in good standing check it. A lookup accepts five values: `active`, `delinquent`, `closed`, `inactive`, `pending`. **Update application accepts only three of them:** `active`, `inactive`, `pending`. Send `delinquent` or `closed` on a lookup or a refresh.
     </ResponseField>
 
     <ResponseField name="utility_rate_plan" type="string">
@@ -222,13 +222,13 @@ These fields describe the applicant rather than the equipment. Most partners can
 
   <Accordion title="Household and property (8 fields)" icon="house">
     <ResponseField name="is_homeowner" type="boolean">
-      **Frequency:** HIGH · **Lookup key:** not documented
+      **Frequency:** HIGH · **Lookup:** not documented
 
       A boolean variable that defines whether the customer owns their home or not
     </ResponseField>
 
     <ResponseField name="is_income_qualified" type="boolean">
-      **Lookup key:** not documented
+      **Lookup:** not documented
 
       Whether the customer meets a program's income-qualified criteria. Programs with an income-based tier check it.
     </ResponseField>

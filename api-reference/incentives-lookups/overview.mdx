@@ -97,4 +97,4 @@ A percentage program then pays `min(rate × cost, cap)`, summed over the devices
   When no estimate matches, cost resolves to zero rather than to an error. A percentage tier then prices at zero, and a program that would pay reads as ineligible. Send `customer_device.purchase_price` and `customer_device.installation_cost` on any lookup where you expect a cost-based program to price.
 </Warning>
 
-`customer_devices.total_project_cost` and `net_cost` exist on the Applications API, and no calculation reads either one. Cost reaches eligibility through the two keys above alone. See [Field reference and claimed fields](/setup-claimed-fields).
+`total_project_cost` and `net_cost` exist on the Applications API, and no calculation reads either one. Cost reaches eligibility through the two keys above alone. See [Field reference and claimed fields](/setup-claimed-fields).

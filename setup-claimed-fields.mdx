@@ -1,15 +1,15 @@
 ---
 title: Field reference and claimed fields
-description: Every customer and installation field the two Leap APIs accept, which ones an incentives lookup reads, and how to plan what you supply for customers.
+description: The canonical name for every field Leap accepts, and how each one is written on a lookup and on an application.
 ---
 
-Two Leap APIs take customer and installation data, and they spell the same facts differently. This page gives every field three things: its Applications API property name, the prefixed key a lookup takes, and its type. Use it to plan what you claim under **Data Preferences**, and to build bodies that pass validation first time.
+Every field Leap accepts has one canonical name, written `scope.field`. Send those names on [Look up incentives](/api-reference/incentives-lookups/look-up-incentives) and [Refresh incentives](/api-reference/incentives-lookups/refresh-incentives), which is the path we recommend. The same names carry over to an application through one mechanical rule, so you map your data to Leap once. Use this page to build request bodies, and to plan what you claim under **Data Preferences**.
 
-## How the two APIs name the same field
+## One key name, two renderings
 
-The notation differs by API, and sending one API's spelling to the other does not work.
+There are two scopes: `customer` for facts about the applicant, and `customer_device` for facts about one installation. The scope is part of the name, so `customer.email` and `customer_device.purchase_date` are the names themselves rather than a path to them.
 
-An incentives lookup takes flat, prefixed keys whose values are always strings. Customer facts go in `customer_details`, and installation facts go in the `details` object on the matching `customer_devices[]` entry:
+**On a lookup or a refresh**, send the canonical name exactly as written, as a key. Customer-scope keys go in `customer_details`. Installation-scope keys go in the `details` object on the matching `customer_devices[]` entry. Values are always strings.
 
 ```json
 {
@@ -28,12 +28,12 @@ An incentives lookup takes flat, prefixed keys whose values are always strings. 
 }
 ```
 
-The Applications API takes bare property names nested under `customer` or `customer_devices[]`, with real JSON types:
+**On an application**, drop the scope prefix and nest the field under the object that scope names. `customer.` fields go inside `customer`. `customer_device.` fields go inside the matching entry of `customer_devices[]`. Values carry their real JSON type.
 
 ```json
 {
   "customer": {
-    "is_homeowner": true
+    "utility_account_number": "0123456789"
   },
   "customer_devices": [
     {
@@ -44,12 +44,17 @@ The Applications API takes bare property names nested under `customer` or `custo
 }
 ```
 
-One fact, two spellings: the equipment price is `customer_device.purchase_price` as a string on a lookup, and `purchase_price` as a number on an application.
+The scope is the same on both sides. A lookup writes it into the key, and an application writes it into the shape:
+
+| Canonical name | On a lookup | On an application |
+| --- | --- | --- |
+| `customer.utility_account_number` | key in `customer_details` | property of `customer` |
+| `customer_device.purchase_price` | key in that device's `details` | property of that `customer_devices[]` entry |
 
 <Warning>
   The lookup key set is closed, even though the schema accepts any string key. An unrecognised key returns 400 for the whole request. One typo therefore costs you the eligibility answer for every program, not only that field. Leap checks `customer_details` and every device's `details` together before writing, so one call reports every bad key.
 
-  The Applications API behaves the other way. It drops a property it does not recognise and still returns success, so a misspelled name is lost silently.
+  An application behaves the other way. It drops a property it does not recognise and still returns success, so a misspelled name is lost silently.
 </Warning>
 
 ### Value forms a lookup accepts
@@ -63,52 +68,56 @@ Every lookup value travels as a string, and Leap parses it into the type the fie
 
 An absent key, a JSON `null`, and a blank string all mean the value is not supplied. None of the three stores anything.
 
-## Keys a lookup accepts
+## The fields
 
-These 31 keys are the whole set. Any other key returns 400.
+Send these on [Look up incentives](/api-reference/incentives-lookups/look-up-incentives) when you have them at quote time, and on [Refresh incentives](/api-reference/incentives-lookups/refresh-incentives) as you learn the rest. These 31 names are the whole lookup set: any other key returns 400.
 
-### Customer scope, sent in `customer_details`
+The **On an application** column gives the same field's property name there, so you can carry one mapping through both APIs.
 
-| Key | Type |
-| --- | --- |
-| `customer.first_name` | string |
-| `customer.last_name` | string |
-| `customer.email` | string |
-| `customer.phone` | string |
-| `customer.utility_account_number` | string |
-| `customer.utility_account_status` | enum |
-| `customer.utility_rate_plan` | string |
-| `customer.is_indigenous` | boolean |
-| `customer.building_age_years` | number |
-| `customer.dwelling_units` | number |
-| `customer.has_previous_rebate_at_address` | boolean |
-| `customer.psps_outage_count` | number |
-| `customer.vehicle_count` | number |
-| `customer.pge_art_enrollment` | string |
-| `customer.pge_pbsr_art_enrollment` | string |
-| `customer.pge_pbsr_tou_enrollment` | string |
-| `customer.pge_pbsr_first_time_battery` | string |
+### Customer scope
 
-### Installation scope, sent in `customer_devices[].details`
+| Canonical name | Type | On an application |
+| --- | --- | --- |
+| `customer.first_name` | string | `customer.first_name` |
+| `customer.last_name` | string | `customer.last_name` |
+| `customer.email` | string | `customer.email` |
+| `customer.phone` | string | `customer.phone` |
+| `customer.utility_account_number` | string | `customer.utility_account_number` |
+| `customer.utility_account_status` | enum | `customer.utility_account_status`, three of five values |
+| `customer.utility_rate_plan` | string | `customer.utility_rate_plan` |
+| `customer.is_indigenous` | boolean | `customer.is_indigenous` |
+| `customer.building_age_years` | number | `customer.building_age_years` |
+| `customer.dwelling_units` | number | `customer.dwelling_units` |
+| `customer.has_previous_rebate_at_address` | boolean | eligibility only |
+| `customer.psps_outage_count` | number | eligibility only |
+| `customer.vehicle_count` | number | eligibility only |
+| `customer.pge_art_enrollment` | agreement | eligibility only |
+| `customer.pge_pbsr_art_enrollment` | agreement | eligibility only |
+| `customer.pge_pbsr_tou_enrollment` | agreement | eligibility only |
+| `customer.pge_pbsr_first_time_battery` | agreement | eligibility only |
 
-| Key | Type |
-| --- | --- |
-| `customer_device.purchase_price` | number |
-| `customer_device.installation_cost` | number |
-| `customer_device.purchase_date` | date |
-| `customer_device.installation_date` | date |
-| `customer_device.pto_date` | date |
-| `customer_device.is_new_equipment` | boolean |
-| `customer_device.inspection_passed` | boolean |
-| `customer_device.permit_number` | string |
-| `customer_device.contractor_license` | string |
-| `customer_device.installer_license` | string |
-| `customer_device.vehicle_registration` | string |
-| `customer_device.vehicle_type` | string |
-| `customer_device.retailer_name` | string |
-| `customer_device.warranty_months` | number |
+### Installation scope
 
-Every other field on this page belongs to the Applications API alone. Send those with [Update application](/api-reference/applications/overview), which accepts a wider vocabulary than a lookup does. Its published schema lists the common properties rather than every one it accepts. Ask Leap if you need a field you cannot find.
+| Canonical name | Type | On an application |
+| --- | --- | --- |
+| `customer_device.purchase_price` | number | `customer_device.purchase_price` |
+| `customer_device.installation_cost` | number | `customer_device.installation_cost` |
+| `customer_device.purchase_date` | date | `customer_device.purchase_date` |
+| `customer_device.installation_date` | date | `customer_device.installation_date` |
+| `customer_device.is_new_equipment` | boolean | `customer_device.is_new_equipment` |
+| `customer_device.inspection_passed` | boolean | `customer_device.inspection_passed` |
+| `customer_device.permit_number` | string | `customer_device.permit_number` |
+| `customer_device.contractor_license` | string | `customer_device.contractor_license` |
+| `customer_device.vehicle_type` | string | `customer_device.vehicle_type` |
+| `customer_device.retailer_name` | string | `customer_device.retailer_name` |
+| `customer_device.warranty_months` | number | `customer_device.warranty_months` |
+| `customer_device.pto_date` | date | lookup and refresh only |
+| `customer_device.installer_license` | string | lookup and refresh only |
+| `customer_device.vehicle_registration` | string | `customer_device.vehicle_vin` |
+
+Three rows do not carry straight across. `pto_date` and `installer_license` have no property on an application yet, so send them on a lookup or a refresh. `vehicle_registration` is the same fact as an application's `vehicle_vin` under a different name.
+
+**Eligibility only** marks a fact Leap evaluates but does not keep on an application. Send it on a lookup or a refresh and nowhere else. Vehicle count comes from the devices you register rather than from a field, and the four PG&E rows are enrollments the program checks rather than data an application holds.
 
 ## What claiming a field changes
 
@@ -252,19 +261,19 @@ These fields describe the applicant rather than the equipment. Most partners can
     </ResponseField>
 
     <ResponseField name="has_previous_rebate_at_address" type="boolean">
-      **Lookup key:** `customer.has_previous_rebate_at_address` · **Applications API:** not accepted
+      **Lookup key:** `customer.has_previous_rebate_at_address` · **On an application:** eligibility only
 
       A rebate was already paid at this service address. Programs that pay one rebate per address refuse a second claim, so a `true` value blocks those tiers.
     </ResponseField>
 
     <ResponseField name="psps_outage_count" type="number">
-      **Lookup key:** `customer.psps_outage_count` · **Applications API:** not accepted
+      **Lookup key:** `customer.psps_outage_count` · **On an application:** eligibility only
 
       The number of Public Safety Power Shutoff (PSPS) events recorded at the service address. PG&E battery programs require a minimum count.
     </ResponseField>
 
     <ResponseField name="vehicle_count" type="number">
-      **Lookup key:** `customer.vehicle_count` · **Applications API:** not accepted
+      **Lookup key:** `customer.vehicle_count` · **On an application:** eligibility only
 
       The number of electric vehicles the customer keeps at the service address. Some programs pay one rebate for each vehicle, up to a limit.
     </ResponseField>
@@ -318,25 +327,25 @@ These fields describe the applicant rather than the equipment. Most partners can
     Four keys record a PG&E enrollment the customer has already completed. A lookup accepts them because the enrollment is a fact you may already hold, and no value set constrains them: send the value your own records carry. The Applications API has no property for any of the four.
 
     <ResponseField name="customer.pge_art_enrollment" type="string">
-      **Lookup key:** `customer.pge_art_enrollment` · **Applications API:** not accepted
+      **Lookup key:** `customer.pge_art_enrollment` · **On an application:** eligibility only
 
       Records the customer's PG&E ART enrollment.
     </ResponseField>
 
     <ResponseField name="customer.pge_pbsr_art_enrollment" type="string">
-      **Lookup key:** `customer.pge_pbsr_art_enrollment` · **Applications API:** not accepted
+      **Lookup key:** `customer.pge_pbsr_art_enrollment` · **On an application:** eligibility only
 
       Records the customer's PG&E PBSR ART enrollment.
     </ResponseField>
 
     <ResponseField name="customer.pge_pbsr_tou_enrollment" type="string">
-      **Lookup key:** `customer.pge_pbsr_tou_enrollment` · **Applications API:** not accepted
+      **Lookup key:** `customer.pge_pbsr_tou_enrollment` · **On an application:** eligibility only
 
       Records the customer's PG&E PBSR time-of-use enrollment.
     </ResponseField>
 
     <ResponseField name="customer.pge_pbsr_first_time_battery" type="string">
-      **Lookup key:** `customer.pge_pbsr_first_time_battery` · **Applications API:** not accepted
+      **Lookup key:** `customer.pge_pbsr_first_time_battery` · **On an application:** eligibility only
 
       Records the customer's PG&E PBSR first-time-battery attestation.
     </ResponseField>
@@ -390,7 +399,7 @@ These fields describe one installation: what was bought, when it went in, and wh
     </ResponseField>
 
     <ResponseField name="customer_device.pto_date" type="date">
-      **Lookup key:** `customer_device.pto_date` · **Applications API:** not accepted
+      **Lookup key:** `customer_device.pto_date` · **On an application:** no property yet
 
       Date the utility granted permission to operate (PTO). Programs that require an interconnected, operating system check it.
     </ResponseField>
@@ -468,7 +477,7 @@ These fields describe one installation: what was bought, when it went in, and wh
     </ResponseField>
 
     <ResponseField name="customer_device.vehicle_registration" type="string">
-      **Lookup key:** `customer_device.vehicle_registration` · **Applications API:** not accepted
+      **Lookup key:** `customer_device.vehicle_registration` · **On an application:** `customer_device.vehicle_vin`
 
       Registration record for the vehicle the charger serves. Programs that require the vehicle to be registered check it.
     </ResponseField>
@@ -490,7 +499,7 @@ These fields describe one installation: what was bought, when it went in, and wh
     </ResponseField>
 
     <ResponseField name="customer_device.installer_license" type="string">
-      **Lookup key:** `customer_device.installer_license` · **Applications API:** not accepted
+      **Lookup key:** `customer_device.installer_license` · **On an application:** no property yet
 
       The license number of the electrician that installed the device. Programs that require a licensed installation test only that this value is present.
     </ResponseField>

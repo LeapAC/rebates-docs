@@ -41,7 +41,7 @@ Most of what a program needs arrives after the first lookup. Where you send it d
 - **Claim paperwork goes on [Update application](/api-reference/applications/overview).** Contractor contact details, mailing address, device serial numbers, and the application's own submission and approval dates. No eligibility check reads them, and Refresh has no key for them.
 - **Never re-run a lookup on a live `reference_id`.** A second lookup drops installations the customer doesn't already have into `devices_ignored[]`. When every entry drops, it evaluates zero devices and returns a 200 with no programs and no `connect_url`.
 
-Refresh stores what you send and re-evaluates it. It also provisions applications for newly eligible programs when you set `create_application`. It does not rewrite applications Leap already created, so send a claimed field to Update application too once an application exists.
+Refresh always stores what you send and re-evaluates eligibility against it. Whether those values also reach the customer's application records depends on `create_application`. Set it, and Leap fills any field still blank on those records. Leave it off, and the values stay on the eligibility side only. Leap never overwrites a value already set there, so a fact you're correcting has to go to Update application as well.
 
 For which channel takes each field, see [Field reference and claimed fields](/setup-claimed-fields).
 

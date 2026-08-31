@@ -112,10 +112,14 @@ The **On an application** column gives the same field's property name there, so 
 | `customer_device.retailer_name` | string | `customer_device.retailer_name` |
 | `customer_device.warranty_months` | number | `customer_device.warranty_months` |
 | `customer_device.pto_date` | date | lookup and refresh only |
-| `customer_device.installer_license` | string | lookup and refresh only |
-| `customer_device.vehicle_registration` | string | `customer_device.vehicle_vin` |
+| `customer_device.installer_license` | string | use `customer_device.contractor_license` |
+| `customer_device.vehicle_registration` | presence | supply the `VEHICLE_REGISTRATION` attachment |
 
-Three rows do not carry straight across. `pto_date` and `installer_license` have no property on an application yet, so send them on a lookup or a refresh. `vehicle_registration` is the same fact as an application's `vehicle_vin` under a different name.
+Three rows do not carry straight across:
+
+- **`pto_date`** has no writable property on an application yet, so send it on a lookup or a refresh.
+- **`installer_license`** is the same fact as `contractor_license`, which both APIs accept. Send `contractor_license` and ignore this one.
+- **`vehicle_registration`** is a possession check rather than a value. Leap reads whether you supplied something, not what you supplied, so it does not hold a vehicle identifier. Send the document itself as a `VEHICLE_REGISTRATION` attachment, and send the VIN as `customer_device.vehicle_vin` on an application.
 
 **Eligibility only** marks a fact Leap evaluates but does not keep on an application. Send it on a lookup or a refresh and nowhere else. Vehicle count comes from the devices you register rather than from a field, and the four PG&E rows are enrollments the program checks rather than data an application holds.
 
@@ -477,9 +481,9 @@ These fields describe one installation: what was bought, when it went in, and wh
     </ResponseField>
 
     <ResponseField name="customer_device.vehicle_registration" type="string">
-      **Lookup key:** `customer_device.vehicle_registration` · **On an application:** `customer_device.vehicle_vin`
+      **Lookup key:** `customer_device.vehicle_registration` · **On an application:** supply the `VEHICLE_REGISTRATION` attachment
 
-      Registration record for the vehicle the charger serves. Programs that require the vehicle to be registered check it.
+      Whether the customer has registration for the vehicle the charger serves. This is a possession check: Leap reads whether you supplied a value, not what the value is, so it does not hold a vehicle identifier. Upload the document as a `VEHICLE_REGISTRATION` attachment, and send the VIN as `customer_device.vehicle_vin`.
     </ResponseField>
   </Accordion>
 
@@ -499,9 +503,9 @@ These fields describe one installation: what was bought, when it went in, and wh
     </ResponseField>
 
     <ResponseField name="customer_device.installer_license" type="string">
-      **Lookup key:** `customer_device.installer_license` · **On an application:** no property yet
+      **Lookup key:** `customer_device.installer_license` · **On an application:** use `customer_device.contractor_license`
 
-      The license number of the electrician that installed the device. Programs that require a licensed installation test only that this value is present.
+      The license number of the electrician that installed the device. This is the same fact as `contractor_license`, which both APIs accept, so send that one instead. Programs that require a licensed installation test only that a value is present.
     </ResponseField>
 
     <ResponseField name="contractor_contact_name" type="string">

@@ -1,15 +1,17 @@
 ---
-title: Field reference and claimed fields
-description: The canonical name for every field Leap accepts, and how each one is written on a lookup and on an application.
+title: Field reference
+description: The customer and installation fields you can send with an incentives lookup or refresh.
 ---
 
-Every field Leap accepts has one canonical name, written `scope.field`. Send those names on [Look up incentives](/api-reference/incentives-lookups/look-up-incentives) and [Refresh incentives](/api-reference/incentives-lookups/refresh-incentives), which is the path we recommend. The same names carry over to an application through one mechanical rule, so you map your data to Leap once. Use this page to build request bodies, and to plan what you claim under **Data Preferences**.
+Programs ask about the customer and about the equipment they installed. Send what you know and Leap uses it to qualify the customer, fill their application, and keep them from answering questions you can already answer for them.
 
-## One key name, two renderings
+## Two levels of data
 
-There are two scopes: `customer` for facts about the applicant, and `customer_device` for facts about one installation. The scope is part of the name, so `customer.email` and `customer_device.purchase_date` are the names themselves rather than a path to them.
+A field belongs to the customer or to one installation, and its name says which.
 
-**On a lookup or a refresh**, send the canonical name exactly as written, as a key. Customer-scope keys go in `customer_details`. Installation-scope keys go in the `details` object on the matching `customer_devices[]` entry. Values are always strings.
+`customer.` fields describe the applicant. Send them in `customer_details`.
+
+`customer_device.` fields describe one piece of equipment. Send them in the `details` object on the matching `customer_devices[]` entry, so two installations can carry different values.
 
 ```json
 {
@@ -28,466 +30,127 @@ There are two scopes: `customer` for facts about the applicant, and `customer_de
 }
 ```
 
-**On an application**, drop the scope prefix and nest the field under the object that scope names. `customer.` fields go inside `customer`. `customer_device.` fields go inside the matching entry of `customer_devices[]`. Values carry their real JSON type.
-
-```json
-{
-  "customer": {
-    "utility_account_number": "0123456789"
-  },
-  "customer_devices": [
-    {
-      "id": 78,
-      "purchase_price": 699.00
-    }
-  ]
-}
-```
-
-The scope is the same on both sides. A lookup writes it into the key, and an application writes it into the shape:
-
-| Canonical name | On a lookup | On an application |
-| --- | --- | --- |
-| `customer.utility_account_number` | key in `customer_details` | property of `customer` |
-| `customer_device.purchase_price` | key in that device's `details` | property of that `customer_devices[]` entry |
+Both objects work the same way on [Look up incentives](/api-reference/incentives-lookups/look-up-incentives) and [Refresh incentives](/api-reference/incentives-lookups/refresh-incentives). Send what you hold at quote time on the lookup, and the rest on a refresh as you learn it.
 
 <Warning>
-  The lookup key set is closed, even though the schema accepts any string key. An unrecognised key returns 400 for the whole request. One typo therefore costs you the eligibility answer for every program, not only that field. Leap checks `customer_details` and every device's `details` together before writing, so one call reports every bad key.
-
-  An application behaves the other way. It drops a property it does not recognise and still returns success, so a misspelled name is lost silently.
+  An unrecognised key returns 400, and the response carries no incentives. Leap checks every key in the request before writing anything, so one call reports all of them.
 </Warning>
 
-### Value forms a lookup accepts
+## Value forms
 
-Every lookup value travels as a string, and Leap parses it into the type the field expects:
+Every value travels as a string, and Leap parses it into the type the field expects:
 
 - **Booleans**: send `true` or `false`.
 - **Dates**: send `YYYY-MM-DD`.
 - **Numbers**: send digits with an optional decimal point, no currency symbol and no thousands separator.
 - **Enums**: matched without regard to case, so send the documented value as written.
 
-An absent key, a JSON `null`, and a blank string all mean the value is not supplied. None of the three stores anything.
-
-## The fields
-
-These are the fields that reach a customer's application. Send the ones you hold at quote time on [Look up incentives](/api-reference/incentives-lookups/look-up-incentives). Send the rest on [Refresh incentives](/api-reference/incentives-lookups/refresh-incentives) as you learn them. Every field you supply is one the customer does not have to answer.
-
-### Customer scope
-
-| Canonical name | Type |
-| --- | --- |
-| `customer.first_name` | string |
-| `customer.last_name` | string |
-| `customer.email` | string |
-| `customer.phone` | string |
-| `customer.utility_account_number` | string |
-| `customer.utility_account_status` | enum |
-| `customer.utility_rate_plan` | string |
-| `customer.is_indigenous` | boolean |
-| `customer.building_age_years` | number |
-| `customer.dwelling_units` | number |
-
-### Installation scope
-
-| Canonical name | Type |
-| --- | --- |
-| `customer_device.purchase_price` | number |
-| `customer_device.installation_cost` | number |
-| `customer_device.purchase_date` | date |
-| `customer_device.installation_date` | date |
-| `customer_device.is_new_equipment` | boolean |
-| `customer_device.inspection_passed` | boolean |
-| `customer_device.permit_number` | string |
-| `customer_device.contractor_license` | string |
-| `customer_device.vehicle_type` | string |
-| `customer_device.retailer_name` | string |
-| `customer_device.warranty_months` | number |
-| `customer_device.pto_date` | date |
-
-A lookup accepts a few further keys that only feed an eligibility check and never reach an application, so they are not listed here. Ask Leap if a program you sell into needs one.
-
-## What claiming a field changes
-
-Claiming a field moves responsibility for it from the customer to you. When you claim one under [**Settings → Data Preferences**](https://partner.incentives.leap.energy/settings/data-preferences), that field is:
-
-- Removed from the customer-facing application form
-- Your responsibility to keep accurate and up-to-date
-
-Claimed fields reappear for any device the customer adds themselves, so Connect still collects them in that case.
-
-<Tip>
-Start by claiming fields you already collect across all customers. You can expand to handle territory-specific data over time.
-</Tip>
-
-<Note>
-You don't need to claim all fields in a category. Focus on what you can reliably provide with high accuracy. Start with HIGH frequency fields for maximum impact.
-</Note>
-
-Frequency below rates demand for a field across the utilities Leap covers, as HIGH, MEDIUM, or LOW. Fields added since that survey carry no rating.
+An absent key, a JSON `null`, and a blank string all mean the value is not supplied.
 
 ## Customer fields
 
-These fields describe the applicant rather than the equipment. Most partners can supply some of them from a customer management system.
-
 <AccordionGroup>
   <Accordion title="Identity and contact (4 fields)" icon="user">
-    <ResponseField name="first_name" type="string">
-      **Frequency:** HIGH · **Lookup key:** `customer.first_name`
-
-      The first name of the customer
+    <ResponseField name="customer.first_name" type="string">
+      The customer's first name.
     </ResponseField>
 
-    <ResponseField name="last_name" type="string">
-      **Frequency:** HIGH · **Lookup key:** `customer.last_name`
-
-      The last name of the customer
+    <ResponseField name="customer.last_name" type="string">
+      The customer's last name.
     </ResponseField>
 
-    <ResponseField name="email" type="string">
-      **Frequency:** HIGH · **Lookup key:** `customer.email`
-
-      The email address of the customer
+    <ResponseField name="customer.email" type="string">
+      The customer's email address.
     </ResponseField>
 
-    <ResponseField name="phone" type="string">
-      **Frequency:** HIGH · **Lookup key:** `customer.phone`
-
-      The phone number of the customer
-    </ResponseField>
-  </Accordion>
-
-  <Accordion title="Service and mailing address (6 fields)" icon="map-pin">
-    A lookup takes the service address as its own structured `address` object, so none of these has a `customer.` key. To correct an address after the first lookup, call [Override incentives](/api-reference/incentives-lookups/override-incentives), which re-resolves the serving utility from the new address.
-
-    <ResponseField name="address_line1" type="string">
-      **Frequency:** HIGH · **Lookup:** not accepted
-
-      The first portion of the physical address of the customer
-    </ResponseField>
-
-    <ResponseField name="address_line2" type="string">
-      **Frequency:** LOW · **Lookup:** not accepted
-
-      The second portion of the physical address of the customer
-    </ResponseField>
-
-    <ResponseField name="city" type="string">
-      **Frequency:** HIGH · **Lookup:** not accepted
-
-      The city of the customer, found in their address
-    </ResponseField>
-
-    <ResponseField name="state" type="string">
-      **Frequency:** MEDIUM · **Lookup:** not accepted
-
-      The state of the customer, found in their address
-    </ResponseField>
-
-    <ResponseField name="zip_code" type="string">
-      **Frequency:** HIGH · **Lookup:** not accepted
-
-      The zip code of the customer, found in their address
-    </ResponseField>
-
-    <ResponseField name="mailing_address_line1" type="string">
-      **Frequency:** LOW · **Lookup:** not accepted
-
-      Street line of the customer's mailing address (if different from service address)
+    <ResponseField name="customer.phone" type="string">
+      The customer's phone number.
     </ResponseField>
   </Accordion>
 
   <Accordion title="Utility account (3 fields)" icon="plug">
-    <ResponseField name="utility_account_number" type="string">
-      **Frequency:** HIGH · **Lookup key:** `customer.utility_account_number`
-
-      The utility account number of the customer
+    <ResponseField name="customer.utility_account_number" type="string">
+      The customer's account number with their serving utility. Programs run by a utility check that the applicant is their customer.
     </ResponseField>
 
-    <ResponseField name="utility_account_status" type="enum">
-      **Lookup key:** `customer.utility_account_status`
-
-      Standing of the customer's utility account. Programs that require an account in good standing check it. A lookup accepts five values: `active`, `delinquent`, `closed`, `inactive`, `pending`. **Update application accepts only three of them:** `active`, `inactive`, `pending`. Send `delinquent` or `closed` on a lookup or a refresh.
+    <ResponseField name="customer.utility_account_status" type="enum">
+      Standing of the utility account: `active`, `delinquent`, `closed`, `inactive`, or `pending`. Most programs require an account in good standing.
     </ResponseField>
 
-    <ResponseField name="utility_rate_plan" type="string">
-      **Lookup key:** `customer.utility_rate_plan`
-
-      The customer's rate plan or tariff, as named on their utility account. Programs that require a particular plan, such as a time-of-use tariff, check it.
+    <ResponseField name="customer.utility_rate_plan" type="string">
+      The rate plan or tariff on the utility account. Some programs pay only on a particular plan, such as a time-of-use tariff.
     </ResponseField>
   </Accordion>
 
-  <Accordion title="Household and property (5 fields)" icon="house">
-    <ResponseField name="is_homeowner" type="boolean">
-      **Frequency:** HIGH · **Lookup:** not documented
-
-      A boolean variable that defines whether the customer owns their home or not
+  <Accordion title="Household and property (3 fields)" icon="house">
+    <ResponseField name="customer.is_indigenous" type="boolean">
+      Whether the customer identifies as Indigenous. A few programs add an adder or a dedicated tier.
     </ResponseField>
 
-    <ResponseField name="is_income_qualified" type="boolean">
-      **Lookup:** not documented
-
-      Whether the customer meets a program's income-qualified criteria. Programs with an income-based tier check it.
+    <ResponseField name="customer.building_age_years" type="number">
+      Age of the building in years. Retrofit programs set a minimum.
     </ResponseField>
 
-    <ResponseField name="is_indigenous" type="boolean">
-      **Lookup key:** `customer.is_indigenous`
-
-      Whether the customer identifies as Indigenous. Programs with an Indigenous-applicant requirement check it.
-    </ResponseField>
-
-    <ResponseField name="building_age_years" type="number">
-      **Lookup key:** `customer.building_age_years`
-
-      Age of the building in years. Programs with a minimum or maximum building age compare against this value.
-    </ResponseField>
-
-    <ResponseField name="dwelling_units" type="number">
-      **Lookup key:** `customer.dwelling_units`
-
-      Number of dwelling units at the address. Programs with a unit-count threshold check it, which is common on multifamily rebates.
-    </ResponseField>
-
-  </Accordion>
-
-  <Accordion title="Vehicle (6 fields)" icon="car">
-    These six sit on the customer record, not on the installation, and every name carries the `selected_e_` prefix. The installation carries `vehicle_vin`, `dealership`, and `vehicle_type` separately, listed under [Installation fields](#installation-fields).
-
-    <Warning>
-      `vehicle_make`, `vehicle_model`, and `vehicle_year` are in no allowlist. An update that sends them is dropped without an error, so the value reaches nobody. Claiming a field also removes it from the customer's form, so claiming a name that does not exist collects the value from no one.
-    </Warning>
-
-    <ResponseField name="selected_e_vehicle_make" type="string">
-      **Frequency:** MEDIUM · **Lookup:** not accepted
-
-      For EV charger installations, the make of the electric vehicle (e.g., Tesla, Nissan, Chevrolet). Required to verify customer owns/leases an EV.
-    </ResponseField>
-
-    <ResponseField name="selected_e_vehicle_model" type="string">
-      **Frequency:** MEDIUM · **Lookup:** not accepted
-
-      For EV charger installations, the model of the electric vehicle (e.g., Model 3, Leaf, Bolt). Used with make to identify specific EV.
-    </ResponseField>
-
-    <ResponseField name="selected_e_vehicle_year" type="integer">
-      **Frequency:** MEDIUM · **Lookup:** not accepted
-
-      For EV charger installations, the model year of the electric vehicle. Some programs have requirements about vehicle age.
-    </ResponseField>
-
-    <ResponseField name="selected_e_vehicle_vin" type="string">
-      **Lookup:** not accepted
-
-      Vehicle Identification Number (VIN) of the electric vehicle, held against the customer. The installation carries its own `vehicle_vin`, and the two are separate records.
-    </ResponseField>
-
-    <ResponseField name="selected_e_dealership" type="string">
-      **Lookup:** not accepted
-
-      Name of the dealership the customer bought or leased the vehicle from, held against the customer. The installation carries its own `dealership`.
-    </ResponseField>
-
-    <ResponseField name="selected_e_vehicle_registration_date" type="date">
-      **Lookup:** not accepted
-
-      Date the customer registered the vehicle. Programs that require registration within a window compare against this value.
+    <ResponseField name="customer.dwelling_units" type="number">
+      Number of dwelling units at the address. Separates single-family from multifamily where a program pays differently.
     </ResponseField>
   </Accordion>
-
 </AccordionGroup>
 
 ## Installation fields
 
-These fields describe one installation: what was bought, when it went in, and who put it there. Installation contractors and retailers are usually best placed to supply them. Each field belongs to a single `customer_devices[]` entry, so a customer with two installations carries two sets.
-
 <AccordionGroup>
-  <Accordion title="Cost (4 fields)" icon="dollar-sign">
-    Only `purchase_price` and `installation_cost` reach the incentive calculation. See [How cost-based programs are priced](/api-reference/incentives-lookups/overview#how-cost-based-programs-are-priced).
-
-    <ResponseField name="purchase_price" type="number">
-      **Frequency:** MEDIUM · **Lookup key:** `customer_device.purchase_price`
-
-      The retail price paid for the equipment only, excluding installation labor and materials. Used to verify rebates don't exceed equipment cost and for calculating percentage-based incentives.
+  <Accordion title="Cost (2 fields)" icon="dollar-sign">
+    <ResponseField name="customer_device.purchase_price" type="number">
+      Price paid for the equipment, excluding installation labor and materials.
     </ResponseField>
 
-    <ResponseField name="installation_cost" type="number">
-      **Frequency:** LOW · **Lookup key:** `customer_device.installation_cost`
-
-      The cost of professional installation including labor, materials, permits, and any electrical/plumbing work. Separate from equipment cost to allow programs that reimburse installation separately.
-    </ResponseField>
-
-    <ResponseField name="total_project_cost" type="number">
-      **Lookup:** not accepted
-
-      Total project cost as your own records hold it. The incentive calculation does not read it, so a cost-based program prices from `purchase_price` and `installation_cost` alone.
-    </ResponseField>
-
-    <ResponseField name="net_cost" type="number">
-      **Lookup:** not accepted
-
-      Project cost after other incentives, as your own records hold it. The incentive calculation does not read this one either.
+    <ResponseField name="customer_device.installation_cost" type="number">
+      Cost of the installation: labor, materials, permits, and any electrical work.
     </ResponseField>
   </Accordion>
 
   <Accordion title="Dates (3 fields)" icon="calendar">
-    <ResponseField name="purchase_date" type="date">
-      **Frequency:** HIGH · **Lookup key:** `customer_device.purchase_date`
-
-      Date when the equipment was purchased. Must fall within program year dates and is used to verify eligibility timing requirements.
+    <ResponseField name="customer_device.purchase_date" type="date">
+      Date the customer bought the equipment. Programs check it against their program year.
     </ResponseField>
 
-    <ResponseField name="installation_date" type="date">
-      **Frequency:** MEDIUM · **Lookup key:** `customer_device.installation_date`
-
-      Date when the equipment was fully installed and operational. Critical for determining application deadlines (e.g., must apply within 30/60/90 days) and program year eligibility.
+    <ResponseField name="customer_device.installation_date" type="date">
+      Date the equipment was installed and operational. Claim windows run from this date.
     </ResponseField>
 
     <ResponseField name="customer_device.pto_date" type="date">
-      **Lookup key:** `customer_device.pto_date`
-
-      Date the utility granted permission to operate (PTO). Programs that require an interconnected, operating system check it.
+      Date the utility granted permission to operate. Programs that require interconnection run their claim window from this date instead.
     </ResponseField>
   </Accordion>
 
-  <Accordion title="Equipment and permits (8 fields)" icon="wrench">
-    <ResponseField name="device_serial" type="string">
-      **Frequency:** HIGH · **Lookup:** not accepted
-
-      Serial number of the newly installed device. Required for equipment registration, warranty tracking, and to prevent double-dipping on rebates.
+  <Accordion title="Equipment and installation (7 fields)" icon="wrench">
+    <ResponseField name="customer_device.is_new_equipment" type="boolean">
+      Whether the equipment is new rather than used or refurbished. Most programs pay only on new equipment.
     </ResponseField>
 
-    <ResponseField name="quantity" type="integer">
-      **Frequency:** LOW · **Lookup:** not accepted
-
-      Number of identical units installed at the same time. Default is 1. Used when multiple identical devices (like window AC units or smart thermostats) are installed in a single project.
+    <ResponseField name="customer_device.warranty_months" type="number">
+      Length of the equipment warranty in months. Some programs set a minimum.
     </ResponseField>
 
-    <ResponseField name="permit_number" type="string">
-      **Frequency:** MEDIUM · **Lookup key:** `customer_device.permit_number`
-
-      The building/electrical permit number issued by local authority. Required documentation for programs that mandate permits. Used for verification with local building departments.
+    <ResponseField name="customer_device.retailer_name" type="string">
+      Where the customer bought the equipment. Programs that pay only on approved retailers check it.
     </ResponseField>
 
-    <ResponseField name="trenching_required" type="boolean">
-      **Frequency:** LOW · **Lookup:** not accepted
-
-      Boolean indicating if underground trenching was needed for installation. Relevant for EV chargers and can affect eligible installation costs.
+    <ResponseField name="customer_device.vehicle_type" type="string">
+      Type of vehicle the charger serves. Programs that price by vehicle type check it.
     </ResponseField>
 
-    <ResponseField name="is_new_equipment" type="boolean">
-      **Lookup key:** `customer_device.is_new_equipment`
-
-      Whether the equipment is new rather than used or refurbished. Programs that exclude second-hand equipment check it.
+    <ResponseField name="customer_device.permit_number" type="string">
+      Permit number issued by the local authority. Programs that require a permitted installation check it.
     </ResponseField>
 
-    <ResponseField name="inspection_passed" type="boolean">
-      **Lookup key:** `customer_device.inspection_passed`
-
-      The post-installation inspection of the device passed. This is application-stage data, and an absent value does not block a preliminary check.
+    <ResponseField name="customer_device.inspection_passed" type="boolean">
+      Whether the installation passed inspection.
     </ResponseField>
 
-    <ResponseField name="warranty_months" type="number">
-      **Lookup key:** `customer_device.warranty_months`
-
-      The length of the manufacturer warranty on the device, in months. Programs that set a minimum warranty compare against this value.
-    </ResponseField>
-
-    <ResponseField name="retailer_name" type="string">
-      **Lookup key:** `customer_device.retailer_name`
-
-      The name of the retailer that sold the device. Some programs pay only for a purchase from an approved retailer.
-    </ResponseField>
-  </Accordion>
-
-  <Accordion title="Vehicle and registration (3 fields)" icon="car">
-    These four sit on the installation. The customer record carries its own `selected_e_vehicle_*` set, listed under [Customer fields](#customer-fields).
-
-    <ResponseField name="vehicle_vin" type="string">
-      **Frequency:** MEDIUM · **Lookup:** not accepted
-
-      For EV charger installations, the Vehicle Identification Number of the EV. Used to enforce one-rebate-per-vehicle rules and verify EV ownership.
-    </ResponseField>
-
-    <ResponseField name="dealership" type="string">
-      **Frequency:** LOW · **Lookup:** not accepted
-
-      For EV charger installations, name of dealership where vehicle was purchased/leased. Required documentation for some EV charger rebate programs.
-    </ResponseField>
-
-    <ResponseField name="vehicle_type" type="string">
-      **Lookup key:** `customer_device.vehicle_type`
-
-      Type of the vehicle the charger serves. Programs that price by vehicle type check it.
-    </ResponseField>
-
-  </Accordion>
-
-  <Accordion title="Contractor (10 fields)" icon="hard-hat">
-    These fields identify and verify the installation contractor. General contractors and project managers hold this information already.
-
-    <ResponseField name="contractor_name" type="string">
-      **Frequency:** MEDIUM · **Lookup:** not accepted
-
-      Name of the company that performed the installation. Required by programs that mandate professional installation and used for contractor participation tracking.
-    </ResponseField>
-
-    <ResponseField name="contractor_license" type="string">
-      **Frequency:** MEDIUM · **Lookup key:** `customer_device.contractor_license`
-
-      State license number of the installing contractor. Required to verify contractor is properly licensed per program requirements. Format varies by state.
-    </ResponseField>
-
-    <ResponseField name="contractor_contact_name" type="string">
-      **Frequency:** MEDIUM · **Lookup:** not accepted
-
-      Name of the primary contact person at the contracting company. Used for direct communication about projects and applications.
-    </ResponseField>
-
-    <ResponseField name="contractor_contact_email" type="string">
-      **Frequency:** MEDIUM · **Lookup:** not accepted
-
-      Email address for the primary contact at the contracting company. Used for program communications and missing documentation requests.
-    </ResponseField>
-
-    <ResponseField name="contractor_contact_phone" type="string">
-      **Frequency:** LOW · **Lookup:** not accepted
-
-      Phone number for the primary contact at the contracting company. Used for scheduling inspections and resolving application issues.
-    </ResponseField>
-
-    <ResponseField name="contractor_address_line1" type="string">
-      **Frequency:** LOW · **Lookup:** not accepted
-
-      Street address of the contracting company. Required for vendor verification and 1099 tax reporting for incentive payments.
-    </ResponseField>
-
-    <ResponseField name="contractor_city" type="string">
-      **Frequency:** LOW · **Lookup:** not accepted
-
-      City where the contracting company is located. Part of complete contractor address for business verification.
-    </ResponseField>
-
-    <ResponseField name="contractor_state" type="string">
-      **Frequency:** LOW · **Lookup:** not accepted
-
-      State where the contracting company is located. Used to verify contractor is licensed in the state where work was performed.
-    </ResponseField>
-
-    <ResponseField name="contractor_zip" type="string">
-      **Frequency:** LOW · **Lookup:** not accepted
-
-      ZIP code of the contracting company. Completes contractor address for correspondence and tax reporting.
-    </ResponseField>
-
-    <ResponseField name="contractor_website" type="string">
-      **Frequency:** LOW · **Lookup:** not accepted
-
-      Website URL of the contracting company. Used to verify contractor legitimacy and for customer reference.
+    <ResponseField name="customer_device.contractor_license" type="string">
+      License number of the installing contractor. Programs that require a licensed installation check it.
     </ResponseField>
   </Accordion>
 </AccordionGroup>
-
-## What the customer always supplies
-
-Signatures and attestations stay with the customer, and no API accepts them on their behalf. That covers a program's terms acceptance, its eligibility attestations, and the per-program agreements a program administrator requires the applicant to sign. Leap collects every one of them in Connect, and claiming a field never moves them to you.
-
-A few programs also check an enrollment the customer completed with their utility. Those are eligibility inputs rather than application data, so ask Leap if a program you sell into needs one.

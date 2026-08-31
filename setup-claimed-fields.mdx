@@ -3,7 +3,7 @@ title: Field reference and claimed fields
 description: Every customer and installation field the two Leap APIs accept, which ones an incentives lookup reads, and how to plan what you supply for customers.
 ---
 
-Two Leap APIs take customer and installation data, and they spell the same facts differently. This page gives every field three things: the Applications API property name, the prefixed key a lookup takes, and the type. Use it to plan what you claim under **Data Preferences**, and to build bodies that pass validation first time.
+Two Leap APIs take customer and installation data, and they spell the same facts differently. This page gives every field three things: its Applications API property name, the prefixed key a lookup takes, and its type. Use it to plan what you claim under **Data Preferences**, and to build bodies that pass validation first time.
 
 ## How the two APIs name the same field
 
@@ -108,7 +108,7 @@ These 31 keys are the whole set. Any other key returns 400.
 | `customer_device.retailer_name` | string |
 | `customer_device.warranty_months` | number |
 
-Every other field on this page belongs to the Applications API alone. Send those with [Update application](/api-reference/applications/overview), which accepts a wider vocabulary than a lookup does. Its published schema lists the common properties rather than every one it accepts, so ask Leap if you need a field you cannot find.
+Every other field on this page belongs to the Applications API alone. Send those with [Update application](/api-reference/applications/overview), which accepts a wider vocabulary than a lookup does. Its published schema lists the common properties rather than every one it accepts. Ask Leap if you need a field you cannot find.
 
 ## What claiming a field changes
 

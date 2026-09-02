@@ -323,7 +323,7 @@ To read a file back, call [Download attachment](/api-reference/applications/down
 
 ## Four fields you cannot send
 
-Some programs ask the customer for a fact no partner holds. Connect is where the customer answers, and Data Preferences does not offer these four, so you cannot claim one. They are here so you can see the requirement exists, not so you can supply it.
+Some programs ask the customer for a fact no partner holds. Data Preferences does not offer these four, so you cannot claim one. Connect does not collect them yet either. They are here so you can see the requirement exists, not so you can supply it.
 
 <Warning>
   Sending one of these four keys on a lookup returns 400 for the whole request. You get no programs back. Leave them out of `customer_details` and out of `details`.
@@ -336,7 +336,7 @@ The four are:
 - `customer.number_of_dependents_tax_filing`: dependents claimed on the customer's tax filing. Income thresholds usually scale with household size.
 - `customer.primary_mode_of_space_cooling`: how the home is cooled today. Weatherization and heat-pump programs price against what the equipment replaces.
 
-None of the four is collected yet. Leap is still wiring them up in Connect, and the names above are the ones they will carry.
+Leap is still wiring the four up in Connect, and the names above are the ones they will carry.
 
 ## Documents
 

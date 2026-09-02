@@ -5,7 +5,7 @@ description: Every field and document a program can ask for, which ones you can 
 
 A **requirement** is anything a program asks for before it will pay: a fact about the customer, a fact about the installation, or a document. Under [**Settings → Data Preferences**](https://partner.incentives.leap.energy/settings/data-preferences) you claim the ones you will supply. Leap takes a claimed requirement off the customer's form and expects it from you. Everything you leave unclaimed, Connect asks the customer for.
 
-This page lists them all. Claim what you can supply reliably, and leave the rest.
+This page lists them all. Claim what you can supply reliably, and leave the rest. Four of them are customer-collected, and sending one returns 400: see [Four fields you cannot send](#four-fields-you-cannot-send).
 
 ## Three levels
 
@@ -98,7 +98,7 @@ File bytes never pass through the Applications API. You upload them straight to 
 To read a file back, call [Download attachment](/api-reference/applications/download-attachment) for a signed URL, valid for one hour.
 
 <Note>
-  Programs also ask the customer to sign things: terms, attestations, enrollment consents. Those stay with the customer and Connect collects them, so they are not listed here and you cannot claim them.
+  Programs also ask the customer to sign things: terms, attestations, enrollment consents. This page does not list them. Connect collects them, and Data Preferences does not offer them, so you cannot claim one. Four PG&E enrollment keys are an exception on the lookup path. They record an enrollment the customer already completed with their utility, so a lookup accepts them: `customer.pge_art_enrollment`, `customer.pge_pbsr_art_enrollment`, `customer.pge_pbsr_tou_enrollment` and `customer.pge_pbsr_first_time_battery`.
 </Note>
 
 ## Customer fields
@@ -140,7 +140,7 @@ To read a file back, call [Download attachment](/api-reference/applications/down
     </ResponseField>
   </Accordion>
 
-  <Accordion title="Household and property (8 fields)" icon="house">
+  <Accordion title="Household and property (5 fields)" icon="house">
     <ResponseField name="customer.is_homeowner" type="boolean">
       Whether the customer owns the property. Most programs pay only the owner, or route renters to a different tier.
     </ResponseField>
@@ -159,18 +159,6 @@ To read a file back, call [Download attachment](/api-reference/applications/down
 
     <ResponseField name="customer.dwelling_units" type="number">
       Number of dwelling units at the address. Separates single-family from multifamily where a program pays differently.
-    </ResponseField>
-
-    <ResponseField name="customer.breaker_amperage" type="number">
-      **Customer-collected.** Capacity of the electrical panel in amps. Programs that fund a panel upgrade check whether the existing service can carry the new load.
-    </ResponseField>
-
-    <ResponseField name="customer.joint_taxes" type="boolean">
-      **Customer-collected.** Whether the customer files taxes jointly. Income-qualified programs use it to read the household income threshold correctly.
-    </ResponseField>
-
-    <ResponseField name="customer.number_of_dependents_tax_filing" type="number">
-      **Customer-collected.** Dependents claimed on the customer's tax filing. Income thresholds usually scale with household size.
     </ResponseField>
   </Accordion>
 
@@ -238,7 +226,7 @@ To read a file back, call [Download attachment](/api-reference/applications/down
     </ResponseField>
   </Accordion>
 
-  <Accordion title="Equipment (7 fields)" icon="wrench">
+  <Accordion title="Equipment (6 fields)" icon="wrench">
     <ResponseField name="customer_device.device_serial" type="string">
       Serial number on the installed unit. Programs use it to confirm the equipment and to stop a second claim on it.
     </ResponseField>
@@ -261,10 +249,6 @@ To read a file back, call [Download attachment](/api-reference/applications/down
 
     <ResponseField name="customer_device.trenching_required" type="boolean">
       Whether the install needed underground trenching. Some programs pay an adder for it.
-    </ResponseField>
-
-    <ResponseField name="customer_device.primary_mode_of_space_cooling" type="string">
-      **Customer-collected.** How the home is cooled today. Weatherization and heat-pump programs price against what the equipment replaces.
     </ResponseField>
   </Accordion>
 
@@ -336,6 +320,23 @@ To read a file back, call [Download attachment](/api-reference/applications/down
     </ResponseField>
   </Accordion>
 </AccordionGroup>
+
+## Four fields you cannot send
+
+Some programs ask the customer for a fact no partner holds. Data Preferences does not offer these four, so you cannot claim one. Connect does not collect them yet either. They are here so you can see the requirement exists, not so you can supply it.
+
+<Warning>
+  Sending one of these four keys on a lookup returns 400 for the whole request. You get no programs back. Leave them out of `customer_details` and out of `details`.
+</Warning>
+
+The four are:
+
+- `customer.breaker_amperage`: capacity of the electrical panel in amps. Programs that fund a panel upgrade check whether the existing service can carry the new load.
+- `customer.joint_taxes`: whether the customer files taxes jointly. Income-qualified programs use it to read the household income threshold correctly.
+- `customer.number_of_dependents_tax_filing`: dependents claimed on the customer's tax filing. Income thresholds usually scale with household size.
+- `customer.primary_mode_of_space_cooling`: how the home is cooled today. Weatherization and heat-pump programs price against what the equipment replaces.
+
+Leap is still wiring the four up in Connect, and the names above are the ones they will carry.
 
 ## Documents
 

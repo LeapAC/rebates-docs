@@ -35,7 +35,7 @@ A lookup for a customer who already exists sets nothing new. If an entry names a
 
 ## Sending data as you learn it
 
-Most of what a program asks about arrives after the first lookup. Send what you hold at quote time on Look up, and the rest on Refresh as you learn it. Both take the same keys, listed in the [Field reference](/setup-claimed-fields).
+Most of what a program asks about arrives after the first lookup. Send what you hold at quote time on Look up, and the rest on Refresh as you learn it. Both take the same keys, listed in the [Requirements reference](/setup-data-preferences).
 
 Refresh merges what you send, stores it, and re-runs eligibility in the same call. Set `create_application` so the customer's application picks the values up too.
 
@@ -84,4 +84,4 @@ A percentage program pays `min(rate × cost, cap)`, summed over the devices that
   Send both keys whenever you expect a cost-based program to price. An estimate is a fallback, not a guarantee: where Leap holds none, the cost resolves to zero and a program that would pay reads as ineligible.
 </Warning>
 
-See the [Field reference](/setup-claimed-fields) for both keys and their value forms.
+See the [Requirements reference](/setup-data-preferences) for both keys and their value forms.

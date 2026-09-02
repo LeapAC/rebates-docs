@@ -367,7 +367,7 @@
           },
           "customer_details": {
             "type": "object",
-            "description": "Attributes you're supplying for the customer, keyed by requirement key (for example `customer.email`, `customer.is_homeowner`). They're stored against the customer and used when eligibility is evaluated. Omit or leave empty if you have none. Maximum 100 entries.",
+            "description": "Customer attributes you're supplying, keyed by field name, for example `{\"customer.utility_account_number\": \"0123456789\"}`. Values are always strings. Facts about one installation go in that entry's `details` object instead.\n\nAn unrecognised key returns 400 and no incentives. The [Requirements reference](/setup-data-preferences) lists every key and its value form.\n\nOmit or leave empty if you have none. Maximum 100 entries.",
             "maxProperties": 100,
             "additionalProperties": {
               "type": "string"
@@ -399,7 +399,7 @@
           },
           "customer_details": {
             "type": "object",
-            "description": "Optional partner-supplied per-customer attributes to upsert against the existing customer record before re-evaluation. Use this to update values like `customer.is_homeowner` without touching the device set. Empty or omitted = no attribute changes.\n",
+            "description": "Customer attributes to merge before re-evaluating, keyed by field name. Values are always strings. A key you send replaces what's on file, and a key you leave out is untouched. Use this to fill in facts as you learn them, rather than repeating a lookup.\n\nAn unrecognised key returns 400 and no incentives. The [Requirements reference](/setup-data-preferences) lists every key and its value form.\n\nOmit or leave empty for no attribute changes. Maximum 100 entries.",
             "maxProperties": 100,
             "additionalProperties": {
               "type": "string"
@@ -463,7 +463,7 @@
           },
           "details": {
             "type": "object",
-            "description": "Partner-supplied per-installation attributes keyed by `requirement.key` (e.g. `customer_device.purchase_price`). Maximum 50 entries.\n",
+            "description": "Attributes for this one installation, keyed by field name, for example `{\"customer_device.purchase_price\": \"699.00\"}`. Values are always strings. Facts about the customer go in the request's `customer_details` object instead.\n\nAn unrecognised key returns 400 and no incentives. The [Requirements reference](/setup-data-preferences) lists every key and its value form.\n\nMaximum 50 entries.",
             "maxProperties": 50,
             "additionalProperties": {
               "type": "string"

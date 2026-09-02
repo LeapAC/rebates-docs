@@ -1,0 +1,438 @@
+---
+title: Requirements reference
+description: Every field and document a program can ask for, which ones you can supply, and how to send them.
+---
+
+A **requirement** is anything a program asks for before it will pay: a fact about the customer, a fact about the installation, or a document. Under [**Settings → Data Preferences**](https://partner.incentives.leap.energy/settings/data-preferences) you claim the ones you will supply. Leap takes a claimed requirement off the customer's form and expects it from you. Everything you leave unclaimed, Connect asks the customer for.
+
+This page lists them all. Claim what you can supply reliably, and leave the rest.
+
+## Three levels
+
+A requirement belongs to the customer, to one installation, or to the application, and its name says which.
+
+`customer.` fields describe the applicant: their name, their utility account, their home.
+
+`customer_device.` fields describe one piece of equipment: what it cost, when it went in, who installed it. Two installations on the same application carry their own values.
+
+Documents attach to the **application**, so one upload covers the claim rather than a single device.
+
+## Supplying fields
+
+Send the ones you hold at quote time on [Look up incentives](/api-reference/incentives-lookups/look-up-incentives). Send the rest on [Refresh incentives](/api-reference/incentives-lookups/refresh-incentives) as you learn them. Write the name exactly as it appears here. Customer fields go in `customer_details`; installation fields go in the `details` object on the matching `customer_devices[]` entry.
+
+```json
+{
+  "reference_id": "customer-123",
+  "customer_details": {
+    "customer.utility_account_number": "0123456789"
+  },
+  "customer_devices": [
+    {
+      "device_id": "d290f1ee-6c54-4b01-90e6-d701748f0851",
+      "details": {
+        "customer_device.purchase_price": "699.00"
+      }
+    }
+  ]
+}
+```
+
+On an application, drop the prefix and nest the field under the object its scope names. So `customer.email` becomes `email` inside `customer`, and `customer_device.purchase_price` becomes `purchase_price` inside that `customer_devices[]` entry.
+
+<Warning>
+  An unrecognised key returns 400 and no incentives. Leap checks every key in the request before writing anything, so one call reports all of them.
+</Warning>
+
+### Value forms
+
+Every field value travels as a string, and Leap parses it into the type the field expects:
+
+- **Booleans**: send `true` or `false`.
+- **Dates**: send `YYYY-MM-DD`.
+- **Numbers**: send digits with an optional decimal point, no currency symbol and no thousands separator.
+- **Enums**: matched without regard to case, so send the documented value as written.
+
+An absent key, a JSON `null`, and a blank string all mean the value is not supplied.
+
+## Sending documents
+
+File bytes never pass through the Applications API. You upload them straight to storage with a pre-authorized URL, the same pattern as an [S3 pre-signed `PUT`](https://docs.aws.amazon.com/AmazonS3/latest/userguide/PresignedUrlUploadObject.html). Only the two calls around that upload are Leap endpoints, and your API key authorizes both.
+
+<Steps>
+<Step title="Request an upload URL">
+  `POST /applications/attachments` with the `attachment_type`, `filename`, and `contentType`. You get back a short-lived **`uploadUrl`** and a **`path`**. Leap prefixes your filename with a unique ID, so two `invoice.pdf`s never collide.
+
+  ```bash
+  curl -X POST "https://api.incentives.leap.energy/alpha/applications/attachments?application_id=123" \
+    -H "x-api-key: leap_live_your_api_key_here" \
+    -H "Content-Type: application/json" \
+    -d '{ "attachment_type": "INVOICE_EQUIPMENT", "filename": "invoice.pdf", "contentType": "application/pdf" }'
+  # → { "uploadUrl": "https://storage.example.com/attachments/app-123/1a2b3c4d-invoice.pdf?token=...",
+  #     "path": "app-123/1a2b3c4d-invoice.pdf" }
+  ```
+</Step>
+
+<Step title="Upload the file">
+  `PUT` the raw bytes to that `uploadUrl` with the file's `Content-Type`. The request goes directly to storage and needs no API key.
+
+  ```bash
+  curl -X PUT "$uploadUrl" \
+    -H "Content-Type: application/pdf" \
+    --data-binary @invoice.pdf
+  ```
+</Step>
+
+<Step title="Commit">
+  `POST /applications/attachments/commit` with the same `attachment_type` and the `path` from step 1. This records the attachment on the application.
+
+  ```bash
+  curl -X POST "https://api.incentives.leap.energy/alpha/applications/attachments/commit?application_id=123" \
+    -H "x-api-key: leap_live_your_api_key_here" \
+    -H "Content-Type: application/json" \
+    -d '{ "attachment_type": "INVOICE_EQUIPMENT", "path": "app-123/1a2b3c4d-invoice.pdf" }'
+  ```
+</Step>
+</Steps>
+
+To read a file back, call [Download attachment](/api-reference/applications/download-attachment) for a signed URL, valid for one hour.
+
+<Note>
+  Programs also ask the customer to sign things: terms, attestations, enrollment consents. Those stay with the customer and Connect collects them, so they are not listed here and you cannot claim them.
+</Note>
+
+## Customer fields
+
+<AccordionGroup>
+  <Accordion title="Identity and contact (5 fields)" icon="user">
+    <ResponseField name="customer.first_name" type="string">
+      The customer's first name.
+    </ResponseField>
+
+    <ResponseField name="customer.last_name" type="string">
+      The customer's last name.
+    </ResponseField>
+
+    <ResponseField name="customer.email" type="string">
+      The customer's email address.
+    </ResponseField>
+
+    <ResponseField name="customer.phone" type="string">
+      The customer's phone number.
+    </ResponseField>
+
+    <ResponseField name="customer.mailing_address_line1" type="string">
+      Mailing address, where it differs from the address the equipment was installed at. Programs that post a cheque use it.
+    </ResponseField>
+  </Accordion>
+
+  <Accordion title="Utility account (3 fields)" icon="plug">
+    <ResponseField name="customer.utility_account_number" type="string">
+      The customer's account number with their serving utility. Programs run by a utility check that the applicant is their customer.
+    </ResponseField>
+
+    <ResponseField name="customer.utility_account_status" type="enum">
+      Standing of the utility account: `active`, `delinquent`, `closed`, `inactive`, or `pending`. Most programs require an account in good standing.
+    </ResponseField>
+
+    <ResponseField name="customer.utility_rate_plan" type="string">
+      The rate plan or tariff on the utility account. Some programs pay only on a particular plan, such as a time-of-use tariff.
+    </ResponseField>
+  </Accordion>
+
+  <Accordion title="Household and property (8 fields)" icon="house">
+    <ResponseField name="customer.is_homeowner" type="boolean">
+      Whether the customer owns the property. Most programs pay only the owner, or route renters to a different tier.
+    </ResponseField>
+
+    <ResponseField name="customer.is_income_qualified" type="boolean">
+      Whether the customer meets the program's income threshold. Income-qualified tiers usually pay more.
+    </ResponseField>
+
+    <ResponseField name="customer.is_indigenous" type="boolean">
+      Whether the customer identifies as Indigenous. A few programs add an adder or a dedicated tier.
+    </ResponseField>
+
+    <ResponseField name="customer.building_age_years" type="number">
+      Age of the building in years. Retrofit programs set a minimum.
+    </ResponseField>
+
+    <ResponseField name="customer.dwelling_units" type="number">
+      Number of dwelling units at the address. Separates single-family from multifamily where a program pays differently.
+    </ResponseField>
+
+    <ResponseField name="customer.breaker_amperage" type="number">
+      **Customer-collected.** Capacity of the electrical panel in amps. Programs that fund a panel upgrade check whether the existing service can carry the new load.
+    </ResponseField>
+
+    <ResponseField name="customer.joint_taxes" type="boolean">
+      **Customer-collected.** Whether the customer files taxes jointly. Income-qualified programs use it to read the household income threshold correctly.
+    </ResponseField>
+
+    <ResponseField name="customer.number_of_dependents_tax_filing" type="number">
+      **Customer-collected.** Dependents claimed on the customer's tax filing. Income thresholds usually scale with household size.
+    </ResponseField>
+  </Accordion>
+
+  <Accordion title="Vehicle (6 fields)" icon="car">
+    These describe the customer's vehicle. Where a program pays on the vehicle itself rather than on the charger, the installation carries its own set: see `customer_device.vehicle_vin`, `.dealership` and `.vehicle_type` under Installation fields. Both exist on purpose.
+
+    <ResponseField name="customer.selected_e_vehicle_make" type="string">
+      Make of the customer's electric vehicle.
+    </ResponseField>
+
+    <ResponseField name="customer.selected_e_vehicle_model" type="string">
+      Model of the customer's electric vehicle.
+    </ResponseField>
+
+    <ResponseField name="customer.selected_e_vehicle_year" type="number">
+      Model year of the customer's electric vehicle. Some programs set a cutoff.
+    </ResponseField>
+
+    <ResponseField name="customer.selected_e_vehicle_vin" type="string">
+      Vehicle identification number. Programs that pay once per vehicle use it to tell vehicles apart.
+    </ResponseField>
+
+    <ResponseField name="customer.selected_e_dealership" type="string">
+      Dealership the vehicle came from. A few programs pay only on a participating dealer.
+    </ResponseField>
+
+    <ResponseField name="customer.selected_e_vehicle_registration_date" type="date">
+      Date the vehicle was registered. Programs that require a recent purchase check it.
+    </ResponseField>
+  </Accordion>
+</AccordionGroup>
+
+## Installation fields
+
+<AccordionGroup>
+  <Accordion title="Cost (3 fields)" icon="dollar-sign">
+    <ResponseField name="customer_device.purchase_price" type="number">
+      Price paid for the equipment, excluding installation labor and materials.
+    </ResponseField>
+
+    <ResponseField name="customer_device.installation_cost" type="number">
+      Cost of the installation: labor, materials, permits, and any electrical work.
+    </ResponseField>
+
+    <ResponseField name="customer_device.total_project_cost" type="number">
+      Equipment and installation together, where you hold one figure rather than a split.
+    </ResponseField>
+  </Accordion>
+
+  <Accordion title="Dates (4 fields)" icon="calendar">
+    <ResponseField name="customer_device.purchase_date" type="date">
+      Date the customer bought the equipment. Programs check it against their program year.
+    </ResponseField>
+
+    <ResponseField name="customer_device.installation_date" type="date">
+      Date the equipment was installed and operational. Claim windows run from this date.
+    </ResponseField>
+
+    <ResponseField name="customer_device.pto_date" type="date">
+      Date the utility granted permission to operate. Programs that require interconnection run their claim window from this date instead.
+    </ResponseField>
+
+    <ResponseField name="customer_device.final_inspection_date" type="date">
+      Date the installation passed its final inspection. Programs that require a signed-off inspection check it, and some run their claim window from it.
+    </ResponseField>
+  </Accordion>
+
+  <Accordion title="Equipment (7 fields)" icon="wrench">
+    <ResponseField name="customer_device.device_serial" type="string">
+      Serial number on the installed unit. Programs use it to confirm the equipment and to stop a second claim on it.
+    </ResponseField>
+
+    <ResponseField name="customer_device.quantity" type="number">
+      The count of identical units this entry covers.
+    </ResponseField>
+
+    <ResponseField name="customer_device.is_new_equipment" type="boolean">
+      Whether the equipment is new rather than used or refurbished. Most programs pay only on new equipment.
+    </ResponseField>
+
+    <ResponseField name="customer_device.warranty_months" type="number">
+      Length of the equipment warranty in months. Some programs set a minimum.
+    </ResponseField>
+
+    <ResponseField name="customer_device.retailer_name" type="string">
+      Where the customer bought the equipment. Programs that pay only on approved retailers check it.
+    </ResponseField>
+
+    <ResponseField name="customer_device.trenching_required" type="boolean">
+      Whether the install needed underground trenching. Some programs pay an adder for it.
+    </ResponseField>
+
+    <ResponseField name="customer_device.primary_mode_of_space_cooling" type="string">
+      **Customer-collected.** How the home is cooled today. Weatherization and heat-pump programs price against what the equipment replaces.
+    </ResponseField>
+  </Accordion>
+
+  <Accordion title="Permits and inspection (2 fields)" icon="clipboard-check">
+    <ResponseField name="customer_device.permit_number" type="string">
+      Permit number issued by the local authority. Programs that require a permitted installation check it.
+    </ResponseField>
+
+    <ResponseField name="customer_device.inspection_passed" type="boolean">
+      Whether the installation passed inspection.
+    </ResponseField>
+  </Accordion>
+
+  <Accordion title="Vehicle (3 fields)" icon="car">
+    Use these where the program pays on the vehicle at the installation level. The customer's own vehicle details live under Customer fields.
+
+    <ResponseField name="customer_device.vehicle_vin" type="string">
+      Identification number of the vehicle this installation serves.
+    </ResponseField>
+
+    <ResponseField name="customer_device.dealership" type="string">
+      Dealership the vehicle came from.
+    </ResponseField>
+
+    <ResponseField name="customer_device.vehicle_type" type="string">
+      Type of vehicle the charger serves. Programs that price by vehicle type check it.
+    </ResponseField>
+  </Accordion>
+
+  <Accordion title="Contractor (10 fields)" icon="hard-hat">
+    <ResponseField name="customer_device.contractor_name" type="string">
+      Company that performed the installation.
+    </ResponseField>
+
+    <ResponseField name="customer_device.contractor_license" type="string">
+      License number of the installing contractor. Programs that require a licensed installation check it.
+    </ResponseField>
+
+    <ResponseField name="customer_device.contractor_contact_name" type="string">
+      Named contact at the contracting company.
+    </ResponseField>
+
+    <ResponseField name="customer_device.contractor_contact_email" type="string">
+      Email address for that contact. Programs email them when paperwork is missing.
+    </ResponseField>
+
+    <ResponseField name="customer_device.contractor_contact_phone" type="string">
+      Phone number for that contact.
+    </ResponseField>
+
+    <ResponseField name="customer_device.contractor_address_line1" type="string">
+      Street address of the contracting company. Programs that pay the contractor need it for tax reporting.
+    </ResponseField>
+
+    <ResponseField name="customer_device.contractor_city" type="string">
+      City of the contracting company.
+    </ResponseField>
+
+    <ResponseField name="customer_device.contractor_state" type="string">
+      State of the contracting company. Programs check the contractor is licensed where the work happened.
+    </ResponseField>
+
+    <ResponseField name="customer_device.contractor_zip" type="string">
+      ZIP code of the contracting company.
+    </ResponseField>
+
+    <ResponseField name="customer_device.contractor_website" type="string">
+      Website of the contracting company.
+    </ResponseField>
+  </Accordion>
+</AccordionGroup>
+
+## Documents
+
+Send these as `attachment_type` on the upload and commit calls.
+
+<AccordionGroup>
+  <Accordion title="Proof of purchase and installation (5 types)" icon="receipt">
+    <ResponseField name="INVOICE_EQUIPMENT" type="attachment">
+      Itemised invoice or receipt for the equipment, showing the model and the price paid.
+    </ResponseField>
+
+    <ResponseField name="INVOICE_INSTALL" type="attachment">
+      Invoice for the installation work, showing labor and materials.
+    </ResponseField>
+
+    <ResponseField name="PHOTO_INSTALL" type="attachment">
+      Photo of the finished installation in place.
+    </ResponseField>
+
+    <ResponseField name="PHOTO_NAMEPLATE" type="attachment">
+      Photo of the equipment nameplate, showing the model and rating.
+    </ResponseField>
+
+    <ResponseField name="PHOTO_SERIAL_NUMBER" type="attachment">
+      Photo of the serial number on the installed unit.
+    </ResponseField>
+  </Accordion>
+
+  <Accordion title="Permits and inspection (2 types)" icon="clipboard-check">
+    <ResponseField name="PERMIT" type="attachment">
+      The electrical or building permit issued for the work.
+    </ResponseField>
+
+    <ResponseField name="PHOTO_METER" type="attachment">
+      Photo of the electric meter, showing the meter number so the utility can match the account to the premise.
+    </ResponseField>
+  </Accordion>
+
+  <Accordion title="Equipment specifications (4 types)" icon="file-text">
+    <ResponseField name="MODEL_TECH_SPECS" type="attachment">
+      Manufacturer specification sheet for the installed model.
+    </ResponseField>
+
+    <ResponseField name="SPEC_SHEET_INVERTER" type="attachment">
+      Manufacturer specification sheet for the inverter.
+    </ResponseField>
+
+    <ResponseField name="AHRI_CERT" type="attachment">
+      Certificate from the Air-Conditioning, Heating, and Refrigeration Institute. It confirms the rated performance of a matched heating or cooling system, which is what efficiency programs pay against.
+    </ResponseField>
+
+    <ResponseField name="NEAT_REPORT" type="attachment">
+      Report from the National Energy Audit Tool. It lists the weatherization measures an energy audit recommends for the home, and which of them the program will fund.
+    </ResponseField>
+  </Accordion>
+
+  <Accordion title="Site drawings (2 types)" icon="ruler">
+    <ResponseField name="DIAGRAM_ONE_LINE" type="attachment">
+      Electrical one-line diagram showing the system configuration.
+    </ResponseField>
+
+    <ResponseField name="DIAGRAM_SITE_PLAN" type="attachment">
+      Site plan showing where the equipment sits on the property.
+    </ResponseField>
+  </Accordion>
+
+  <Accordion title="Customer and account documents (8 types)" icon="user">
+    <ResponseField name="UTILITY_BILL" type="attachment">
+      A recent utility bill, used to confirm the account and the service address.
+    </ResponseField>
+
+    <ResponseField name="INCOME_FORM" type="attachment">
+      Proof of income for an income-qualified program.
+    </ResponseField>
+
+    <ResponseField name="W9" type="attachment">
+      A completed W-9, needed where the program pays the customer or the contractor directly.
+    </ResponseField>
+
+    <ResponseField name="TARIFF_CONFIRMATION" type="attachment">
+      Confirmation that the customer is on the rate plan the program requires.
+    </ResponseField>
+
+    <ResponseField name="VEHICLE_PURCHASE" type="attachment">
+      Purchase or lease agreement for the electric vehicle.
+    </ResponseField>
+
+    <ResponseField name="VEHICLE_REGISTRATION" type="attachment">
+      The vehicle's registration document.
+    </ResponseField>
+
+    <ResponseField name="SIGNATURE" type="attachment">
+      The customer's signature, captured in Connect. The customer signs on screen and Connect uploads the result, so you do not send this one.
+    </ResponseField>
+
+    <ResponseField name="OTHER" type="attachment">
+      Anything a program asks for that no other type covers.
+    </ResponseField>
+  </Accordion>
+</AccordionGroup>

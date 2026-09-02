@@ -34,7 +34,8 @@
         "group": "Get Started",
         "pages": [
           "index",
-          "quickstart"
+          "quickstart",
+          "setup-data-preferences"
         ]
       },
       {
@@ -65,7 +66,6 @@
           {
             "group": "Attachments",
             "pages": [
-              "api-reference/applications/attachments",
               "GET /applications/attachments",
               "POST /applications/attachments",
               "POST /applications/attachments/commit",
@@ -140,5 +140,17 @@
     "ga4": {
       "measurementId": "G-PF7MQ92GG6"
     }
-  }
+  },
+  "redirects": [
+    {
+      "source": "/setup-claimed-fields",
+      "destination": "/setup-data-preferences",
+      "permanent": true
+    },
+    {
+      "source": "/api-reference/applications/attachments",
+      "destination": "/setup-data-preferences",
+      "permanent": true
+    }
+  ]
 }

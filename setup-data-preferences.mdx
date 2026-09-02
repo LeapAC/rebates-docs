@@ -3,7 +3,7 @@ title: Requirements reference
 description: Every requirement a program can ask for, which ones you can supply on the customer’s behalf, and how to send each kind.
 ---
 
-Programs pay only after every one of their requirements is met. This page lists all of them, explains how to claim the ones you’ll supply, and shows how to send fields and documents through the API. Claim what you can supply reliably and let Connect collect the rest from the customer.
+A program pays only after its requirements are met. This page lists every requirement, shows how to claim the ones you’ll supply, and explains how to send each kind through the API. Claim what you can supply reliably and let Connect collect the rest from the customer.
 
 ## Requirements come in three kinds
 
@@ -17,7 +17,7 @@ A requirement is anything a program needs before it pays: a fact, a file, or a s
 
 Under [**Settings → Data Preferences**](https://partner.incentives.leap.energy/settings/data-preferences), mark each field and document you’ll supply. Leap removes a claimed requirement from the customer’s Connect form and expects it from you through the API. Anything you leave unclaimed, Connect asks the customer for.
 
-Claim only what you can supply reliably. A requirement you claim but don’t send is one the customer no longer sees, so nobody supplies it.
+Claim only what you can supply reliably, and leave the rest.
 
 ## Field names say what they describe
 
@@ -30,7 +30,7 @@ Documents have no prefix. They attach to the application as a whole, so one uplo
 
 ## Send fields in stages
 
-You don’t need every value up front. Send what you have when you quote, on [Look up incentives](/api-reference/incentives-lookups/look-up-incentives). Send the rest, such as the purchase date and the installation cost, on later [Refresh incentives](/api-reference/incentives-lookups/refresh-incentives) calls as the job progresses.
+You don’t need every value up front. Send what you have when you quote, on [Look up incentives](/api-reference/incentives-lookups/look-up-incentives). Send the rest on later [Refresh incentives](/api-reference/incentives-lookups/refresh-incentives) calls as the job progresses, such as the purchase date and the installation cost.
 
 Write each field name exactly as it appears on this page. Customer fields go in `customer_details`. Installation fields go in the `details` object on the matching `customer_devices[]` entry. This lookup sends one of each:
 
@@ -70,7 +70,7 @@ An absent key, a JSON `null`, and a blank string all mean the same thing: the va
 
 ## Send documents as attachments
 
-File bytes never pass through the Applications API. Instead, you upload each file straight to storage with a pre-authorized URL, the same pattern as an [S3 pre-signed `PUT`](https://docs.aws.amazon.com/AmazonS3/latest/userguide/PresignedUrlUploadObject.html). Two Leap calls wrap that upload, one to get the URL and one to commit the file, and your API key authorizes both.
+File bytes never pass through the Applications API. Instead, you upload each file straight to storage with a pre-authorized URL, the same pattern as an [S3 pre-signed `PUT`](https://docs.aws.amazon.com/AmazonS3/latest/userguide/PresignedUrlUploadObject.html). Only the two Leap calls around that upload need your API key: one to get the URL, one to commit the file.
 
 <Steps>
 <Step title="Request an upload URL">

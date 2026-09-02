@@ -1,25 +1,38 @@
 ---
 title: Requirements reference
-description: Every field and document a program can ask for, which ones you can supply, and how to send them.
+description: Every requirement a program can ask for, which ones you can supply on the customer’s behalf, and how to send each kind.
 ---
 
-A **requirement** is anything a program asks for before it will pay: a fact about the customer, a fact about the installation, or a document. Under [**Settings → Data Preferences**](https://partner.incentives.leap.energy/settings/data-preferences) you claim the ones you will supply. Leap takes a claimed requirement off the customer's form and expects it from you. Everything you leave unclaimed, Connect asks the customer for.
+A program pays only after its requirements are met. This page lists every requirement and shows how to claim the ones you’ll supply. It then explains how to send each kind through the API. Claim what you can supply reliably and let Connect collect the rest from the customer.
 
-This page lists them all. Claim what you can supply reliably, and leave the rest.
+## Requirements come in three kinds
 
-## Three levels
+A requirement is anything a program needs before it pays: a fact, a file, or a signature. Each kind reaches Leap a different way:
 
-A requirement belongs to the customer, to one installation, or to the application, and its name says which.
+- **Fields**: facts about the customer or the installation, such as a utility account number or a purchase price. You send them as key and value pairs on lookups and applications.
+- **Documents**: files such as invoices, photos, and permits. You upload them as attachments on the application.
+- **Agreements**: terms, attestations, and enrollment consents the customer signs. Connect collects these on screen, so they aren’t listed here and you can’t claim them.
 
-`customer.` fields describe the applicant: their name, their utility account, their home.
+## Claim the requirements you’ll supply
 
-`customer_device.` fields describe one piece of equipment: what it cost, when it went in, who installed it. Two installations on the same application carry their own values.
+Under [**Settings → Data Preferences**](https://partner.incentives.leap.energy/settings/data-preferences), mark each field and document you’ll supply. Leap removes a claimed requirement from the customer’s Connect form and expects it from you through the API. Anything you leave unclaimed, Connect asks the customer for.
 
-Documents attach to the **application**, so one upload covers the claim rather than a single device.
+Claim only what you can supply reliably, and leave the rest.
 
-## Supplying fields
+## Field names say what they describe
 
-Send the ones you hold at quote time on [Look up incentives](/api-reference/incentives-lookups/look-up-incentives). Send the rest on [Refresh incentives](/api-reference/incentives-lookups/refresh-incentives) as you learn them. Write the name exactly as it appears here. Customer fields go in `customer_details`; installation fields go in the `details` object on the matching `customer_devices[]` entry.
+Every field name starts with a prefix that tells you which object it belongs to:
+
+- `customer.` fields describe the applicant: their name, their utility account, their home. An application has one set.
+- `customer_device.` fields describe one installation: what it cost, when it went in, who installed it. Each installation on an application has its own values.
+
+Documents have no prefix. They attach to the application as a whole, so one upload covers the claim rather than a single installation.
+
+## Send fields in stages
+
+You don’t need every value up front. Send what you have when you quote, on [Look up incentives](/api-reference/incentives-lookups/look-up-incentives). Send the rest, such as the purchase date and the installation cost, on later [Refresh incentives](/api-reference/incentives-lookups/refresh-incentives) calls.
+
+Write each field name exactly as it appears on this page. Customer fields go in `customer_details`. Installation fields go in the `details` object on the matching `customer_devices[]` entry. This lookup sends one of each:
 
 ```json
 {
@@ -38,30 +51,30 @@ Send the ones you hold at quote time on [Look up incentives](/api-reference/ince
 }
 ```
 
-On an application, drop the prefix and nest the field under the object its scope names. So `customer.email` becomes `email` inside `customer`, and `customer_device.purchase_price` becomes `purchase_price` inside that `customer_devices[]` entry.
+On an application, drop the prefix and nest the field under the object its scope names. `customer.email` becomes `email` inside `customer`, and `customer_device.purchase_price` becomes `purchase_price` inside that `customer_devices[]` entry.
 
 <Warning>
-  An unrecognised key returns 400 and no incentives. Leap checks every key in the request before writing anything, so one call reports all of them.
+  Leap checks every key in the request before writing anything. One unrecognized key returns 400 and no incentives, and the response reports every bad key at once, so you can fix them in one pass.
 </Warning>
 
-### Value forms
+### Value formats
 
-Every field value travels as a string, and Leap parses it into the type the field expects:
+Send every value as a string. Leap parses it into the type the field expects. Expected formats:
 
-- **Booleans**: send `true` or `false`.
-- **Dates**: send `YYYY-MM-DD`.
-- **Numbers**: send digits with an optional decimal point, no currency symbol and no thousands separator.
-- **Enums**: matched without regard to case, so send the documented value as written.
+- **Booleans**: `true` or `false`
+- **Dates**: `YYYY-MM-DD`
+- **Numbers**: digits with an optional decimal point, no currency symbol and no thousands separator
+- **Enums**: the documented value as written, matched without regard to case
 
-An absent key, a JSON `null`, and a blank string all mean the value is not supplied.
+An absent key, a JSON `null`, and a blank string all mean the same thing: the value isn’t supplied.
 
-## Sending documents
+## Send documents as attachments
 
-File bytes never pass through the Applications API. You upload them straight to storage with a pre-authorized URL, the same pattern as an [S3 pre-signed `PUT`](https://docs.aws.amazon.com/AmazonS3/latest/userguide/PresignedUrlUploadObject.html). Only the two calls around that upload are Leap endpoints, and your API key authorizes both.
+File bytes never pass through the Applications API. Instead, you upload each file straight to storage with a pre-authorized URL, the same pattern as an [S3 pre-signed `PUT`](https://docs.aws.amazon.com/AmazonS3/latest/userguide/PresignedUrlUploadObject.html). Only two Leap calls need your API key: one to get the URL, one to commit the file.
 
 <Steps>
 <Step title="Request an upload URL">
-  `POST /applications/attachments` with the `attachment_type`, `filename`, and `contentType`. You get back a short-lived **`uploadUrl`** and a **`path`**. Leap prefixes your filename with a unique ID, so two `invoice.pdf`s never collide.
+  Call `POST /applications/attachments` with the `attachment_type`, `filename`, and `contentType`. The response returns a short-lived `uploadUrl` and a `path`. Leap prefixes your filename with a unique ID, so two files named `invoice.pdf` never collide.
 
   ```bash
   curl -X POST "https://api.incentives.leap.energy/alpha/applications/attachments?application_id=123" \
@@ -74,7 +87,7 @@ File bytes never pass through the Applications API. You upload them straight to 
 </Step>
 
 <Step title="Upload the file">
-  `PUT` the raw bytes to that `uploadUrl` with the file's `Content-Type`. The request goes directly to storage and needs no API key.
+  `PUT` the raw bytes to that `uploadUrl` with the file’s `Content-Type`. This request goes straight to storage and needs no API key.
 
   ```bash
   curl -X PUT "$uploadUrl" \
@@ -83,8 +96,8 @@ File bytes never pass through the Applications API. You upload them straight to 
   ```
 </Step>
 
-<Step title="Commit">
-  `POST /applications/attachments/commit` with the same `attachment_type` and the `path` from step 1. This records the attachment on the application.
+<Step title="Commit the attachment">
+  Call `POST /applications/attachments/commit` with the same `attachment_type` and the `path` from step 1. Leap records the attachment on the application.
 
   ```bash
   curl -X POST "https://api.incentives.leap.energy/alpha/applications/attachments/commit?application_id=123" \
@@ -95,40 +108,38 @@ File bytes never pass through the Applications API. You upload them straight to 
 </Step>
 </Steps>
 
-To read a file back, call [Download attachment](/api-reference/applications/download-attachment) for a signed URL, valid for one hour.
-
-<Note>
-  Programs also ask the customer to sign things: terms, attestations, enrollment consents. Those stay with the customer and Connect collects them, so they are not listed here and you cannot claim them.
-</Note>
+To read a file back, call [Download attachment](/api-reference/applications/download-attachment) for a signed URL. The URL is valid for one hour.
 
 ## Customer fields
+
+These describe the applicant. Send them in `customer_details` on a lookup, or under `customer` on an application.
 
 <AccordionGroup>
   <Accordion title="Identity and contact (5 fields)" icon="user">
     <ResponseField name="customer.first_name" type="string">
-      The customer's first name.
+      The customer’s first name.
     </ResponseField>
 
     <ResponseField name="customer.last_name" type="string">
-      The customer's last name.
+      The customer’s last name.
     </ResponseField>
 
     <ResponseField name="customer.email" type="string">
-      The customer's email address.
+      The customer’s email address.
     </ResponseField>
 
     <ResponseField name="customer.phone" type="string">
-      The customer's phone number.
+      The customer’s phone number.
     </ResponseField>
 
     <ResponseField name="customer.mailing_address_line1" type="string">
-      Mailing address, where it differs from the address the equipment was installed at. Programs that post a cheque use it.
+      Mailing address, where it differs from the address the equipment was installed at. Programs that mail a check use it.
     </ResponseField>
   </Accordion>
 
   <Accordion title="Utility account (3 fields)" icon="plug">
     <ResponseField name="customer.utility_account_number" type="string">
-      The customer's account number with their serving utility. Programs run by a utility check that the applicant is their customer.
+      The customer’s account number with their serving utility. Programs run by a utility check that the applicant is their customer.
     </ResponseField>
 
     <ResponseField name="customer.utility_account_status" type="enum">
@@ -146,7 +157,7 @@ To read a file back, call [Download attachment](/api-reference/applications/down
     </ResponseField>
 
     <ResponseField name="customer.is_income_qualified" type="boolean">
-      Whether the customer meets the program's income threshold. Income-qualified tiers usually pay more.
+      Whether the customer meets the program’s income threshold. Income-qualified tiers usually pay more.
     </ResponseField>
 
     <ResponseField name="customer.is_indigenous" type="boolean">
@@ -170,23 +181,23 @@ To read a file back, call [Download attachment](/api-reference/applications/down
     </ResponseField>
 
     <ResponseField name="customer.number_of_dependents_tax_filing" type="number">
-      **Customer-collected.** Dependents claimed on the customer's tax filing. Income thresholds usually scale with household size.
+      **Customer-collected.** Dependents claimed on the customer’s tax filing. Income thresholds usually scale with household size.
     </ResponseField>
   </Accordion>
 
   <Accordion title="Vehicle (6 fields)" icon="car">
-    These describe the customer's vehicle. Where a program pays on the vehicle itself rather than on the charger, the installation carries its own set: see `customer_device.vehicle_vin`, `.dealership` and `.vehicle_type` under Installation fields. Both exist on purpose.
+    These describe the customer’s vehicle. Programs that pay on the vehicle itself rather than on the charger read the installation-level set instead: `customer_device.vehicle_vin`, `.dealership` and `.vehicle_type` under Installation fields. Both sets exist on purpose.
 
     <ResponseField name="customer.selected_e_vehicle_make" type="string">
-      Make of the customer's electric vehicle.
+      Make of the customer’s electric vehicle.
     </ResponseField>
 
     <ResponseField name="customer.selected_e_vehicle_model" type="string">
-      Model of the customer's electric vehicle.
+      Model of the customer’s electric vehicle.
     </ResponseField>
 
     <ResponseField name="customer.selected_e_vehicle_year" type="number">
-      Model year of the customer's electric vehicle. Some programs set a cutoff.
+      Model year of the customer’s electric vehicle. Some programs set a cutoff.
     </ResponseField>
 
     <ResponseField name="customer.selected_e_vehicle_vin" type="string">
@@ -204,6 +215,8 @@ To read a file back, call [Download attachment](/api-reference/applications/down
 </AccordionGroup>
 
 ## Installation fields
+
+These describe one installation. Send them in the `details` object of the matching `customer_devices[]` entry on a lookup, or directly on that entry on an application.
 
 <AccordionGroup>
   <Accordion title="Cost (3 fields)" icon="dollar-sign">
@@ -279,7 +292,7 @@ To read a file back, call [Download attachment](/api-reference/applications/down
   </Accordion>
 
   <Accordion title="Vehicle (3 fields)" icon="car">
-    Use these where the program pays on the vehicle at the installation level. The customer's own vehicle details live under Customer fields.
+    Use these where the program pays on the vehicle at the installation level. The customer’s own vehicle details live under Customer fields.
 
     <ResponseField name="customer_device.vehicle_vin" type="string">
       Identification number of the vehicle this installation serves.
@@ -337,14 +350,14 @@ To read a file back, call [Download attachment](/api-reference/applications/down
   </Accordion>
 </AccordionGroup>
 
-## Documents
+## Document types
 
-Send these as `attachment_type` on the upload and commit calls.
+These are the files a program can ask for. Send the type name as `attachment_type` on the upload and commit calls.
 
 <AccordionGroup>
   <Accordion title="Proof of purchase and installation (5 types)" icon="receipt">
     <ResponseField name="INVOICE_EQUIPMENT" type="attachment">
-      Itemised invoice or receipt for the equipment, showing the model and the price paid.
+      Itemized invoice or receipt for the equipment, showing the model and the price paid.
     </ResponseField>
 
     <ResponseField name="INVOICE_INSTALL" type="attachment">
@@ -424,11 +437,11 @@ Send these as `attachment_type` on the upload and commit calls.
     </ResponseField>
 
     <ResponseField name="VEHICLE_REGISTRATION" type="attachment">
-      The vehicle's registration document.
+      The vehicle’s registration document.
     </ResponseField>
 
     <ResponseField name="SIGNATURE" type="attachment">
-      The customer's signature, captured in Connect. The customer signs on screen and Connect uploads the result, so you do not send this one.
+      The customer’s signature, captured in Connect. The customer signs on screen and Connect uploads the result, so you do not send this one.
     </ResponseField>
 
     <ResponseField name="OTHER" type="attachment">

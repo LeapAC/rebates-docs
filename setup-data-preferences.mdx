@@ -70,7 +70,7 @@ An absent key, a JSON `null`, and a blank string all mean the same thing: the va
 
 ## Send documents as attachments
 
-File bytes never pass through the Applications API. Instead, you upload each file straight to storage with a pre-authorized URL, the same pattern as an [S3 pre-signed `PUT`](https://docs.aws.amazon.com/AmazonS3/latest/userguide/PresignedUrlUploadObject.html). Only the two Leap calls around it need your API key: one to get the URL, one to commit the file.
+File bytes never pass through the Applications API. Instead, you upload each file straight to storage with a pre-authorized URL, the same pattern as an [S3 pre-signed `PUT`](https://docs.aws.amazon.com/AmazonS3/latest/userguide/PresignedUrlUploadObject.html). Only two Leap calls need your API key: one to get the URL, one to commit the file.
 
 <Steps>
 <Step title="Request an upload URL">

@@ -283,7 +283,7 @@
           "INCENTIVES_DB",
           "PARTNER_OFFER"
         ],
-        "description": "Where the definition came from. `LEAP_DEFINITIONS` marks programs Leap defines itself. Leap sets these to `VPP`. `INCENTIVES_DB` marks programs imported from the utility, state and local catalog, and each is `VPP` or `REBATE`. `PARTNER_OFFER` marks a partner offer, which a partner account configures rather than Leap."
+        "description": "Where the definition came from. `LEAP_DEFINITIONS` marks programs Leap defines itself. Leap sets these to `VPP`. `INCENTIVES_DB` marks programs imported from the public program catalog, and each is `VPP` or `REBATE`. `PARTNER_OFFER` marks a partner offer, which a partner account configures rather than Leap."
       },
       "ProgramOperatorType": {
         "type": "string",

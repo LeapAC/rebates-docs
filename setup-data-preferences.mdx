@@ -54,7 +54,7 @@ Write each field name exactly as it appears on this page. Customer fields go in 
 On an application, drop the prefix and nest the field under the object its scope names. `customer.email` becomes `email` inside `customer`, and `customer_device.purchase_price` becomes `purchase_price` inside that `customer_devices[]` entry.
 
 <Warning>
-  Leap checks every key in the request before writing anything. One unrecognized key returns 400 and no incentives, and the response reports every bad key at once, so you can fix them in one pass.
+  On a lookup or a refresh, Leap checks every key in the request before writing anything. One unrecognized key or invalid value returns 400 and no incentives. The response reports every bad key at once, so you can fix them in one pass. An override also returns 400 and rolls back the whole request, but it reports one bad key per call.
 </Warning>
 
 ### Value formats

@@ -175,7 +175,11 @@
         { "method": "post", "path": "/applications/attachments/commit", "title": "Commit attachment upload", "description": "Confirm an attachment after the file has been uploaded to its signed URL. This finalizes the attachment on the application." },
         { "method": "get", "path": "/applications/attachments/{id}/download", "title": "Download attachment", "description": "Get a signed URL for downloading an attachment. The URL is valid for one hour." },
         { "method": "delete", "path": "/applications/attachments/{id}", "title": "Delete attachment", "description": "Permanently delete an attachment. This removes the file and its record and can't be undone." }
-      ]
+      ],
+      "schemaDescriptions": {
+        "CustomerDevice.quantity": "**Deprecated.** Each device record stands for one physical unit, and no incentive calculation reads this field. Send each unit of a model as its own `customer_devices[]` entry on the lookup, with its own `partner_device_reference`.",
+        "CustomerDevicePatchRequest.quantity": "**Deprecated.** Leave it at 1 or omit it. No incentive calculation reads it, so a value above 1 doesn't raise the amount. Send each unit of a model as its own `customer_devices[]` entry on the lookup, with its own `partner_device_reference`."
+      }
     }
   ]
 }

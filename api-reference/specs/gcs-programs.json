@@ -30,13 +30,42 @@
           "programs"
         ],
         "summary": "List programs",
-        "description": "Browse Leap's catalog of rebate programs. The catalog is shared across partners, so a program you read here is not necessarily one your account can claim. Narrow it with `filter`, and page through it with `page_size` and `page_token`.",
+        "description": "Browse Leap's program catalog. The catalog is shared across partners. A program you read here is not necessarily one your account can claim. Narrow it with `filter`, and page through it with `page_size` and `page_token`.",
         "operationId": "listPrograms",
         "parameters": [
           {
             "name": "filter",
             "in": "query",
-            "description": "Comma-separated `field=value` pairs, combined with AND. Three fields are supported: `program_type`, `transmission_region` and `enabled`. For example, `filter=transmission_region=CAISO,enabled=true` returns the enabled CAISO programs.\n\nLeap ignores a field name it does not recognise rather than rejecting it, so check your spelling. `enabled` must be `true` or `false`; anything else returns 400. With no `enabled` filter the response mixes enabled and disabled programs, and each row carries its own `enabled` flag.\n",
+            "description": "Comma-separated `field=value` pairs, combined with AND. Supported fields: `program_type`, `transmission_region`, `enabled`, `device_category`, `customer_classification` and `state`. For example, `filter=program_type=VPP,enabled=true` returns the enabled programs that put a device under control.\n\nAn unrecognised field returns 400. `enabled` must be `true` or `false`; anything else returns 400. A pair with no `=` is ignored, so `filter=VPP` returns the unfiltered catalog. A `filter` over 500 characters returns 400.\n\nWith no `enabled` filter the response mixes enabled and disabled programs, and each row carries its own `enabled` flag.\n\nRepeat `device_category` or `customer_classification` to match any of several values: `device_category=ev_charger,device_category=solar_storage` matches either. A `LEAP_DEFINITIONS` program that names no device category or classification matches every value. Every other field keeps its last value if repeated.\n\n`state` matches a program's own state when it has one. Otherwise it matches the state Leap records for each utility the program serves.\n\nComparisons for `device_category`, `customer_classification`, `state` and `enabled` ignore case. Send `program_type` and `transmission_region` in upper case, such as `VPP` and `CAISO`.\n",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Free-text search over each program's `label`, `program_identifier` and `metadata.operator_name`. Matching is case-insensitive and finds the text anywhere in those fields. Every word must match, so adding words narrows the result. Combines with `filter` and `exclude_source`.\n\nA value over 200 characters returns 400. Leap reads the first 10 words, and the first 64 characters of each.\n",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "name": "include_facets",
+            "in": "query",
+            "description": "Set to `true` to add a `facets` object to the response. It counts the programs matching your `filter`, `q` and `exclude_source` across every page. It also breaks them down by device category, customer classification, state and program type.\n\nSend it on the first page only: a request with both `include_facets=true` and a `page_token` returns 400. The counts describe the whole filtered listing, so they are the same on every page. Defaults to `false`.\n",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "exclude_source",
+            "in": "query",
+            "description": "Comma-separated program sources to leave out: `LEAP_DEFINITIONS`, `INCENTIVES_DB` or `PARTNER_OFFER`. For example, `exclude_source=PARTNER_OFFER` lists catalog programs without any partner offers. An unrecognised value returns 400, and so does a value over 200 characters.\n\nThe exclusion applies to the listed programs and to the `facets` counts alike. Omit it to include every source.\n",
             "required": false,
             "schema": {
               "type": "string"
@@ -90,7 +119,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProgramResponse"
+                  "$ref": "#/components/schemas/ProgramSummaryResponse"
                 }
               }
             }
@@ -254,7 +283,21 @@
           "INCENTIVES_DB",
           "PARTNER_OFFER"
         ],
-        "description": "Where the definition came from. `LEAP_DEFINITIONS` and `INCENTIVES_DB` are rebate programs Leap maintains. `PARTNER_OFFER` marks a partner offer, which a partner account configures rather than Leap."
+        "description": "Where the definition came from. `LEAP_DEFINITIONS` marks programs Leap defines itself. Leap sets these to `VPP`. `INCENTIVES_DB` marks programs imported from the public program catalog, and each is `VPP` or `REBATE`. `PARTNER_OFFER` marks a partner offer, which a partner account configures rather than Leap."
+      },
+      "ProgramOperatorType": {
+        "type": "string",
+        "nullable": true,
+        "description": "Who the customer enrolls through. `LEAP` marks Leap's own programs, even when a utility or grid operator runs the underlying program. `metadata.operator_name` names that operator. `PARTNER` marks every partner offer. For every other catalog program, `UTILITY`, `STATE`, `LOCAL`, `FEDERAL` or `PROVINCIAL` gives the kind of public operator. The field is omitted when Leap hasn't recorded the operator, or recorded a value outside these kinds. Treat an absent field and a null one the same way, as unknown rather than none. `metadata.operator_type` is the raw catalog value, which can fall outside this list. Read this top-level field instead.",
+        "enum": [
+          "LEAP",
+          "PARTNER",
+          "UTILITY",
+          "STATE",
+          "LOCAL",
+          "FEDERAL",
+          "PROVINCIAL"
+        ]
       },
       "ErrorResponse": {
         "type": "object",
@@ -289,7 +332,7 @@
           }
         }
       },
-      "ProgramResponse": {
+      "ProgramSummaryResponse": {
         "type": "object",
         "properties": {
           "program_identifier": {
@@ -303,7 +346,8 @@
             "type": "string"
           },
           "program_type": {
-            "type": "string"
+            "type": "string",
+            "description": "Whether the program puts the customer's device under control. Leap sets `VPP` on programs that control or dispatch the device. Examples include demand response, managed charging and virtual power plant programs. `REBATE` marks programs that pay toward buying or installing the device without controlling it afterwards. Read `operator_type` for who the customer enrolls through."
           },
           "transmission_region": {
             "$ref": "#/components/schemas/TransmissionRegion"
@@ -319,6 +363,9 @@
             "type": "object",
             "additionalProperties": true,
             "description": "The partner-visible subset of the program's stored metadata. Responses carry an allowlist of keys rather than everything Leap stores against a program. Catalog description: `url`, `operator_name`, `operator_type`, `device_category`, `application_path`, `state_province`, `country`. Partner offer publication, present on `PARTNER_OFFER` rows: `display_name`, `operator_display_name`, `logo_url`, `terms_url`, `description`. Any other key is omitted, including keys added after this was written, and including a partner offer's private configuration. Present but empty when the program carries none of the twelve.\n\nValues are constrained as well as names. An allowlisted key survives only when its value is a string, a number or a boolean; a key whose value is an object or an array is omitted, because a nested value can carry fields nobody reviewed. Strings longer than 2048 characters are omitted rather than truncated, so a value you receive is always the whole value. No stored value under the seven catalog keys comes close to that bound."
+          },
+          "operator_type": {
+            "$ref": "#/components/schemas/ProgramOperatorType"
           },
           "upstream_program_id": {
             "type": "string",
@@ -337,9 +384,16 @@
           },
           "device_category": {
             "type": "string"
+          },
+          "device_categories": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Every device category the program covers. Leap offers the program to a customer with a device in any listed category, or in `device_category`. Empty when the program names only `device_category`. The list `filter` and the category facets read `device_category` only."
           }
         },
-        "description": "One program in Leap's rebate catalog. The catalog is shared across partners and covers utility, state and market programs, so a program you read here is not necessarily one your account can claim."
+        "description": "One program in Leap's program catalog. The catalog is shared across partners and covers utility, state and market programs. A program you read here is not necessarily one your account can claim."
       },
       "ProgramListResponse": {
         "type": "object",
@@ -347,15 +401,82 @@
           "data": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/ProgramResponse"
+              "$ref": "#/components/schemas/ProgramSummaryResponse"
             }
           },
           "next_page_token": {
             "type": "string",
             "description": "Cursor for the next page, absent on the last page. Pass it back as `page_token`, with the same filter that produced it."
+          },
+          "facets": {
+            "$ref": "#/components/schemas/ProgramFacets"
           }
         },
         "description": "One page of catalog programs, plus the cursor for the next page."
+      },
+      "ProgramFacets": {
+        "type": "object",
+        "description": "Counts that describe the whole filtered listing, not only the page in `data`. Present only when the request sets `include_facets=true`.\n\nEach per-value map is counted without its own filter field. A dropdown can then show what choosing another value would return. For example, `by_state` ignores your `state` filter and applies every other one. The maps therefore don't add up to `total`.",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "description": "Programs matching the current filter, across every page."
+          },
+          "enabled_count": {
+            "type": "integer",
+            "description": "How many of the `total` programs are enabled. Leap evaluates only enabled programs in a lookup."
+          },
+          "by_device_category": {
+            "type": "object",
+            "description": "Programs per device category, keyed by lower-case category and counted without your `device_category` filter. A `LEAP_DEFINITIONS` program that names no device category matches every category under a filter. It appears in no bucket here, and `wildcard_category_count` counts those programs.",
+            "additionalProperties": {
+              "type": "integer"
+            }
+          },
+          "by_customer_classification": {
+            "type": "object",
+            "description": "Programs per customer classification, keyed by upper-case value and counted without your `customer_classification` filter. A `LEAP_DEFINITIONS` program that names no classification matches every classification under a filter. It appears in no bucket here, and `wildcard_classification_count` counts those programs.",
+            "additionalProperties": {
+              "type": "integer"
+            }
+          },
+          "by_state": {
+            "type": "object",
+            "description": "Programs per state, keyed by upper-case state code and counted without your `state` filter.\n\nA program with its own state counts in that state. A program without one counts once in the state Leap records for each utility it serves. Leap records one state per utility, so a utility serving several states places its programs in one of them. A program with neither appears in no bucket.",
+            "additionalProperties": {
+              "type": "integer"
+            }
+          },
+          "by_program_type": {
+            "type": "object",
+            "description": "Programs per `program_type`, such as `VPP` and `REBATE`, counted without your `program_type` filter. Each program counts once, so this map splits distinct programs by type. The state maps can't give that split, because they count a program once per state.",
+            "additionalProperties": {
+              "type": "integer"
+            }
+          },
+          "by_state_program_type": {
+            "type": "object",
+            "description": "`by_state` split by `program_type`: keyed by state code, then by program type, to a count. For each state, the counts sum to that state's `by_state` value.",
+            "additionalProperties": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "integer"
+              }
+            }
+          },
+          "placed_program_count": {
+            "type": "integer",
+            "description": "Distinct programs that appear in at least one `by_state` bucket. The sum of `by_state` counts a program once per state, so it is larger whenever a program spans states.\n\n`total` minus this value is the number of matching programs Leap can't place in any state. It is counted under your whole filter, including `state`, so it covers the same programs as `total`."
+          },
+          "wildcard_category_count": {
+            "type": "integer",
+            "description": "`LEAP_DEFINITIONS` programs that name no device category, so they match every category when you filter on one. They appear in no `by_device_category` bucket. Add this number to each bucket for per-category counts that agree with filtering. Counted without your `device_category` filter."
+          },
+          "wildcard_classification_count": {
+            "type": "integer",
+            "description": "The same count for customer classification: `LEAP_DEFINITIONS` programs that name no classification, so they serve every customer segment. Add this number to each `by_customer_classification` bucket for counts that agree with filtering. Counted without your `customer_classification` filter."
+          }
+        }
       },
       "ProgramApprovedDeviceResponse": {
         "type": "object",

@@ -23,8 +23,8 @@ Claim only what you can supply reliably, and leave the rest.
 
 Every field name starts with a prefix that tells you which object it belongs to:
 
-- `customer.` fields describe the applicant: their name, their utility account, their home. An application has one set.
-- `customer_device.` fields describe one installation: what it cost, when it went in, who installed it. Each installation on an application has its own values.
+- `customer.` fields describe the applicant: their name, their utility account, their home. An application has one set. On lookups, two of them also record the job’s total costs.
+- `customer_device.` fields describe one installation: what the equipment cost, when it went in, who installed it. Each installation on an application has its own values.
 
 Documents have no prefix. They attach to the application as a whole, so one upload covers the claim rather than a single installation.
 
@@ -54,7 +54,7 @@ Write each field name exactly as it appears on this page. Customer fields go in 
 On an application, drop the prefix and nest the field under the object its scope names. `customer.email` becomes `email` inside `customer`, and `customer_device.purchase_price` becomes `purchase_price` inside that `customer_devices[]` entry.
 
 <Warning>
-  Leap checks every key in the request before writing anything. One unrecognized key returns 400 and no incentives, and the response reports every bad key at once, so you can fix them in one pass.
+  On a lookup or a refresh, Leap checks every key in the request before writing anything. One unrecognized key or invalid value returns 400 and no incentives. The response reports every bad key at once, so you can fix them in one pass. An override also returns 400 and rolls back the whole request, but it reports one bad key per call.
 </Warning>
 
 ### Value formats
@@ -212,6 +212,24 @@ These describe the applicant. Send them in `customer_details` on a lookup, or un
       Date the vehicle was registered. Programs that require a recent purchase check it.
     </ResponseField>
   </Accordion>
+
+  <Accordion title="Project cost (2 fields)" icon="dollar-sign">
+    These describe the whole job, so you send each one once, in `customer_details`. Send them on lookups, refreshes, and overrides. The Applications API has no customer-level cost field. Each device’s equipment price goes on that device as `customer_device.purchase_price`.
+
+    <ResponseField name="customer.installation_cost" type="number">
+      The services total for the whole job, before tax: labor, materials, and permits. Send it once, even when the job has several devices. Repeating it on each device as `customer_device.installation_cost` counts it once per device.
+
+      In cost-based amounts, it replaces each device’s installation cost, whether you sent one or Leap estimated it. In checks on installation cost, it stands in for the device’s own value. Each cost calculation counts it once, and each program and each tier runs its own. Leap doesn’t split it between devices or programs. A tier counts it whole, even when only some devices qualify.
+
+      It stays on file and keeps replacing device-level installation costs until you clear it. To clear it, send it as an empty string on [Refresh incentives](/api-reference/incentives-lookups/refresh-incentives). [Override incentives](/api-reference/incentives-lookups/override-incentives) also clears it, unless the new body sends it again.
+
+      Leap ignores a value that is negative, above 1,000,000,000, or written with more than six decimal places. Device-level costs and estimates apply instead. Text that isn’t a number, such as one with a currency symbol or a thousands separator, returns 400. A zero is a real zero, and a check that needs an installation cost above zero fails.
+    </ResponseField>
+
+    <ResponseField name="customer.total_project_cost" type="number">
+      The deal total including tax. Leap stores it, but no calculation reads it yet.
+    </ResponseField>
+  </Accordion>
 </AccordionGroup>
 
 ## Installation fields
@@ -221,15 +239,15 @@ These describe one installation. Send them in the `details` object of the matchi
 <AccordionGroup>
   <Accordion title="Cost (3 fields)" icon="dollar-sign">
     <ResponseField name="customer_device.purchase_price" type="number">
-      Price paid for the equipment, excluding installation labor and materials.
+      Price paid for the equipment, excluding installation labor and materials. Send it on each device, including when the job’s services total goes in `customer.installation_cost`.
     </ResponseField>
 
     <ResponseField name="customer_device.installation_cost" type="number">
-      Cost of the installation: labor, materials, permits, and any electrical work.
+      Cost of this one installation: labor, materials, permits, and any electrical work. Send it when you price each installation separately. When the customer has a `customer.installation_cost`, Leap uses that figure instead of this one. That applies to cost-based amounts and to installation cost checks.
     </ResponseField>
 
     <ResponseField name="customer_device.total_project_cost" type="number">
-      Equipment and installation together, where you hold one figure rather than a split.
+      Equipment and installation together for this installation. Leap stores it, but no incentive calculation reads it, so it doesn’t price a cost-based program. To price one, send `customer_device.purchase_price` and a services cost.
     </ResponseField>
   </Accordion>
 

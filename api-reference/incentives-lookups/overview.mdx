@@ -69,19 +69,35 @@ Leap names utility, state, and market programs; your partner offer uses the name
 
 ## How cost-based programs are priced
 
-Some programs pay a percentage of what the customer spent. Others cap a flat amount at system cost. Either way, the amount depends on the cost Leap resolves for each device.
+Some programs pay a percentage of what the customer spent. Others cap a flat amount at system cost. Each program prices from the cost its rules name: the equipment price, the services cost, or both.
 
-Two keys carry cost, both on the installation:
+You send cost in four keys:
 
-- `customer_device.purchase_price`: the equipment only.
-- `customer_device.installation_cost`: labor, materials, and permits.
+| Key | Where you send it | What it covers |
+| --- | --- | --- |
+| `customer_device.purchase_price` | `details` on each `customer_devices[]` entry | The equipment price of that device. |
+| `customer.installation_cost` | `customer_details`, once per customer | The services total for the whole job, before tax: labor, materials, and permits. |
+| `customer.total_project_cost` | `customer_details`, once per customer | The deal total including tax. Leap stores it, but no calculation reads it yet. |
+| `customer_device.installation_cost` | `details` on each `customer_devices[]` entry | The services cost of that one installation, when you price installations separately. |
 
-Send them in the `details` object on the matching `customer_devices[]` entry. When you don't, Leap estimates the cost from the device catalog and from typical costs for that category and state.
+When a cost is missing, Leap estimates it. Leap uses the device catalog and typical installation costs for that category and state.
 
-A percentage program pays `min(rate × cost, cap)`, summed over the devices that passed the tier. A flat rate capped at system cost pays the lesser of the two. A \$1,500 installation incentive against a \$1,000 actual cost pays \$1,000.
+### Send a job total once, on the customer
+
+If you hold one services total for the job, send it once as `customer.installation_cost`. Don’t repeat it on each device as `customer_device.installation_cost`. Leap adds device-level costs device by device, so a repeated total counts once per device. Two batteries on a \$600 job would count \$1,200 of labor.
+
+In cost-based amounts, `customer.installation_cost` replaces each device’s installation cost, whether you sent one or Leap estimated it. In checks on installation cost, it stands in for the device’s own value. Each cost calculation counts the figure once, and each program and each tier runs its own. Two programs in one request each count the full figure, and so do two tiers in one program. Leap doesn’t split the figure between devices or programs. A tier counts it whole, even when only some devices qualify.
+
+The figure stays on file and keeps replacing device-level installation costs until you clear it. To clear it, send it as an empty string on [Refresh incentives](/api-reference/incentives-lookups/refresh-incentives). [Override incentives](/api-reference/incentives-lookups/override-incentives) also clears it, unless the new body sends it again.
+
+Leap ignores a value that is negative, above 1,000,000,000, or written with more than six decimal places. Device-level costs and estimates apply instead. Text that isn’t a number, such as one with a currency symbol or a thousands separator, returns 400. A zero is a real zero. The job counts no services cost, and a check that needs an installation cost above zero fails.
+
+### How the amount follows from cost
+
+A percentage program pays `min(rate × cost, cap)`, where cost is the total across the devices that passed the tier. A flat rate capped at system cost pays the lesser of the two. A \$1,500 installation incentive against a \$1,000 actual cost pays \$1,000.
 
 <Warning>
-  Send both keys whenever you expect a cost-based program to price. An estimate is a fallback, not a guarantee: where Leap holds none, the cost resolves to zero and a program that would pay reads as ineligible.
+  Send each device’s equipment price and the job’s services cost whenever you expect a cost-based program to price. An estimate is a fallback, not a guarantee. Where Leap holds none, the cost resolves to zero, and a program that would pay reads as ineligible.
 </Warning>
 
-See the [Requirements reference](/setup-data-preferences) for both keys and their value forms.
+See the [Requirements reference](/setup-data-preferences) for every cost key and its value form.

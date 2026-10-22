@@ -47,7 +47,7 @@ Refresh merges what you send, stores it, and re-runs eligibility in the same cal
 
 Send one `customer_devices[]` entry for each physical unit, even when two units are the same model. Give each entry its own `partner_device_reference`, such as the order line or the serial number. Leap stores each entry as its own installation and returns a `customer_device_id` for each.
 
-Don’t count units with `customer_device.quantity`. It’s deprecated, and no incentive calculation reads it. Leave it at 1 or omit it.
+Don’t count units with `customer_device.quantity`. It’s deprecated, and Leap’s incentive calculations ignore it. Leave it at 1 or omit it.
 
 A 20 kWh battery plus a 5 kWh expansion unit from the same product line sends two entries:
 
@@ -93,7 +93,7 @@ Two identical units share a `device_id` and differ only by reference:
 ]
 ```
 
-Always send the references. Two entries for one model with no reference work only on the customer’s first lookup. Later calls return 400 and ask for a reference on each entry. To add a unit later, send it on Refresh with a new reference.
+Always send the references. Two entries for one model with no reference work only on the customer’s first lookup. With two units of one model on file, any call that omits that model’s reference returns 400. To add a unit later, send it on Refresh with a new reference and `create_application` set to `true`.
 
 Leap checks each entry against a program’s requirements on its own. A program that pays per kWh adds up the capacity of the units that qualify. A capacity minimum applies to each unit, not to the system total. A small expansion unit can fail a minimum that the main unit meets.
 

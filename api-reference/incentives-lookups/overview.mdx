@@ -93,7 +93,7 @@ Two identical units share a `device_id` and differ only by reference:
 ]
 ```
 
-Always send the references. Two entries for one model with no reference work only on the customer’s first lookup. With two units of one model on file, any call that omits that model’s reference returns 400. To add a unit later, send it on Refresh with a new reference and `create_application` set to `true`.
+Always send the references. Two entries for one model with no reference work only on the customer’s first lookup. With two units of one model on file, any entry for that model that omits `partner_device_reference` returns 400. To add a unit later, send it on Refresh with a new reference. Set `create_application` to `true` so the customer’s application picks the unit up.
 
 Leap checks each entry against a program’s requirements on its own. A program that pays per kWh adds up the capacity of the units that qualify. A capacity minimum applies to each unit, not to the system total. A small expansion unit can fail a minimum that the main unit meets.
 

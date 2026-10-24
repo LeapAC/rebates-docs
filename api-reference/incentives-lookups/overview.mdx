@@ -43,6 +43,60 @@ Refresh merges what you send, stores it, and re-runs eligibility in the same cal
   Don't re-run a lookup on a `reference_id` you've already used. A second lookup drops installations the customer doesn't have into `devices_ignored[]`. When every entry drops, it returns a 200 with no programs and no `connect_url`. Add devices with Refresh instead.
 </Warning>
 
+## Sending several units
+
+Send one `customer_devices[]` entry for each physical unit, even when two units are the same model. Give each entry its own `partner_device_reference`, such as the order line or the serial number. Leap stores each entry as its own installation and returns a `customer_device_id` for each.
+
+Don’t count units with `customer_device.quantity`. It’s deprecated, and Leap’s incentive calculations ignore it. Leave it at 1 or omit it.
+
+A 20 kWh battery plus a 5 kWh expansion unit from the same product line sends two entries:
+
+```bash
+curl -X POST "https://api.leap.energy/beta/incentives/lookups" \
+  -H "Authorization: Bearer your_api_key_here" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "reference_id": "customer-123",
+    "customer_classification": "RESIDENTIAL",
+    "create_application": true,
+    "address": {
+      "address_line_1": "456 Main St",
+      "city": "Bend",
+      "state": "OR",
+      "zip_code": "97701"
+    },
+    "customer_devices": [
+      {
+        "device_id": "6f4b2c1a-8d3e-4f5a-9b7c-1e2d3c4b5a69",
+        "partner_device_reference": "order-9001-battery"
+      },
+      {
+        "device_id": "a1c3e5f7-2b4d-4e6f-8a9b-0c1d2e3f4a5b",
+        "partner_device_reference": "order-9001-expansion"
+      }
+    ]
+  }'
+```
+
+Two identical units share a `device_id` and differ only by reference:
+
+```json
+"customer_devices": [
+  {
+    "device_id": "6f4b2c1a-8d3e-4f5a-9b7c-1e2d3c4b5a69",
+    "partner_device_reference": "order-9002-unit-1"
+  },
+  {
+    "device_id": "6f4b2c1a-8d3e-4f5a-9b7c-1e2d3c4b5a69",
+    "partner_device_reference": "order-9002-unit-2"
+  }
+]
+```
+
+Always send the references. Two entries for one model with no reference work only on the customer’s first lookup. With two units of one model on file, any entry for that model that omits `partner_device_reference` returns 400. To add a unit later, send it on Refresh with a new reference. Set `create_application` to `true` so the customer’s application picks the unit up.
+
+Leap checks each entry against a program’s requirements on its own. A program that pays per kWh adds up the capacity of the units that qualify. A capacity minimum applies to each unit, not to the system total. A small expansion unit can fail a minimum that the main unit meets.
+
 ## When a call is refused
 
 Override is a pre-submission correction, so Leap refuses it rather than destroy something you didn't name. A `409` means nothing changed on either side: the address already belongs to another of your customers, an application has already been filed with a program administrator, the customer is shared across organizations, or the `reference_id` belongs to another partner. Read `error_code`, fix the cause, and retry.

@@ -2114,7 +2114,7 @@
           "quantity": {
             "type": "integer",
             "default": 1,
-            "description": "Number of devices purchased",
+            "description": "**Deprecated.** Leap treats each device record as one physical unit, and its incentive calculations ignore this field. Send each unit of a model as its own `customer_devices[]` entry on the lookup, with its own `partner_device_reference`.",
             "example": 1
           },
           "purchase_price": {
@@ -2678,7 +2678,8 @@
             "example": "018f2c3a-1111-4222-8333-444455556666"
           },
           "quantity": {
-            "type": "integer"
+            "type": "integer",
+            "description": "**Deprecated.** Leave it at 1 or omit it. Leap's incentive calculations ignore it, so a value above 1 doesn't raise the amount. Send each unit of a model as its own `customer_devices[]` entry on the lookup, with its own `partner_device_reference`."
           },
           "purchase_price": {
             "type": "number",

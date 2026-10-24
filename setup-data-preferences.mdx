@@ -275,7 +275,7 @@ These describe one installation. Send them in the `details` object of the matchi
     </ResponseField>
 
     <ResponseField name="customer_device.quantity" type="number">
-      The count of identical units this entry covers.
+      **Deprecated.** Leave it at 1 or omit it. Leap’s incentive calculations ignore it, so a value above 1 doesn’t raise the amount. Send each unit of a model as its own `customer_devices[]` entry, with its own `partner_device_reference`. See [Sending several units](/api-reference/incentives-lookups/overview#sending-several-units).
     </ResponseField>
 
     <ResponseField name="customer_device.is_new_equipment" type="boolean">

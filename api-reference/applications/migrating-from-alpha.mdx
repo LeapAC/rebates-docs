@@ -34,9 +34,8 @@ Every alpha route you call has a beta twin:
 | `GET /applications/attachments/{id}/download` | [`GET /beta/incentives/applications/attachments/{id}/download`](/api-reference/applications/download-attachment) |
 | `DELETE /applications/attachments/{id}` | [`DELETE /beta/incentives/applications/attachments/{id}`](/api-reference/applications/delete-attachment) |
 
-The beta API also adds three routes the alpha docs didn't cover:
+The beta API also adds two routes the alpha docs didn't cover:
 
-- [Get customer summary](/api-reference/applications/get-customer-summary): one customer, their devices, and their open applications in one call.
 - [Update applications in bulk](/api-reference/applications/update-applications-in-bulk): several updates in one request.
 - [Get required fields](/api-reference/applications/get-required-fields): what each program needs, grouped by who supplies it.
 
@@ -46,8 +45,9 @@ A few details differ from the alpha API:
 
 - **Upload URLs**: `PUT` the file with the same `Content-Type` you sent to **Upload attachment**. The type is part of the URL's signature, so a different one fails. The URL stays valid for two hours.
 - **Application IDs**: **Get application** accepts the `application_uuid` as well as the integer `id`. **Update application** takes the integer `id` only.
-- **Sensitive identifiers**: Leap accepts `ssn` and `tax_id` on a customer update but doesn't store them.
-- **Errors**: route errors keep the alpha body of `code`, `message`, and `requestId`.
+- **Sensitive identifiers**: Leap accepts `ssn` and `tax_id` on a customer update but doesn't store them, so reads never return them.
+- **Errors**: route errors keep the alpha body of `code`, `message`, and `requestId`. A missing or invalid key returns `403` with `{ "error": "…" }` before the request reaches a route.
+- **Attachment routes**: send `application_id` on every attachment call. The beta attachment routes don't take `refId`.
 
 ## Switch over
 

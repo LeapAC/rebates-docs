@@ -192,12 +192,17 @@ export function dropOneOfBranches(spec, names) {
     if (!node || typeof node !== 'object') return;
     for (const key of ['oneOf', 'anyOf']) {
       if (!Array.isArray(node[key])) continue;
+      const before = node[key].length;
       node[key] = node[key].filter((b) => {
         const n = branchName(b);
         if (n && wanted.has(n)) { hit.add(n); return false; }
         return true;
       });
-      if (node[key].length === 1) {
+      // Only reshape a list this step trimmed: a source `oneOf` with one branch
+      // (the OAS 3.0 nullable idiom) stays as the source wrote it.
+      if (node[key].length === before) continue;
+      if (node[key].length === 0) delete node[key];
+      else if (node[key].length === 1) {
         const [only] = node[key];
         delete node[key];
         Object.assign(node, only);
@@ -206,6 +211,24 @@ export function dropOneOfBranches(spec, names) {
     Object.values(node).forEach(walk);
   };
   if (wanted.size) walk(spec.paths);
+  return [...wanted].filter((n) => !hit.has(n));
+}
+
+// Source specs carry vendor extensions for their own tooling, such as the
+// permission a route checks or a marker for vendored operations. Mintlify ignores
+// them, but they ship in the published JSON. Delete the named `x-` keys anywhere
+// in the spec. Returns the names that matched nothing.
+export function stripExtensions(spec, names) {
+  const wanted = new Set(names || []);
+  const hit = new Set();
+  const walk = (node) => {
+    if (Array.isArray(node)) return node.forEach(walk);
+    if (!node || typeof node !== 'object') return;
+    for (const key of Object.keys(node)) {
+      if (wanted.has(key)) { hit.add(key); delete node[key]; } else walk(node[key]);
+    }
+  };
+  if (wanted.size) walk(spec);
   return [...wanted].filter((n) => !hit.has(n));
 }
 
@@ -384,6 +407,7 @@ function main() {
     const unremoved = removeProperties(spec, s.removeProperties);
     const unremovedParams = removeParameters(spec, s.removeParameters);
     const undroppedBranches = dropOneOfBranches(spec, s.dropOneOfBranches);
+    const unstripped = stripExtensions(spec, s.stripExtensions);
     spec = pruneUnusedComponents(spec);
     // After pruning, so overrides are only required for schemas that ship.
     const missing = findMissingSchemaDescriptions(spec, s.schemaDescriptions);
@@ -393,6 +417,7 @@ function main() {
     const optionalUnused = replaced.unused.filter((f) => !replaced.missingRequired.includes(f));
     if (optionalUnused.length) console.warn(`  ! ${s.output}: replacements matched nothing (source may be fixed): ${optionalUnused.join(', ')}`);
     if (unremovedParams.length) { console.error(`✗ ${s.output}: removeParameters matched no operation: ${unremovedParams.join(', ')}`); failures++; }
+    if (unstripped.length) { console.error(`✗ ${s.output}: stripExtensions matched no key: ${unstripped.join(', ')}`); failures++; }
     if (undroppedBranches.length) { console.error(`✗ ${s.output}: dropOneOfBranches matched no branch: ${undroppedBranches.join(', ')}`); failures++; }
     if (unremoved.length) console.warn(`  ! ${s.output}: removeProperties matched nothing (field already gone upstream): ${unremoved.join(', ')}`);
     spec.info = { ...(spec.info || {}), title: s.title, ...(s.description ? { description: s.description } : {}) };

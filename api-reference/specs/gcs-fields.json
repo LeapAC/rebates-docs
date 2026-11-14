@@ -32,7 +32,6 @@
         "summary": "Get required fields",
         "description": "List the fields, agreements, attachments, and device categories a set of programs needs, grouped by who supplies them: the customer, you, Leap, or the utility. Send `program_identifiers` from **List programs**, and the customer's `customer_eiaid` when you know it. Your **Data Preferences** decide which fields land in the `partner` section. This route takes the same key as **List programs**.",
         "operationId": "getFields",
-        "x-leap-permission": "READ_INCENTIVES_DATA",
         "requestBody": {
           "required": true,
           "content": {
@@ -167,7 +166,7 @@
             }
           },
           "customer_eiaid": {
-            "description": "The customer's utility, as an EIA id. When you send it, `utility_connections` is keyed on it. An empty string, `0`, or `null` counts as not sent.",
+            "description": "The customer's utility, as an EIA id string. When you send it, `utility_connections` is keyed on it. Leave it out or send `null` when you don't know it; an empty string or a number returns 400.",
             "type": "string",
             "minLength": 1,
             "maxLength": 20,

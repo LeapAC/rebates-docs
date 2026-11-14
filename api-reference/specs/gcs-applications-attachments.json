@@ -34,9 +34,6 @@
         "operationId": "listAttachments",
         "parameters": [
           {
-            "$ref": "#/components/parameters/LegacyRefId"
-          },
-          {
             "$ref": "#/components/parameters/LegacyApplicationIdQuery"
           },
           {
@@ -79,12 +76,9 @@
           "applications"
         ],
         "summary": "Upload attachment",
-        "description": "Start an upload. Leap returns a signed `uploadUrl`, valid for two hours, and the file's `path`. `PUT` the file to `uploadUrl` with the same `Content-Type` you sent here, then call **Commit attachment upload** with the `path`. Leap records nothing until the commit.",
+        "description": "Start an upload for the application you name in `application_id`, which is required. Leap returns a signed `uploadUrl`, valid for two hours, and the file's `path`. `PUT` the file to `uploadUrl` with the same `Content-Type` you sent here, then call **Commit attachment upload** with the `path`. Leap records nothing until the commit.",
         "operationId": "createAttachmentUpload",
         "parameters": [
-          {
-            "$ref": "#/components/parameters/LegacyRefId"
-          },
           {
             "$ref": "#/components/parameters/LegacyApplicationIdQuery"
           }
@@ -134,12 +128,9 @@
           "applications"
         ],
         "summary": "Commit attachment upload",
-        "description": "Attach an uploaded file to the application. Call it after the `PUT` to `uploadUrl` succeeds. If Leap can't find the file, the call returns 404. A file over 50 MiB returns 400 and is removed. Committing the same `path` again returns the same attachment `id`.",
+        "description": "Attach an uploaded file to the application you name in `application_id`, which is required. Call it after the `PUT` to `uploadUrl` succeeds. If Leap can't find the file, the call returns 404. A file over 50 MiB returns 400 and is removed. Committing the same `path` again returns the same attachment `id`.",
         "operationId": "commitAttachment",
         "parameters": [
-          {
-            "$ref": "#/components/parameters/LegacyRefId"
-          },
           {
             "$ref": "#/components/parameters/LegacyApplicationIdQuery"
           }
@@ -189,14 +180,11 @@
           "applications"
         ],
         "summary": "Download attachment",
-        "description": "Get a signed URL for downloading an attachment. The URL is valid for one hour. `downloadUrl`, `url`, and `file_url` carry the same URL.",
+        "description": "Get a signed URL for downloading an attachment. Send the attachment's `application_id` too. The URL is valid for one hour. `downloadUrl`, `url`, and `file_url` carry the same URL.",
         "operationId": "getAttachmentDownload",
         "parameters": [
           {
             "$ref": "#/components/parameters/LegacyAttachmentId"
-          },
-          {
-            "$ref": "#/components/parameters/LegacyRefId"
           },
           {
             "$ref": "#/components/parameters/LegacyApplicationIdQuery"
@@ -240,14 +228,11 @@
           "applications"
         ],
         "summary": "Delete attachment",
-        "description": "Delete an attachment. Leap removes the file from the application and returns 204 with no body. You can't restore a deleted attachment through the API.",
+        "description": "Delete an attachment. Send the attachment's `application_id` too. Leap removes the file from the application and returns 204 with no body. You can't restore a deleted attachment through the API.",
         "operationId": "deleteAttachment",
         "parameters": [
           {
             "$ref": "#/components/parameters/LegacyAttachmentId"
-          },
-          {
-            "$ref": "#/components/parameters/LegacyRefId"
           },
           {
             "$ref": "#/components/parameters/LegacyApplicationIdQuery"
@@ -281,18 +266,6 @@
   },
   "components": {
     "parameters": {
-      "LegacyRefId": {
-        "name": "refId",
-        "in": "query",
-        "required": false,
-        "description": "The `reference_id` you sent on the lookup for this customer.",
-        "schema": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 200
-        },
-        "example": "customer-123"
-      },
       "LegacyApplicationIdQuery": {
         "name": "application_id",
         "in": "query",
@@ -466,7 +439,6 @@
         ]
       },
       "LegacyEnvelope": {
-        "x-legacy-alpha": true,
         "description": "`ok` is true on success. `requestId` identifies the request for Leap support.",
         "type": "object",
         "properties": {
@@ -481,7 +453,6 @@
         }
       },
       "LegacyAttachment": {
-        "x-legacy-alpha": true,
         "description": "One attachment on one application. `created_at` and `updated_at` both hold the upload time.",
         "type": "object",
         "properties": {
@@ -521,7 +492,6 @@
         }
       },
       "LegacyAttachmentListResponse": {
-        "x-legacy-alpha": true,
         "description": "The attachments, newest upload first.",
         "allOf": [
           {
@@ -541,7 +511,6 @@
         ]
       },
       "LegacyError": {
-        "x-legacy-alpha": true,
         "description": "An error. `code` is a stable identifier you can branch on, `message` explains it, and `requestId` identifies the request for Leap support.",
         "type": "object",
         "required": [
@@ -569,7 +538,6 @@
         }
       },
       "LegacyAttachmentUploadResponse": {
-        "x-legacy-alpha": true,
         "description": "Where to upload the file. `PUT` the bytes to `uploadUrl`, then send `path` to **Commit attachment upload**.",
         "allOf": [
           {
@@ -595,7 +563,6 @@
         ]
       },
       "LegacyAttachmentUploadRequest": {
-        "x-legacy-alpha": true,
         "description": "The file you're about to upload. Send the same `contentType` as the `Content-Type` header on the `PUT`.",
         "type": "object",
         "required": [
@@ -619,7 +586,6 @@
         }
       },
       "LegacyAttachmentCommitResponse": {
-        "x-legacy-alpha": true,
         "description": "The committed attachment. Use `id` to download or delete it.",
         "allOf": [
           {
@@ -645,7 +611,6 @@
         ]
       },
       "LegacyAttachmentCommitRequest": {
-        "x-legacy-alpha": true,
         "description": "The upload to attach. `path` is the value **Upload attachment** returned.",
         "type": "object",
         "required": [
@@ -673,7 +638,6 @@
         }
       },
       "LegacyAttachmentDownloadResponse": {
-        "x-legacy-alpha": true,
         "description": "A signed download URL, valid for one hour, repeated in three keys.",
         "allOf": [
           {

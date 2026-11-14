@@ -168,19 +168,22 @@ fix, and a source-side change would break that caller.
 
 ## Drop a staff-only parameter or request shape
 
-Two more curation steps cover the beta Applications routes, which GCS serves to
+Three more curation steps cover the beta Applications routes, which GCS serves to
 Leap staff and partners alike:
 
 - `removeParameters` drops a component parameter from every operation that lists
   it, keyed by its name under `#/components/parameters`. The Applications specs
   drop `LegacyOrganizationId` and `LegacyCompany`, the staff organization
-  selectors.
+  selectors. The Attachments spec also drops `LegacyRefId`: the
+  partner attachment routes take `application_id`.
+- `stripExtensions` deletes named vendor `x-` keys anywhere in the spec, such as
+  `x-leap-permission`, which names an internal permission.
 - `dropOneOfBranches` removes `oneOf` or `anyOf` branches that point at the named
   schemas, and collapses a single survivor into its parent. The Fields spec drops
   `LegacyFieldsRequest`, the staff body of `POST /beta/incentives/fields`, so the
   page shows only the `program_identifiers` body partners send.
 
-Both **fail the run** when a name matches nothing, like a required replacement.
+All three **fail the run** when a name matches nothing, like a required replacement.
 
 ## Rewrite a section's blurb
 
@@ -269,7 +272,9 @@ only after it reaches production. `POST /beta/incentives/fields` with the
 `program_identifiers` body is the exception: it takes `READ_INCENTIVES_DATA` and
 is already partner-scoped.
 
-Excluded on purpose, so don't re-add them as coverage gaps: every
+Excluded on purpose, so don't re-add them as coverage gaps: `GET
+/beta/incentives/applications/customer-summary` (staff only in the alpha API too:
+`get_customer_applications_summary.ts` answers an organization key 403), every
 `/beta/incentives/legacy-alpha/*` alias (deprecated), the staff refId `PATCH
 /beta/incentives/applications`, `POST …/status` and `POST …/utility-change`, the
 backfill importer `POST …/admin/imports`, the seven Wallet hub routes under

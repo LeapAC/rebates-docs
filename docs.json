@@ -62,7 +62,6 @@
           "api-reference/applications/overview",
           "api-reference/applications/migrating-from-alpha",
           "GET /beta/incentives/applications",
-          "GET /beta/incentives/applications/customer-summary",
           "GET /beta/incentives/applications/{id}",
           "PATCH /beta/incentives/applications/{id}",
           "PATCH /beta/incentives/applications/bulk",

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { filterOperations, retargetServers, ensureSecurity, findBrokenRefs, applyOperationTitles, applyOperationDescriptions, applySchemaDescriptions, findMissingSchemaDescriptions, applyStringReplacements, removeProperties, removeParameters, dropOneOfBranches, applyTag, pruneUnusedComponents } from './sync-openapi.mjs';
+import { filterOperations, retargetServers, ensureSecurity, findBrokenRefs, applyOperationTitles, applyOperationDescriptions, applySchemaDescriptions, findMissingSchemaDescriptions, applyStringReplacements, removeProperties, removeParameters, dropOneOfBranches, stripExtensions, applyTag, pruneUnusedComponents } from './sync-openapi.mjs';
 
 const sample = () => ({
   openapi: '3.0.0',
@@ -200,4 +200,35 @@ test('dropOneOfBranches removes named branches and collapses a single survivor',
   assert.deepEqual(unmatched, ['Missing']);
   pruneUnusedComponents(spec);
   assert.ok(!('Legacy' in spec.components.schemas), 'the dropped branch schema is pruned');
+});
+
+test('stripExtensions deletes the named vendor keys at any depth and reports unmatched names', () => {
+  const spec = {
+    paths: { '/f': { post: { 'x-leap-permission': 'INTERNAL', 'x-keep': 1, requestBody: { content: { 'application/json': { schema: { 'x-legacy-alpha': true, type: 'object' } } } } } } },
+    components: { schemas: { A: { 'x-legacy-alpha': true, properties: { b: { type: 'string' } } } } },
+  };
+  const unmatched = stripExtensions(spec, ['x-leap-permission', 'x-legacy-alpha', 'x-gone']);
+  assert.ok(!('x-leap-permission' in spec.paths['/f'].post));
+  assert.equal(spec.paths['/f'].post['x-keep'], 1, 'unlisted extensions stay');
+  assert.deepEqual(spec.paths['/f'].post.requestBody.content['application/json'].schema, { type: 'object' });
+  assert.ok(!('x-legacy-alpha' in spec.components.schemas.A));
+  assert.deepEqual(unmatched, ['x-gone']);
+});
+
+test('dropOneOfBranches leaves untouched single-branch lists alone and removes an emptied list', () => {
+  const spec = {
+    paths: {
+      '/g': {
+        get: {
+          responses: {
+            200: { content: { 'application/json': { schema: { properties: { n: { nullable: true, oneOf: [{ $ref: '#/components/schemas/Kept' }] } } } } } },
+            400: { content: { 'application/json': { schema: { anyOf: [{ $ref: '#/components/schemas/Legacy' }] } } } },
+          },
+        },
+      },
+    },
+  };
+  dropOneOfBranches(spec, ['Legacy']);
+  assert.deepEqual(spec.paths['/g'].get.responses[200].content['application/json'].schema.properties.n, { nullable: true, oneOf: [{ $ref: '#/components/schemas/Kept' }] });
+  assert.deepEqual(spec.paths['/g'].get.responses[400].content['application/json'].schema, {});
 });

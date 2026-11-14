@@ -19,18 +19,17 @@ You only ever see your own organization's applications, customers, and attachmen
 
 ## Where applications come from
 
-Send `create_application: true` on [Look up incentives](/api-reference/incentives-lookups/look-up-incentives) and Leap creates one application per eligible program in the background. That happens within a few seconds, before the customer opens the Connect URL. Without the flag, Leap creates no applications.
+Send `create_application: true` on [Look up incentives](/api-reference/incentives-lookups/look-up-incentives) and Leap creates one application per eligible program in the background. That happens within a few seconds, before the customer opens the Connect URL. Without the flag, the lookup creates no applications.
 
-## Endpoints
+## Routes in this API
 
-Five routes act on applications and customers, five manage attachments, and one lists requirements:
+Four routes act on applications, five manage attachments, and one lists requirements:
 
 - **Search applications**: page through your applications, filtered by `refId` or `application_status`. Each result's `id` is the application ID the other routes take.
-- **Get customer summary**: one customer with their devices and open applications, in one call.
 - **Get application**: one application in full, with the customer, their devices, and its status history.
 - **Update application**: supply data on the customer's behalf. Only the fields you send change, and `null` clears one.
 - **Update applications in bulk**: several updates in one request, with a result per entry.
-- **Attachments**: upload, commit, list, download, and delete supporting files. The [Requirements reference](/setup-data-preferences#send-documents-as-attachments) walks through an upload.
+- **Attachments**: upload, commit, list, download, and delete supporting files, up to 50 MiB each. The [Requirements reference](/setup-data-preferences#send-documents-as-attachments) walks through an upload.
 - **Get required fields**: the fields, agreements, and attachments each program needs, grouped by who supplies them.
 
 ## Read every page of results
@@ -59,13 +58,13 @@ Every application carries a `status`, which Leap updates as the customer and Lea
 | `declined` | The customer withdrew, for example by choosing not to join an optional program in Connect. |
 | `dismissed` | Leap closed the application because of its own error. `dismissal_reason` says why. |
 
-`approved`, `rejected`, `declined`, and `dismissed` are terminal. [Get customer summary](/api-reference/applications/get-customer-summary) leaves terminal applications out unless you pass `include_terminal=true`.
+`approved`, `rejected`, `declined`, and `dismissed` are terminal: an application in one of them is closed.
 
 ## Identifiers on this API
 
 Applications, customers, and installations are numbered, so `id`, `customer_id`, and the entries in `customer_device_id[]` are integers. **Get application** also accepts the `application_uuid` in place of the integer `id`. The catalog `device_id` on a device is a UUID, the same one the incentives lookup takes and returns. Read identifiers back from the application rather than constructing them.
 
-## Errors
+## Error responses
 
 Route errors return a JSON body with a stable `code`, a readable `message`, and a `requestId`:
 
@@ -74,6 +73,12 @@ Route errors return a JSON body with a stable `code`, a readable `message`, and 
 ```
 
 Branch on `code`, and send the `requestId` to Leap support when you report a problem.
+
+A missing or invalid API key returns `403` before the request reaches a route, with a different body:
+
+```json
+{ "error": "No or invalid API key or JWT provided in authorization header" }
+```
 
 ## Supplying data on the customer's behalf
 

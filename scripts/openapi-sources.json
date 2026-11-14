@@ -158,7 +158,8 @@
       "tag": "applications",
       "source": { "repo": "LeapAC/global-connect-service", "ref": "origin/main", "entry": "src/main/resources/openapi/applications.yaml", "deps": [] },
       "removeParameters": ["LegacyOrganizationId", "LegacyCompany"],
-      "removeProperties": ["LegacyApplication.recaptcha_token", "LegacyApplication.organization_id", "LegacyApplication.uncollected_requirements", "LegacyApplication.verification_status", "LegacyApplication.verification_results", "LegacyApplication.verification_attempted_at", "LegacyApplication.verification_completed_at", "LegacyCustomer.is_test", "LegacyCustomer.ssn", "LegacyCustomer.tax_id", "LegacyApplicationSearchResponse.organization", "LegacyApplicationSearchResponse.customer", "LegacyApplicationSearchResponse.customer_devices", "LegacyApplicationSearchResponse.applications"],
+      "stripExtensions": ["x-legacy-alpha"],
+      "removeProperties": ["LegacyMutations.applications", "LegacyApplication.partner_open_order_count", "LegacyApplication.recaptcha_token", "LegacyApplication.organization_id", "LegacyApplication.uncollected_requirements", "LegacyApplication.verification_status", "LegacyApplication.verification_results", "LegacyApplication.verification_attempted_at", "LegacyApplication.verification_completed_at", "LegacyCustomer.is_test", "LegacyCustomer.ssn", "LegacyCustomer.tax_id", "LegacyApplicationSearchResponse.organization", "LegacyApplicationSearchResponse.customer", "LegacyApplicationSearchResponse.customer_devices", "LegacyApplicationSearchResponse.applications"],
       "replacements": [
         { "from": "Legacy customer reference (`customer_organizations.reference_id`).", "to": "The `reference_id` you sent on the lookup for this customer.", "required": true },
         { "from": "Legacy bad request.", "to": "The request is malformed or fails validation. `message` says which part.", "required": true },
@@ -181,7 +182,6 @@
       ],
       "include": [
         { "method": "get", "path": "/beta/incentives/applications", "title": "Search applications", "description": "List your applications one page at a time. Filter by `refId` to read one customer's applications, or by `application_status`. Each result's `id` is the application ID the other Applications routes take. Follow `next_page_token` until it's null to read every page." },
-        { "method": "get", "path": "/beta/incentives/applications/customer-summary", "title": "Get customer summary", "description": "Read one customer in a single call: their details, their devices, and their open applications. `refId` is required. Pass `include_terminal=true` to also return approved, rejected, declined, and dismissed applications. The summary holds at most 500 applications." },
         { "method": "get", "path": "/beta/incentives/applications/{id}", "title": "Get application", "description": "Read one application in full: its fields, the customer with their devices, and its status history. Address it by the integer `id` or by the `application_uuid`." },
         { "method": "patch", "path": "/beta/incentives/applications/{id}", "title": "Update application", "description": "Supply data on the customer's behalf. Send application fields at the top level, customer fields under `customer`, and device fields under `customer_devices`, each device with its `id`. Only the fields you send change, and `null` clears one.\n\nThis route doesn't change `status`, `dismissal_reason`, or `confirmation_number`, and it sends the customer no email. Add `dryRun=true` to check a request without writing it." },
         { "method": "patch", "path": "/beta/incentives/applications/bulk", "title": "Update applications in bulk", "description": "Apply several application updates in one request. Each entry in `updates` names an `application_id` and carries the same fields as **Update application**. The route returns 200 with one result per entry, so check each result's `ok` and `error`." }
@@ -198,11 +198,10 @@
         "LegacyApplication.rejection_reason": "Why the program rejected the application, when Leap recorded a reason.",
         "LegacyApplicationSearchResponse": "One page of applications. Follow `next_page_token` until it's null to read every page.",
         "ContractLegacyError": "An error. `code` is a stable identifier you can branch on, `message` explains it, and `requestId` identifies the request for Leap support.",
-        "LegacyCustomerSummary": "One customer with their devices and applications. Terminal applications (approved, rejected, declined, dismissed) appear only with `include_terminal=true`. At most 500 applications.",
         "LegacyApplicationDetail": "One application with its customer, the customer's devices, and its status history.",
-        "LegacyMutations": "What the request changed: the customer, each device, and each application, with the fields written.",
+        "LegacyMutations": "What the request changed. `customer` and `customer_devices` list the fields written to each, and on **Update application** an `application` object holds the application fields written. Leap ignores keys it doesn't recognise, so check this to confirm a change. With `dryRun=true` the response carries `dryRun`, `validations`, and `wouldMutate` instead, and nothing is written.",
         "LegacyBulkPatchResponse": "One result per entry in `updates`. The route returns 200 even when an entry fails, so check each result's `ok`.",
-        "LegacyOrgPatchRequest": "The fields to change. Application fields go at the top level, customer fields under `customer`, and device fields under `customer_devices`, each device with its integer `id`. `status` isn't accepted here."
+        "LegacyOrgPatchRequest": "The fields to change. Application fields go at the top level, customer fields under `customer`, and device fields under `customer_devices`, each device with its integer `id`. `status` isn't accepted here. The [requirements reference](/setup-data-preferences) lists the field names. Leap ignores keys it doesn't recognise, so read `mutations` in the response to confirm what changed."
       }
     },
     {
@@ -213,9 +212,9 @@
       "security": "bearer",
       "tag": "applications",
       "source": { "repo": "LeapAC/global-connect-service", "ref": "origin/main", "entry": "src/main/resources/openapi/applications-attachments.yaml", "deps": [] },
-      "removeParameters": ["LegacyOrganizationId", "LegacyCompany"],
+      "removeParameters": ["LegacyOrganizationId", "LegacyCompany", "LegacyRefId"],
+      "stripExtensions": ["x-legacy-alpha"],
       "replacements": [
-        { "from": "Legacy customer reference (`customer_organizations.reference_id`).", "to": "The `reference_id` you sent on the lookup for this customer.", "required": true },
         { "from": "Legacy bad request.", "to": "The request is malformed or fails validation. `message` says which part.", "required": true },
         { "from": "Legacy forbidden, for example an admin only route on a partner key.", "to": "The record belongs to another organization or customer.", "required": true },
         { "from": "Legacy not found.", "to": "Nothing matches the identifier you sent.", "required": true },
@@ -234,10 +233,10 @@
       ],
       "include": [
         { "method": "get", "path": "/beta/incentives/applications/attachments", "title": "List attachments", "description": "List the attachments on your applications, newest upload first. Send `application_id` with an `attachment_type` for one application, or `application_ids` (comma-separated) for several, where `attachment_type` is optional. A file attached to two applications appears once for each." },
-        { "method": "post", "path": "/beta/incentives/applications/attachments", "title": "Upload attachment", "description": "Start an upload. Leap returns a signed `uploadUrl`, valid for two hours, and the file's `path`. `PUT` the file to `uploadUrl` with the same `Content-Type` you sent here, then call **Commit attachment upload** with the `path`. Leap records nothing until the commit." },
-        { "method": "post", "path": "/beta/incentives/applications/attachments/commit", "title": "Commit attachment upload", "description": "Attach an uploaded file to the application. Call it after the `PUT` to `uploadUrl` succeeds. If Leap can't find the file, the call returns 404. A file over 50 MiB returns 400 and is removed. Committing the same `path` again returns the same attachment `id`." },
-        { "method": "get", "path": "/beta/incentives/applications/attachments/{id}/download", "title": "Download attachment", "description": "Get a signed URL for downloading an attachment. The URL is valid for one hour. `downloadUrl`, `url`, and `file_url` carry the same URL." },
-        { "method": "delete", "path": "/beta/incentives/applications/attachments/{id}", "title": "Delete attachment", "description": "Delete an attachment. Leap removes the file from the application and returns 204 with no body. You can't restore a deleted attachment through the API." }
+        { "method": "post", "path": "/beta/incentives/applications/attachments", "title": "Upload attachment", "description": "Start an upload for the application you name in `application_id`, which is required. Leap returns a signed `uploadUrl`, valid for two hours, and the file's `path`. `PUT` the file to `uploadUrl` with the same `Content-Type` you sent here, then call **Commit attachment upload** with the `path`. Leap records nothing until the commit." },
+        { "method": "post", "path": "/beta/incentives/applications/attachments/commit", "title": "Commit attachment upload", "description": "Attach an uploaded file to the application you name in `application_id`, which is required. Call it after the `PUT` to `uploadUrl` succeeds. If Leap can't find the file, the call returns 404. A file over 50 MiB returns 400 and is removed. Committing the same `path` again returns the same attachment `id`." },
+        { "method": "get", "path": "/beta/incentives/applications/attachments/{id}/download", "title": "Download attachment", "description": "Get a signed URL for downloading an attachment. Send the attachment's `application_id` too. The URL is valid for one hour. `downloadUrl`, `url`, and `file_url` carry the same URL." },
+        { "method": "delete", "path": "/beta/incentives/applications/attachments/{id}", "title": "Delete attachment", "description": "Delete an attachment. Send the attachment's `application_id` too. Leap removes the file from the application and returns 204 with no body. You can't restore a deleted attachment through the API." }
       ],
       "schemaDescriptions": {
         "AttachmentType": "The kind of document. The [requirements reference](/setup-data-preferences) defines each type.",
@@ -259,6 +258,7 @@
       "tag": "applications",
       "source": { "repo": "LeapAC/global-connect-service", "ref": "origin/main", "entry": "src/main/resources/openapi/programs.yaml", "deps": ["src/main/resources/openapi/common-schemas.yaml"] },
       "dropOneOfBranches": ["LegacyFieldsRequest"],
+      "stripExtensions": ["x-leap-permission"],
       "removeProperties": ["FieldsRequest.partner_id"],
       "replacements": [
         { "from": "Valid request but invalid data (e.g., non-APPROVED requirement)", "to": "The request is well formed, but Leap can't serve requirements for it.", "required": true },
@@ -269,7 +269,7 @@
       ],
       "schemaDescriptions": {
         "FieldsRequest": "The programs to read requirements for. Maps in the response are keyed by the `program_identifiers` you send.",
-        "FieldsRequest.customer_eiaid": "The customer's utility, as an EIA id. When you send it, `utility_connections` is keyed on it. An empty string, `0`, or `null` counts as not sent.",
+        "FieldsRequest.customer_eiaid": "The customer's utility, as an EIA id string. When you send it, `utility_connections` is keyed on it. Leave it out or send `null` when you don't know it; an empty string or a number returns 400.",
         "FieldsProgramIdentifier": "A program's `identifier`, as **List programs** returns it.",
         "FieldsResponse": "The requirements for the programs you sent, in one section per owner: `customer`, `partner`, `leap`, and `utility`. Maps keyed by program use the `program_identifiers` from the request.",
         "OwnerSection": "What one owner supplies. `fields` entries are `table.column` paths such as `customers.email`, `customer_devices.purchase_date`, or `applications.agree_terms`. Lists are sorted alphabetically.",

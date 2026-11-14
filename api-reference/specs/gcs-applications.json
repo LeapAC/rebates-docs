@@ -126,58 +126,6 @@
         }
       }
     },
-    "/beta/incentives/applications/customer-summary": {
-      "get": {
-        "tags": [
-          "applications"
-        ],
-        "summary": "Get customer summary",
-        "description": "Read one customer in a single call: their details, their devices, and their open applications. `refId` is required. Pass `include_terminal=true` to also return approved, rejected, declined, and dismissed applications. The summary holds at most 500 applications.",
-        "operationId": "getCustomerSummary",
-        "parameters": [
-          {
-            "$ref": "#/components/parameters/LegacyRefId"
-          },
-          {
-            "name": "include_terminal",
-            "in": "query",
-            "required": false,
-            "description": "Keep the terminal applications (approved, rejected, declined, dismissed) in the summary.",
-            "schema": {
-              "type": "boolean",
-              "default": false
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/LegacyCustomerSummary"
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Legacy400"
-          },
-          "403": {
-            "$ref": "#/components/responses/Legacy403"
-          },
-          "404": {
-            "$ref": "#/components/responses/Legacy404"
-          },
-          "409": {
-            "$ref": "#/components/responses/Legacy409"
-          },
-          "500": {
-            "$ref": "#/components/responses/Legacy500"
-          }
-        }
-      }
-    },
     "/beta/incentives/applications/{id}": {
       "get": {
         "tags": [
@@ -490,7 +438,6 @@
         }
       },
       "LegacyApplicationStatus": {
-        "x-legacy-alpha": true,
         "description": "Where the application is in processing. The [Applications guide](/api-reference/applications/overview#application-status) describes each value.",
         "type": "string",
         "enum": [
@@ -507,7 +454,6 @@
         ]
       },
       "LegacyCustomer": {
-        "x-legacy-alpha": true,
         "description": "The customer, with the attributes you or the customer supplied. An attribute Leap holds no value for is null.",
         "type": "object",
         "additionalProperties": true,
@@ -773,7 +719,6 @@
         }
       },
       "LegacyCustomerDevice": {
-        "x-legacy-alpha": true,
         "description": "One device on the customer's record, with the catalog device nested under `device`. Its integer `id` is the value you send in `customer_devices[].id` on **Update application**.",
         "type": "object",
         "additionalProperties": true,
@@ -1028,7 +973,6 @@
         }
       },
       "LegacyApplication": {
-        "x-legacy-alpha": true,
         "description": "One application: the customer's claim on one program. Additional fields can appear as Leap adds them, so ignore keys you don't recognise.",
         "type": "object",
         "additionalProperties": true,
@@ -1049,11 +993,6 @@
             "type": "string",
             "format": "date-time",
             "nullable": true,
-            "readOnly": true
-          },
-          "partner_open_order_count": {
-            "type": "integer",
-            "minimum": 0,
             "readOnly": true
           },
           "id": {
@@ -1291,7 +1230,6 @@
         }
       },
       "LegacyApplicationSearchResponse": {
-        "x-legacy-alpha": true,
         "description": "One page of applications. Follow `next_page_token` until it's null to read every page.",
         "type": "object",
         "properties": {
@@ -1329,7 +1267,6 @@
         }
       },
       "ContractLegacyError": {
-        "x-legacy-alpha": true,
         "description": "An error. `code` is a stable identifier you can branch on, `message` explains it, and `requestId` identifies the request for Leap support.",
         "type": "object",
         "required": [
@@ -1356,38 +1293,7 @@
           }
         }
       },
-      "LegacyCustomerSummary": {
-        "x-legacy-alpha": true,
-        "description": "One customer with their devices and applications. Terminal applications (approved, rejected, declined, dismissed) appear only with `include_terminal=true`. At most 500 applications.",
-        "type": "object",
-        "properties": {
-          "customer": {
-            "$ref": "#/components/schemas/LegacyCustomer"
-          },
-          "customer_devices": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/LegacyCustomerDevice"
-            }
-          },
-          "applications": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/LegacyApplication"
-            }
-          },
-          "organization_id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "partner_uuid": {
-            "type": "string",
-            "nullable": true
-          }
-        }
-      },
       "LegacyApplicationDetail": {
-        "x-legacy-alpha": true,
         "description": "One application with its customer, the customer's devices, and its status history.",
         "allOf": [
           {
@@ -1448,7 +1354,6 @@
         ]
       },
       "LegacyEnvelope": {
-        "x-legacy-alpha": true,
         "description": "`ok` is true on success. `requestId` identifies the request for Leap support.",
         "type": "object",
         "properties": {
@@ -1463,7 +1368,7 @@
         }
       },
       "LegacyMutations": {
-        "description": "What the request changed: the customer, each device, and each application, with the fields written.",
+        "description": "What the request changed. `customer` and `customer_devices` list the fields written to each, and on **Update application** an `application` object holds the application fields written. Leap ignores keys it doesn't recognise, so check this to confirm a change. With `dryRun=true` the response carries `dryRun`, `validations`, and `wouldMutate` instead, and nothing is written.",
         "type": "object",
         "properties": {
           "customer": {
@@ -1510,33 +1415,6 @@
               }
             }
           },
-          "applications": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "required": [
-                "id",
-                "fields"
-              ],
-              "properties": {
-                "id": {
-                  "type": "integer"
-                },
-                "fields": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                "action": {
-                  "type": "string",
-                  "enum": [
-                    "updated"
-                  ]
-                }
-              }
-            }
-          },
           "customer_id": {
             "type": "integer"
           },
@@ -1544,11 +1422,9 @@
             "type": "integer",
             "description": "PATCH by id only."
           }
-        },
-        "x-legacy-alpha": true
+        }
       },
       "LegacyBulkPatchResponse": {
-        "x-legacy-alpha": true,
         "description": "One result per entry in `updates`. The route returns 200 even when an entry fails, so check each result's `ok`.",
         "type": "object",
         "properties": {
@@ -1576,7 +1452,6 @@
         }
       },
       "LegacyBulkPatchRequest": {
-        "x-legacy-alpha": true,
         "type": "object",
         "required": [
           "updates"
@@ -1600,7 +1475,6 @@
         }
       },
       "LegacyOrgPatchResponse": {
-        "x-legacy-alpha": true,
         "allOf": [
           {
             "$ref": "#/components/schemas/LegacyEnvelope"
@@ -1625,8 +1499,7 @@
         ]
       },
       "LegacyOrgPatchRequest": {
-        "x-legacy-alpha": true,
-        "description": "The fields to change. Application fields go at the top level, customer fields under `customer`, and device fields under `customer_devices`, each device with its integer `id`. `status` isn't accepted here.",
+        "description": "The fields to change. Application fields go at the top level, customer fields under `customer`, and device fields under `customer_devices`, each device with its integer `id`. `status` isn't accepted here. The [requirements reference](/setup-data-preferences) lists the field names. Leap ignores keys it doesn't recognise, so read `mutations` in the response to confirm what changed.",
         "type": "object",
         "additionalProperties": true,
         "properties": {

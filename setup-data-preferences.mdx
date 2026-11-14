@@ -74,11 +74,11 @@ File bytes never pass through the Applications API. Instead, you upload each fil
 
 <Steps>
 <Step title="Request an upload URL">
-  Call `POST /applications/attachments` with the `attachment_type`, `filename`, and `contentType`. The response returns a short-lived `uploadUrl` and a `path`. Leap prefixes your filename with a unique ID, so two files named `invoice.pdf` never collide.
+  Call `POST /beta/incentives/applications/attachments` with the `attachment_type`, `filename`, and `contentType`. The response returns an `uploadUrl`, valid for two hours, and a `path`. Leap prefixes your filename with a unique ID, so two files named `invoice.pdf` never collide.
 
   ```bash
-  curl -X POST "https://api.incentives.leap.energy/alpha/applications/attachments?application_id=123" \
-    -H "x-api-key: leap_live_your_api_key_here" \
+  curl -X POST "https://api.leap.energy/beta/incentives/applications/attachments?application_id=123" \
+    -H "Authorization: Bearer your_api_key_here" \
     -H "Content-Type: application/json" \
     -d '{ "attachment_type": "INVOICE_EQUIPMENT", "filename": "invoice.pdf", "contentType": "application/pdf" }'
   # → { "uploadUrl": "https://storage.example.com/attachments/app-123/1a2b3c4d-invoice.pdf?token=...",
@@ -87,7 +87,7 @@ File bytes never pass through the Applications API. Instead, you upload each fil
 </Step>
 
 <Step title="Upload the file">
-  `PUT` the raw bytes to that `uploadUrl` with the file’s `Content-Type`. This request goes straight to storage and needs no API key.
+  `PUT` the raw bytes to that `uploadUrl` with the same `Content-Type` you sent as `contentType` in step 1. The type is part of the URL's signature, so a different one fails. This request goes straight to storage and needs no API key.
 
   ```bash
   curl -X PUT "$uploadUrl" \
@@ -97,11 +97,11 @@ File bytes never pass through the Applications API. Instead, you upload each fil
 </Step>
 
 <Step title="Commit the attachment">
-  Call `POST /applications/attachments/commit` with the same `attachment_type` and the `path` from step 1. Leap records the attachment on the application.
+  Call `POST /beta/incentives/applications/attachments/commit` with the same `attachment_type` and the `path` from step 1. Leap records the attachment on the application.
 
   ```bash
-  curl -X POST "https://api.incentives.leap.energy/alpha/applications/attachments/commit?application_id=123" \
-    -H "x-api-key: leap_live_your_api_key_here" \
+  curl -X POST "https://api.leap.energy/beta/incentives/applications/attachments/commit?application_id=123" \
+    -H "Authorization: Bearer your_api_key_here" \
     -H "Content-Type: application/json" \
     -d '{ "attachment_type": "INVOICE_EQUIPMENT", "path": "app-123/1a2b3c4d-invoice.pdf" }'
   ```

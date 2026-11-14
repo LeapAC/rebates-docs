@@ -153,6 +153,62 @@ export function removeProperties(spec, keys) {
   return unmatched;
 }
 
+// Some operations take selectors that only Leap staff may use, such as an
+// organization picker on an admin lane. Partners cannot send them, so drop the
+// parameter from every operation that lists it. Keyed by the component name in
+// `#/components/parameters`; pruning then removes the unused component.
+// Returns the names no operation referenced (the parameter is gone upstream).
+export function removeParameters(spec, names) {
+  const wanted = new Set(names || []);
+  const hit = new Set();
+  for (const ops of Object.values(spec.paths || {})) {
+    if (!ops || typeof ops !== 'object') continue;
+    for (const [m, op] of Object.entries(ops)) {
+      const lists = m === 'parameters' ? [ops] : HTTP_METHODS.includes(m.toLowerCase()) && op && typeof op === 'object' ? [op] : [];
+      for (const holder of lists) {
+        if (!Array.isArray(holder.parameters)) continue;
+        holder.parameters = holder.parameters.filter((param) => {
+          const name = typeof param?.$ref === 'string' && param.$ref.startsWith('#/components/parameters/') ? param.$ref.slice('#/components/parameters/'.length) : undefined;
+          if (name && wanted.has(name)) { hit.add(name); return false; }
+          return true;
+        });
+        if (holder.parameters.length === 0) delete holder.parameters;
+      }
+    }
+  }
+  return [...wanted].filter((n) => !hit.has(n));
+}
+
+// A request body can accept a second, staff-only shape through `oneOf`. Drop the
+// branches that point at the named schemas so partners see only the shape they
+// can send, and collapse a `oneOf` or `anyOf` left with one branch into that
+// branch. Returns the schema names no branch referenced.
+export function dropOneOfBranches(spec, names) {
+  const wanted = new Set(names || []);
+  const hit = new Set();
+  const branchName = (b) => (typeof b?.$ref === 'string' && b.$ref.startsWith('#/components/schemas/') ? b.$ref.slice('#/components/schemas/'.length) : undefined);
+  const walk = (node) => {
+    if (Array.isArray(node)) return node.forEach(walk);
+    if (!node || typeof node !== 'object') return;
+    for (const key of ['oneOf', 'anyOf']) {
+      if (!Array.isArray(node[key])) continue;
+      node[key] = node[key].filter((b) => {
+        const n = branchName(b);
+        if (n && wanted.has(n)) { hit.add(n); return false; }
+        return true;
+      });
+      if (node[key].length === 1) {
+        const [only] = node[key];
+        delete node[key];
+        Object.assign(node, only);
+      }
+    }
+    Object.values(node).forEach(walk);
+  };
+  if (wanted.size) walk(spec.paths);
+  return [...wanted].filter((n) => !hit.has(n));
+}
+
 function resolveSchemaTarget(spec, key) {
   const [name, prop] = key.split('.');
   const schema = spec.components?.schemas?.[name];
@@ -326,6 +382,8 @@ function main() {
     // Before pruning, so a schema that only the removed property referenced goes
     // with it.
     const unremoved = removeProperties(spec, s.removeProperties);
+    const unremovedParams = removeParameters(spec, s.removeParameters);
+    const undroppedBranches = dropOneOfBranches(spec, s.dropOneOfBranches);
     spec = pruneUnusedComponents(spec);
     // After pruning, so overrides are only required for schemas that ship.
     const missing = findMissingSchemaDescriptions(spec, s.schemaDescriptions);
@@ -334,6 +392,8 @@ function main() {
     spec = replaced.spec;
     const optionalUnused = replaced.unused.filter((f) => !replaced.missingRequired.includes(f));
     if (optionalUnused.length) console.warn(`  ! ${s.output}: replacements matched nothing (source may be fixed): ${optionalUnused.join(', ')}`);
+    if (unremovedParams.length) { console.error(`✗ ${s.output}: removeParameters matched no operation: ${unremovedParams.join(', ')}`); failures++; }
+    if (undroppedBranches.length) { console.error(`✗ ${s.output}: dropOneOfBranches matched no branch: ${undroppedBranches.join(', ')}`); failures++; }
     if (unremoved.length) console.warn(`  ! ${s.output}: removeProperties matched nothing (field already gone upstream): ${unremoved.join(', ')}`);
     spec.info = { ...(spec.info || {}), title: s.title, ...(s.description ? { description: s.description } : {}) };
 

@@ -1,7 +1,7 @@
 # Maintaining the API Reference
 
 The API-reference specs in `api-reference/specs/*.json` are **generated** from the
-upstream services (`global-connect-service`, `incentives-service`). Do not edit
+upstream service (`global-connect-service`). Do not edit
 them by hand — edit the config and re-run the sync.
 
 ## Every Markdown file in this repo is a public page
@@ -31,10 +31,8 @@ Regenerate from local sibling checkouts (the supported path):
 npm ci
 
 git -C /path/to/global-connect-service fetch origin
-git -C /path/to/incentives-service fetch origin
 
 GCS_REPO=/path/to/global-connect-service \
-INCENTIVES_REPO=/path/to/incentives-service \
 npm run sync:openapi -- --local
 ```
 
@@ -42,8 +40,9 @@ npm run sync:openapi -- --local
 > `gh`-based remote fetch (`npm run sync:openapi` with no flags) can't reach it.
 
 Each spec pins the ref it reads in `openapi-sources.json` (`source.ref`:
-`origin/main` for `global-connect-service`, `origin/develop` for
-`incentives-service`, which is that repo's default branch). The script reads the
+`origin/main` for `global-connect-service`). If your clone's `origin` remote is
+unreachable, fetch `main` into `refs/remotes/origin/main` from a remote that
+works, so `git show origin/main:` reads the current files. The script reads the
 file out of that ref with `git show`, not out of the working tree, so a run does
 not depend on which branch either clone is sitting on, and two people running the
 sync get the same output. That is also why the `git fetch` above matters: `git
@@ -62,7 +61,7 @@ each output spec:
    of the internal source description), and normalizes each spec to one `tag`
    (→ clean URL prefix),
 5. **pins** `servers` (prod + staging) and **injects** the correct auth scheme
-   (Bearer for GCS, `x-api-key` for Applications),
+   (Bearer for every section),
 6. **prunes** components no longer reachable from the kept operations,
 7. **validates** that every `$ref` resolves (fails the run on a broken ref).
 
@@ -139,22 +138,26 @@ Use it for four cases, and say which one applies in the PR:
   to UUIDs, and `WireDeviceRefResolver` now rejects any request carrying it with
   422 `INVALID_DEVICE_ID`. Publishing it invites an integration against a field
   that always fails.
-- **Lineage or internal state.** `Customer.is_test` marks Leap's own seeded rows,
+- **Lineage or internal state.** `LegacyCustomer.is_test` marks Leap's own seeded rows,
   and means nothing to a partner. The device equivalents are gone from the source
   now: GCS !1835 split `PartnerDeviceResponse` off `DeviceResponse`, so the
   lineage ids and the msrp provenance fields are removed upstream rather than
   here.
-- **Internal.** `Application.recaptcha_token` is the Connect web form's bot
-  token, on a schema a partner reads.
-- **True of the endpoint, wrong for this audience.** `ApplicationSearchResult`
-  types the `results[]` of `GET /applications`, and three different lanes answer
-  that route. The org-key lane strips `organization_id`; the admin lanes return
-  it, one of them re-adding it deliberately so an admin view can show which
-  organization owns each application, and `connect-incentives` reads it off that
-  response. The property is correct in the source spec, so **do not** try to fix
-  this one upstream. incentives-service#566 attempted exactly that and was
-  closed. Curate it here, where the published reference documents the partner
-  lane.
+- **Internal.** `LegacyApplication.recaptcha_token` is the Connect web form's bot
+  token, on a schema a partner reads. The `verification_*` and
+  `uncollected_requirements` columns on the same schema are Leap's own processing
+  state, and `LegacyCustomer.ssn` and `tax_id` are accepted on a write but never
+  stored, so a read always returns null.
+- **True of the endpoint, wrong for this audience.** `LegacyApplication` types
+  the applications of `GET /beta/incentives/applications`, which staff and
+  partner lanes both answer. The partner lane strips `organization_id`; the staff
+  lanes return it, and Connect and the operator portal read it. The same goes
+  for the staff customer view (`organization`, `customer`, `customer_devices`,
+  `applications`) on `LegacyApplicationSearchResponse`: a partner reads
+  `results`. The properties are correct in the source spec, so **do not** try to
+  fix them upstream. incentives-service#566 attempted that for the alpha spec and
+  was closed. Curate them here, where the published reference documents the
+  partner lane.
 
 Removing a field here changes the **documentation**, not the API: the service
 still returns it. That distinction cuts both ways. When the field is private, fix
@@ -162,6 +165,22 @@ it in the service and treat the removal here as keeping the docs from advertisin
 it in the meantime — GCS !1835 is the worked example. When the field is
 legitimate for another caller of the same route, the removal here is the whole
 fix, and a source-side change would break that caller.
+
+## Drop a staff-only parameter or request shape
+
+Two more curation steps cover the beta Applications routes, which GCS serves to
+Leap staff and partners alike:
+
+- `removeParameters` drops a component parameter from every operation that lists
+  it, keyed by its name under `#/components/parameters`. The Applications specs
+  drop `LegacyOrganizationId` and `LegacyCompany`, the staff organization
+  selectors.
+- `dropOneOfBranches` removes `oneOf` or `anyOf` branches that point at the named
+  schemas, and collapses a single survivor into its parent. The Fields spec drops
+  `LegacyFieldsRequest`, the staff body of `POST /beta/incentives/fields`, so the
+  page shows only the `program_identifiers` body partners send.
+
+Both **fail the run** when a name matches nothing, like a required replacement.
 
 ## Rewrite a section's blurb
 
@@ -176,26 +195,31 @@ through.
 
 ```bash
 npm run test:sync            # unit-tests the transform functions
-GCS_REPO=... INCENTIVES_REPO=... npm run sync:openapi -- --local
+GCS_REPO=... npm run sync:openapi -- --local
 npx mint dev --port 3333     # http://localhost:3333
 npx mint broken-links        # expect zero
 ```
 
 On an API endpoint page, confirm the method+path header shows **Try it**, the
 right panel has cURL/response samples, request/response schemas expand, and the
-auth matches the section (Bearer for Incentives, `x-api-key` for Applications).
+auth shows Bearer.
 
 ## Sections & sources
 
 | Section | Source repo · file | Auth |
 |---|---|---|
 | Incentives | global-connect-service · `incentives.yaml` (+ `common-schemas.yaml`) | Bearer |
-| Applications | incentives-service · `applications/openapi.json` | `x-api-key` |
+| Applications | global-connect-service · `applications.yaml` | Bearer |
+| Applications › Attachments | global-connect-service · `applications-attachments.yaml` | Bearer |
+| Applications › Requirements | global-connect-service · `programs.yaml` (+ `common-schemas.yaml`) | Bearer |
 | Programs | global-connect-service · `programs.yaml` (+ `common-schemas.yaml`) | Bearer |
 | Devices | global-connect-service · `programs.yaml` (+ `common-schemas.yaml`) | Bearer |
 
 Programs and Devices read the same source file into two output specs, because a
-`docs.json` nav group binds to exactly one `openapi` file.
+`docs.json` nav group binds to exactly one `openapi` file. For the same reason the
+Applications section uses three specs: its Attachments and Requirements subgroups
+each carry their own `openapi`. The Incentives spec also needs `calc-engine.yaml`
+in `deps`, because `incentives.yaml` references it.
 
 ## What stays unpublished, and why
 
@@ -227,6 +251,35 @@ Four cases worth naming, because they've all been raised before:
   `field_groups[].fields[]` carry key, type, label, description, placeholder,
   required, owner, options, validation rules, and template ids. The audience
   question is the same one already answered there.
+
+### The Applications section: published ahead of the partner lane
+
+The Applications section documents the beta routes as partners will call them:
+a key with the **Manage applications** permission (`MANAGE_APPLICATIONS`), scoped
+to its own organization. On GCS `main` at 4a77a055 that lane is not open yet:
+
+- `MANAGE_APPLICATIONS` is marked internal in service-protocols, so
+  identity-service refuses to grant it to a key outside Leap's organization.
+- The read, write, attachment and legacy Fields controllers call
+  `requireApplicationsStaff`, which refuses any caller `ApplicationsAccess`
+  scopes to one partner. Only the organization-lane service code
+  (`LegacyCaller.Partner`) is in place.
+- `APPLICATIONS_GATE_LEAP_CHECK_ENFORCED` is `"false"` in staging and production,
+  so a non-Leap key holding `MANAGE_INCENTIVE_DATA` is admitted as staff and reads
+  across partners.
+
+A partner key gets 403 on every Applications route today. `POST
+/beta/incentives/fields` with the `program_identifiers` body is the exception: it
+takes `READ_INCENTIVES_DATA` and is already partner-scoped.
+
+Excluded on purpose, so don't re-add them as coverage gaps: every
+`/beta/incentives/legacy-alpha/*` alias (deprecated), the staff refId `PATCH
+/beta/incentives/applications`, `POST …/status` and `POST …/utility-change`, the
+backfill importer `POST …/admin/imports`, the seven Wallet hub routes under
+`/beta/incentives/hub`, and Connect's own server routes
+(`PATCH /beta/incentives/devices/customer-devices/{id}`, the customer utility
+credential routes, `POST /beta/incentives/customers/share/init` and
+`/beta/incentives/utility-authorizations*`).
 
 ### The Programs section: permission shipped, response shape still moving
 

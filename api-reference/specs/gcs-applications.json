@@ -1,0 +1,1648 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Leap Incentives — Applications",
+    "description": "Read and update the incentive applications Leap creates for your customers. Every route is scoped to your organization: your key reads and writes only your own applications. Authenticate with a Leap API key that holds the **Manage applications** permission, sent as a bearer token.\n",
+    "contact": {
+      "email": "apiteam@leap.energy"
+    },
+    "version": "0.1"
+  },
+  "servers": [
+    {
+      "url": "https://api.leap.energy",
+      "description": "Production"
+    },
+    {
+      "url": "https://api.staging.leap.energy",
+      "description": "Staging"
+    }
+  ],
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "applications"
+    }
+  ],
+  "paths": {
+    "/beta/incentives/applications": {
+      "get": {
+        "tags": [
+          "applications"
+        ],
+        "summary": "Search applications",
+        "description": "List your applications one page at a time. Filter by `refId` to read one customer's applications, or by `application_status`. Each result's `id` is the application ID the other Applications routes take. Follow `next_page_token` until it's null to read every page.",
+        "operationId": "searchApplications",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/LegacyRefId"
+          },
+          {
+            "$ref": "#/components/parameters/LegacyApplicationStatusQuery"
+          },
+          {
+            "$ref": "#/components/parameters/LegacyPageToken"
+          },
+          {
+            "$ref": "#/components/parameters/LegacyLimit"
+          },
+          {
+            "$ref": "#/components/parameters/LegacyIncludeDevices"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LegacyApplicationSearchResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Legacy400"
+          },
+          "403": {
+            "$ref": "#/components/responses/Legacy403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Legacy404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Legacy409"
+          },
+          "500": {
+            "$ref": "#/components/responses/Legacy500"
+          }
+        }
+      }
+    },
+    "/beta/incentives/applications/bulk": {
+      "patch": {
+        "tags": [
+          "applications"
+        ],
+        "summary": "Update applications in bulk",
+        "description": "Apply several application updates in one request. Each entry in `updates` names an `application_id` and carries the same fields as **Update application**. The route returns 200 with one result per entry, so check each result's `ok` and `error`.",
+        "operationId": "bulkPatchApplications",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/LegacyDryRun"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LegacyBulkPatchRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LegacyBulkPatchResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Legacy400"
+          },
+          "403": {
+            "$ref": "#/components/responses/Legacy403"
+          }
+        }
+      }
+    },
+    "/beta/incentives/applications/customer-summary": {
+      "get": {
+        "tags": [
+          "applications"
+        ],
+        "summary": "Get customer summary",
+        "description": "Read one customer in a single call: their details, their devices, and their open applications. `refId` is required. Pass `include_terminal=true` to also return approved, rejected, declined, and dismissed applications. The summary holds at most 500 applications.",
+        "operationId": "getCustomerSummary",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/LegacyRefId"
+          },
+          {
+            "name": "include_terminal",
+            "in": "query",
+            "required": false,
+            "description": "Keep the terminal applications (approved, rejected, declined, dismissed) in the summary.",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LegacyCustomerSummary"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Legacy400"
+          },
+          "403": {
+            "$ref": "#/components/responses/Legacy403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Legacy404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Legacy409"
+          },
+          "500": {
+            "$ref": "#/components/responses/Legacy500"
+          }
+        }
+      }
+    },
+    "/beta/incentives/applications/{id}": {
+      "get": {
+        "tags": [
+          "applications"
+        ],
+        "summary": "Get application",
+        "description": "Read one application in full: its fields, the customer with their devices, and its status history. Address it by the integer `id` or by the `application_uuid`.",
+        "operationId": "getApplication",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/LegacyApplicationRef"
+          },
+          {
+            "$ref": "#/components/parameters/LegacyRefId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LegacyApplicationDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Legacy400"
+          },
+          "403": {
+            "$ref": "#/components/responses/Legacy403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Legacy404"
+          },
+          "500": {
+            "$ref": "#/components/responses/Legacy500"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "applications"
+        ],
+        "summary": "Update application",
+        "description": "Supply data on the customer's behalf. Send application fields at the top level, customer fields under `customer`, and device fields under `customer_devices`, each device with its `id`. Only the fields you send change, and `null` clears one.\n\nThis route doesn't change `status`, `dismissal_reason`, or `confirmation_number`, and it sends the customer no email. Add `dryRun=true` to check a request without writing it.",
+        "operationId": "patchApplication",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/LegacyApplicationIdPath"
+          },
+          {
+            "$ref": "#/components/parameters/LegacyDryRun"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LegacyOrgPatchRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LegacyOrgPatchResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Legacy400"
+          },
+          "403": {
+            "$ref": "#/components/responses/Legacy403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Legacy404"
+          },
+          "405": {
+            "$ref": "#/components/responses/LegacyError"
+          },
+          "500": {
+            "$ref": "#/components/responses/Legacy500"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Your Leap API key as a Bearer token. Send it in the `Authorization` header: `Authorization: Bearer <api-key>`."
+      }
+    },
+    "parameters": {
+      "LegacyRefId": {
+        "name": "refId",
+        "in": "query",
+        "required": false,
+        "description": "The `reference_id` you sent on the lookup for this customer.",
+        "schema": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "example": "customer-123"
+      },
+      "LegacyApplicationStatusQuery": {
+        "name": "application_status",
+        "in": "query",
+        "required": false,
+        "description": "Return only applications in this status.",
+        "schema": {
+          "$ref": "#/components/schemas/LegacyApplicationStatus"
+        }
+      },
+      "LegacyPageToken": {
+        "name": "page_token",
+        "in": "query",
+        "required": false,
+        "description": "The `next_page_token` from the previous page. Leave it out to read the first page.",
+        "schema": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        }
+      },
+      "LegacyLimit": {
+        "name": "limit",
+        "in": "query",
+        "required": false,
+        "description": "Results per page, from 1 to 100.",
+        "schema": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 50
+        }
+      },
+      "LegacyIncludeDevices": {
+        "name": "include_devices",
+        "in": "query",
+        "required": false,
+        "description": "Include each customer's devices in the results.",
+        "schema": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "LegacyApplicationRef": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "description": "The application's integer `id` or its `application_uuid`.",
+        "schema": {
+          "type": "string",
+          "pattern": "^(\\d+|[0-9a-fA-F-]{36})$"
+        },
+        "example": "48213"
+      },
+      "LegacyDryRun": {
+        "name": "dryRun",
+        "in": "query",
+        "required": false,
+        "description": "Validate the request and report what it would change, without writing anything.",
+        "schema": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "LegacyApplicationIdPath": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "description": "The application's integer `id`. This route doesn't accept the `application_uuid`.",
+        "schema": {
+          "type": "string",
+          "pattern": "^\\d+$"
+        },
+        "example": "48213"
+      }
+    },
+    "responses": {
+      "LegacyError": {
+        "description": "An error. `code` names it and `requestId` identifies the request for Leap support.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/LegacyError"
+            }
+          }
+        }
+      },
+      "Legacy400": {
+        "description": "The request is malformed or fails validation. `message` says which part.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ContractLegacyError"
+            },
+            "example": {
+              "code": "bad_request",
+              "message": "customer_devices[].id must be an integer",
+              "requestId": "78b7cad5-ab45-44af-9c1e-2f0a1b2c3d4e"
+            }
+          }
+        }
+      },
+      "Legacy403": {
+        "description": "Your key lacks the **Manage applications** permission, or the record belongs to another organization or customer.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ContractLegacyError"
+            },
+            "example": {
+              "code": "forbidden",
+              "message": "Application not in your organization",
+              "requestId": "78b7cad5-ab45-44af-9c1e-2f0a1b2c3d4e"
+            }
+          }
+        }
+      },
+      "Legacy404": {
+        "description": "Nothing matches the identifier you sent.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ContractLegacyError"
+            },
+            "example": {
+              "code": "not_found",
+              "message": "No customer for that reference",
+              "requestId": "78b7cad5-ab45-44af-9c1e-2f0a1b2c3d4e"
+            }
+          }
+        }
+      },
+      "Legacy409": {
+        "description": "The request conflicts with stored data. `code` names the conflict, for example `ambiguous_reference_id` when more than one customer holds the `refId`.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ContractLegacyError"
+            },
+            "example": {
+              "code": "ambiguous_reference_id",
+              "message": "refId is shared by more than one organization",
+              "details": {
+                "reference_id": "customer-123",
+                "organization_ids": [
+                  "8a1f0c2e-3b4d-4e5f-9a6b-7c8d9e0f1a2b",
+                  "1b2c3d4e-5f6a-4b7c-8d9e-0f1a2b3c4d5e"
+                ]
+              },
+              "requestId": "78b7cad5-ab45-44af-9c1e-2f0a1b2c3d4e"
+            }
+          }
+        }
+      },
+      "Legacy500": {
+        "description": "Leap couldn't process the request. Retry it, and send the `requestId` to Leap support if it fails again.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ContractLegacyError"
+            },
+            "example": {
+              "code": "internal_error",
+              "message": "Unexpected error",
+              "requestId": "78b7cad5-ab45-44af-9c1e-2f0a1b2c3d4e"
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "LegacyError": {
+        "type": "object",
+        "required": [
+          "code",
+          "message",
+          "requestId"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "ambiguous_reference_id"
+          },
+          "message": {
+            "type": "string"
+          },
+          "details": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "requestId": {
+            "type": "string"
+          }
+        }
+      },
+      "LegacyApplicationStatus": {
+        "x-legacy-alpha": true,
+        "description": "Where the application is in processing. The [Applications guide](/api-reference/applications/overview#application-status) describes each value.",
+        "type": "string",
+        "enum": [
+          "not_started",
+          "in_progress",
+          "awaiting_customer",
+          "awaiting_partner",
+          "completed",
+          "submitted",
+          "approved",
+          "rejected",
+          "declined",
+          "dismissed"
+        ]
+      },
+      "LegacyCustomer": {
+        "x-legacy-alpha": true,
+        "description": "The customer, with the attributes you or the customer supplied. An attribute Leap holds no value for is null.",
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "readOnly": true,
+            "description": "When Leap first stored this customer."
+          },
+          "id": {
+            "type": "integer",
+            "example": 609
+          },
+          "first_name": {
+            "type": "string",
+            "nullable": true,
+            "example": "John"
+          },
+          "last_name": {
+            "type": "string",
+            "nullable": true,
+            "example": "Doe"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "nullable": true,
+            "example": "john.doe@example.com"
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true,
+            "example": "555-123-4567"
+          },
+          "address_line1": {
+            "type": "string",
+            "example": "123 Peachtree St"
+          },
+          "address_line2": {
+            "type": "string",
+            "nullable": true,
+            "example": "Apt 4B"
+          },
+          "city": {
+            "type": "string",
+            "example": "Atlanta"
+          },
+          "state": {
+            "type": "string",
+            "example": "GA"
+          },
+          "zip_code": {
+            "type": "string",
+            "example": "30303"
+          },
+          "eiaid": {
+            "type": "string",
+            "nullable": true,
+            "example": "14354"
+          },
+          "utility_account_number": {
+            "type": "string",
+            "nullable": true,
+            "example": "ACC-123456789"
+          },
+          "building_type_id": {
+            "type": "integer",
+            "nullable": true,
+            "example": 1
+          },
+          "is_homeowner": {
+            "type": "boolean",
+            "default": false,
+            "example": true
+          },
+          "is_income_qualified": {
+            "type": "boolean",
+            "default": false,
+            "example": false
+          },
+          "building_age_years": {
+            "type": "integer",
+            "nullable": true,
+            "example": 25
+          },
+          "within_city_limits": {
+            "type": "boolean",
+            "nullable": true,
+            "example": true
+          },
+          "referral_source": {
+            "type": "string",
+            "maxLength": 255,
+            "nullable": true,
+            "example": "utility website"
+          },
+          "fax": {
+            "type": "string",
+            "nullable": true
+          },
+          "conditioned_sqft": {
+            "type": "integer",
+            "nullable": true,
+            "example": 2000
+          },
+          "gut_rehab": {
+            "type": "boolean",
+            "default": false
+          },
+          "gas_appliance_present": {
+            "type": "boolean",
+            "default": false
+          },
+          "home_energy_assessment_completed": {
+            "type": "boolean",
+            "default": false
+          },
+          "household_size": {
+            "type": "integer",
+            "nullable": true,
+            "example": 4
+          },
+          "mailing_address_line1": {
+            "type": "string",
+            "nullable": true
+          },
+          "mailing_city": {
+            "type": "string",
+            "nullable": true
+          },
+          "mailing_state": {
+            "type": "string",
+            "nullable": true
+          },
+          "mailing_zip": {
+            "type": "string",
+            "nullable": true
+          },
+          "alt_phone": {
+            "type": "string",
+            "nullable": true
+          },
+          "biz_tax_status": {
+            "type": "string",
+            "nullable": true
+          },
+          "ca_entity_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "county_parish": {
+            "type": "string",
+            "nullable": true,
+            "example": "Fulton County"
+          },
+          "is_indigenous": {
+            "type": "boolean",
+            "default": false
+          },
+          "is_veteran": {
+            "type": "boolean",
+            "default": false
+          },
+          "is_senior": {
+            "type": "boolean",
+            "default": false
+          },
+          "is_first_responder": {
+            "type": "boolean",
+            "default": false
+          },
+          "property_details": {
+            "type": "object",
+            "default": {}
+          },
+          "utility_rate_plan": {
+            "type": "string",
+            "nullable": true,
+            "example": "R-1B"
+          },
+          "utility_account_status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "delinquent",
+              "closed"
+            ],
+            "default": "active",
+            "description": "The status of the customer's utility account."
+          },
+          "dwelling_units": {
+            "type": "integer",
+            "nullable": true,
+            "example": 1
+          },
+          "breaker_amperage": {
+            "type": "integer",
+            "nullable": true,
+            "example": 200
+          },
+          "joint_taxes": {
+            "type": "boolean",
+            "nullable": true,
+            "example": true
+          },
+          "number_of_dependents_tax_filing": {
+            "type": "integer",
+            "nullable": true,
+            "example": 2
+          },
+          "primary_mode_of_space_cooling": {
+            "type": "string",
+            "nullable": true,
+            "example": "Central Air Conditioner"
+          },
+          "mailing_address_line2": {
+            "type": "string",
+            "nullable": true
+          },
+          "selected_e_vehicle_make": {
+            "type": "string",
+            "nullable": true
+          },
+          "selected_e_vehicle_model": {
+            "type": "string",
+            "nullable": true
+          },
+          "selected_e_vehicle_vin": {
+            "type": "string",
+            "nullable": true
+          },
+          "selected_e_dealership": {
+            "type": "string",
+            "nullable": true
+          },
+          "utility_service_account_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "additional_info_url": {
+            "type": "string",
+            "nullable": true
+          },
+          "country_code": {
+            "type": "string",
+            "nullable": true
+          },
+          "selected_e_vehicle_year": {
+            "type": "integer",
+            "nullable": true
+          },
+          "selected_e_vehicle_registration_date": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "leap_agent_authorization": {
+            "type": "boolean",
+            "nullable": true
+          }
+        }
+      },
+      "LegacyCustomerDevice": {
+        "x-legacy-alpha": true,
+        "description": "One device on the customer's record, with the catalog device nested under `device`. Its integer `id` is the value you send in `customer_devices[].id` on **Update application**.",
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 45
+          },
+          "customer_id": {
+            "type": "integer",
+            "example": 609
+          },
+          "device_id": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "example": "018f2c3a-1111-4222-8333-444455556666"
+          },
+          "quantity": {
+            "type": "integer",
+            "default": 1,
+            "deprecated": true,
+            "example": 1,
+            "description": "**Deprecated.** Leap treats each device record as one physical unit, and its incentive calculations ignore this field. Send each unit of a model as its own `customer_devices[]` entry on the lookup, with its own `partner_device_reference`."
+          },
+          "purchase_price": {
+            "type": "number",
+            "format": "decimal",
+            "nullable": true,
+            "example": 599.99
+          },
+          "installation_cost": {
+            "type": "number",
+            "format": "decimal",
+            "nullable": true,
+            "example": 450
+          },
+          "total_project_cost": {
+            "type": "number",
+            "format": "decimal",
+            "nullable": true,
+            "example": 1049.99
+          },
+          "purchase_date": {
+            "type": "string",
+            "format": "date",
+            "nullable": true,
+            "example": "2025-01-05"
+          },
+          "installation_date": {
+            "type": "string",
+            "format": "date",
+            "nullable": true,
+            "example": "2025-01-10"
+          },
+          "existing_equipment_age_years": {
+            "type": "integer",
+            "nullable": true,
+            "example": 15
+          },
+          "existing_equipment_operational": {
+            "type": "boolean",
+            "nullable": true,
+            "example": false
+          },
+          "existing_equipment_manufacturer": {
+            "type": "string",
+            "maxLength": 100,
+            "nullable": true,
+            "example": "Old Brand"
+          },
+          "existing_equipment_model": {
+            "type": "string",
+            "maxLength": 100,
+            "nullable": true,
+            "example": "Model-X"
+          },
+          "installation_location": {
+            "type": "string",
+            "maxLength": 100,
+            "nullable": true,
+            "example": "Garage"
+          },
+          "contractor_name": {
+            "type": "string",
+            "maxLength": 200,
+            "nullable": true,
+            "example": "ABC Electric"
+          },
+          "contractor_license": {
+            "type": "string",
+            "maxLength": 100,
+            "nullable": true,
+            "example": "EC-12345"
+          },
+          "permits_obtained": {
+            "type": "boolean",
+            "default": false,
+            "example": true
+          },
+          "inspection_passed": {
+            "type": "boolean",
+            "default": false,
+            "example": true
+          },
+          "application_submitted_date": {
+            "type": "string",
+            "format": "date",
+            "nullable": true,
+            "example": "2025-01-15"
+          },
+          "permit_number": {
+            "type": "string",
+            "nullable": true,
+            "example": "PMT-2025-001"
+          },
+          "vehicle_vin": {
+            "type": "string",
+            "nullable": true,
+            "example": "5YJ3E1EA9KF123456"
+          },
+          "dealership": {
+            "type": "string",
+            "nullable": true,
+            "example": "Tesla Atlanta"
+          },
+          "contractor_contact_email": {
+            "type": "string",
+            "format": "email",
+            "nullable": true,
+            "example": "contact@abcelectric.com"
+          },
+          "contractor_contact_phone": {
+            "type": "string",
+            "nullable": true,
+            "example": "555-987-6543"
+          },
+          "contractor_website": {
+            "type": "string",
+            "format": "uri",
+            "nullable": true,
+            "example": "https://www.abcelectric.com"
+          },
+          "trenching_required": {
+            "type": "boolean",
+            "nullable": true,
+            "example": false
+          },
+          "contractor_contact_name": {
+            "type": "string",
+            "maxLength": 255,
+            "nullable": true,
+            "example": "Jane Smith"
+          },
+          "contractor_address_line1": {
+            "type": "string",
+            "maxLength": 255,
+            "nullable": true,
+            "example": "789 Business Blvd"
+          },
+          "contractor_city": {
+            "type": "string",
+            "maxLength": 255,
+            "nullable": true,
+            "example": "Atlanta"
+          },
+          "contractor_state": {
+            "type": "string",
+            "maxLength": 255,
+            "nullable": true,
+            "example": "GA"
+          },
+          "contractor_zip": {
+            "type": "string",
+            "maxLength": 20,
+            "nullable": true,
+            "example": "30301"
+          },
+          "existing_equipment_photos_provided": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "existing_equipment_serial": {
+            "type": "string",
+            "maxLength": 255,
+            "nullable": true
+          },
+          "existing_heating_type": {
+            "type": "string",
+            "maxLength": 255,
+            "nullable": true,
+            "example": "Gas furnace"
+          },
+          "device_serial": {
+            "type": "string",
+            "maxLength": 255,
+            "nullable": true,
+            "example": "SN-123456789"
+          },
+          "louvered_sides": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "contractor_fax": {
+            "type": "string",
+            "nullable": true
+          },
+          "coil_make_model": {
+            "type": "string",
+            "nullable": true
+          },
+          "added_by": {
+            "type": "string",
+            "enum": [
+              "organization",
+              "customer"
+            ],
+            "example": "organization"
+          },
+          "device": {
+            "type": "object",
+            "nullable": true,
+            "additionalProperties": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2025-01-10 12:00:00+00:00"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2025-01-15 14:30:00+00:00"
+          },
+          "final_inspection_date": {
+            "type": "string",
+            "format": "date",
+            "nullable": true,
+            "example": "2026-04-18"
+          },
+          "invoice_number": {
+            "type": "string",
+            "nullable": true,
+            "example": "INV-2026-0042"
+          },
+          "pto_date": {
+            "type": "string",
+            "format": "date",
+            "nullable": true,
+            "example": "2026-03-02"
+          }
+        }
+      },
+      "LegacyApplication": {
+        "x-legacy-alpha": true,
+        "description": "One application: the customer's claim on one program. Additional fields can appear as Leap adds them, so ignore keys you don't recognise.",
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "dismissal_reason": {
+            "type": "string",
+            "nullable": true,
+            "readOnly": true,
+            "description": "Why the application was dismissed. Null unless `status` is `dismissed`."
+          },
+          "rejection_reason": {
+            "type": "string",
+            "nullable": true,
+            "readOnly": true,
+            "description": "Why the program rejected the application, when Leap recorded a reason."
+          },
+          "connect_completed_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "readOnly": true
+          },
+          "partner_open_order_count": {
+            "type": "integer",
+            "minimum": 0,
+            "readOnly": true
+          },
+          "id": {
+            "type": "integer",
+            "example": 123
+          },
+          "application_uuid": {
+            "type": "string",
+            "format": "uuid",
+            "example": "6f1d1f1e-0a2b-4c3d-8e9f-000000000b1a"
+          },
+          "program_id": {
+            "type": "integer",
+            "example": 339
+          },
+          "program_name": {
+            "type": "string",
+            "nullable": true,
+            "example": "SGIP Storage"
+          },
+          "customer_id": {
+            "type": "integer",
+            "example": 609
+          },
+          "reference_id": {
+            "type": "string",
+            "nullable": true,
+            "example": "external-ref-123"
+          },
+          "customer_device_id": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "example": [
+              45,
+              46
+            ]
+          },
+          "rebate_type": {
+            "type": "string",
+            "nullable": true,
+            "example": "instant"
+          },
+          "payee_type": {
+            "type": "string",
+            "enum": [
+              "customer",
+              "contractor",
+              "instant"
+            ],
+            "nullable": true,
+            "example": "customer"
+          },
+          "submission_date": {
+            "type": "string",
+            "format": "date",
+            "nullable": true,
+            "example": "2025-01-15"
+          },
+          "confirmation_number": {
+            "type": "string",
+            "nullable": true,
+            "example": "GP-339-000001"
+          },
+          "approval_date": {
+            "type": "string",
+            "format": "date",
+            "nullable": true,
+            "example": "2025-01-20"
+          },
+          "total_requested_amount": {
+            "type": "number",
+            "format": "decimal",
+            "nullable": true,
+            "example": 150
+          },
+          "upfront_amount": {
+            "type": "number",
+            "format": "decimal",
+            "nullable": true,
+            "example": 0
+          },
+          "install_amount": {
+            "type": "number",
+            "format": "decimal",
+            "nullable": true,
+            "example": 150
+          },
+          "ongoing_amount": {
+            "type": "number",
+            "format": "decimal",
+            "nullable": true,
+            "example": 0
+          },
+          "agree_terms": {
+            "type": "boolean",
+            "nullable": true,
+            "example": true
+          },
+          "customer_signature": {
+            "type": "boolean",
+            "nullable": true,
+            "example": true
+          },
+          "customer_sig_date": {
+            "type": "string",
+            "format": "date",
+            "nullable": true,
+            "example": "2025-01-15"
+          },
+          "contractor_signature": {
+            "type": "boolean",
+            "nullable": true,
+            "example": false
+          },
+          "contractor_sig_date": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "project_name": {
+            "type": "string",
+            "maxLength": 255,
+            "nullable": true,
+            "example": "EV Charger Installation"
+          },
+          "eligibility_category": {
+            "type": "string",
+            "enum": [
+              "1A",
+              "1B",
+              "1C",
+              "2"
+            ],
+            "nullable": true
+          },
+          "income_backup_onfile": {
+            "type": "boolean",
+            "default": false
+          },
+          "neat_sir_verified": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "proposed_measures": {
+            "type": "object",
+            "nullable": true
+          },
+          "prepay_amount": {
+            "type": "number",
+            "format": "decimal",
+            "nullable": true
+          },
+          "authorize_contractor": {
+            "type": "boolean",
+            "default": false
+          },
+          "authorize_payee": {
+            "type": "boolean",
+            "default": false
+          },
+          "utility_account_attestation": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "status": {
+            "$ref": "#/components/schemas/LegacyApplicationStatus"
+          },
+          "equipment_complete": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "permit_complete": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "utility_complete": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2025-01-10 15:30:00+00:00"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2025-01-15 10:45:00+00:00"
+          },
+          "sub_programs": {
+            "type": "array",
+            "nullable": true,
+            "items": {
+              "type": "string"
+            }
+          },
+          "ev_charging_participation_attestation": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "co_enrollment_attestation": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "agreements_accepted": {
+            "type": "array",
+            "nullable": true,
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "reopened_reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "dispatch_option": {
+            "type": "string",
+            "nullable": true
+          },
+          "cbl_method": {
+            "type": "string",
+            "nullable": true
+          },
+          "partner_offering_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "partner_offering_date": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "LegacyApplicationSearchResponse": {
+        "x-legacy-alpha": true,
+        "description": "One page of applications. Follow `next_page_token` until it's null to read every page.",
+        "type": "object",
+        "properties": {
+          "next_page_token": {
+            "type": "string",
+            "nullable": true,
+            "example": "eyJsYXN0X2lkIjo0ODIxM30="
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/LegacyApplication"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "organization_name": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "program_slug": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "customer": {
+                      "$ref": "#/components/schemas/LegacyCustomer"
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      "ContractLegacyError": {
+        "x-legacy-alpha": true,
+        "description": "An error. `code` is a stable identifier you can branch on, `message` explains it, and `requestId` identifies the request for Leap support.",
+        "type": "object",
+        "required": [
+          "code",
+          "message"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "ambiguous_reference_id"
+          },
+          "message": {
+            "type": "string",
+            "example": "refId is shared by more than one organization"
+          },
+          "details": {
+            "nullable": true,
+            "type": "object",
+            "additionalProperties": true
+          },
+          "requestId": {
+            "type": "string",
+            "example": "78b7cad5-ab45-44af-9c1e-2f0a1b2c3d4e"
+          }
+        }
+      },
+      "LegacyCustomerSummary": {
+        "x-legacy-alpha": true,
+        "description": "One customer with their devices and applications. Terminal applications (approved, rejected, declined, dismissed) appear only with `include_terminal=true`. At most 500 applications.",
+        "type": "object",
+        "properties": {
+          "customer": {
+            "$ref": "#/components/schemas/LegacyCustomer"
+          },
+          "customer_devices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LegacyCustomerDevice"
+            }
+          },
+          "applications": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LegacyApplication"
+            }
+          },
+          "organization_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "partner_uuid": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "LegacyApplicationDetail": {
+        "x-legacy-alpha": true,
+        "description": "One application with its customer, the customer's devices, and its status history.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/LegacyApplication"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "program_slug": {
+                "type": "string",
+                "nullable": true
+              },
+              "customer": {
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/LegacyCustomer"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "customer_devices": {
+                        "type": "array",
+                        "items": {
+                          "$ref": "#/components/schemas/LegacyCustomerDevice"
+                        }
+                      }
+                    }
+                  }
+                ]
+              },
+              "status_history": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer"
+                    },
+                    "from_status": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "to_status": {
+                      "type": "string"
+                    },
+                    "changed_at": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "changed_by": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "LegacyEnvelope": {
+        "x-legacy-alpha": true,
+        "description": "`ok` is true on success. `requestId` identifies the request for Leap support.",
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "example": true
+          },
+          "requestId": {
+            "type": "string",
+            "example": "78b7cad5-ab45-44af-9c1e-2f0a1b2c3d4e"
+          }
+        }
+      },
+      "LegacyMutations": {
+        "description": "What the request changed: the customer, each device, and each application, with the fields written.",
+        "type": "object",
+        "properties": {
+          "customer": {
+            "type": "object",
+            "properties": {
+              "fields": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "updated": {
+                "type": "boolean"
+              },
+              "reason": {
+                "type": "string"
+              }
+            }
+          },
+          "customer_devices": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "fields"
+              ],
+              "properties": {
+                "id": {
+                  "type": "integer"
+                },
+                "fields": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "action": {
+                  "type": "string",
+                  "enum": [
+                    "updated"
+                  ]
+                }
+              }
+            }
+          },
+          "applications": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "fields"
+              ],
+              "properties": {
+                "id": {
+                  "type": "integer"
+                },
+                "fields": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "action": {
+                  "type": "string",
+                  "enum": [
+                    "updated"
+                  ]
+                }
+              }
+            }
+          },
+          "customer_id": {
+            "type": "integer"
+          },
+          "application_id": {
+            "type": "integer",
+            "description": "PATCH by id only."
+          }
+        },
+        "x-legacy-alpha": true
+      },
+      "LegacyBulkPatchResponse": {
+        "x-legacy-alpha": true,
+        "description": "One result per entry in `updates`. The route returns 200 even when an entry fails, so check each result's `ok`.",
+        "type": "object",
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "application_id": {
+                  "type": "integer"
+                },
+                "ok": {
+                  "type": "boolean"
+                },
+                "mutations": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
+                "error": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "LegacyBulkPatchRequest": {
+        "x-legacy-alpha": true,
+        "type": "object",
+        "required": [
+          "updates"
+        ],
+        "properties": {
+          "updates": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "application_id"
+              ],
+              "additionalProperties": true,
+              "properties": {
+                "application_id": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        }
+      },
+      "LegacyOrgPatchResponse": {
+        "x-legacy-alpha": true,
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/LegacyEnvelope"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "application_id": {
+                "type": "integer"
+              },
+              "customer_id": {
+                "type": "integer"
+              },
+              "mutations": {
+                "$ref": "#/components/schemas/LegacyMutations"
+              },
+              "data": {
+                "$ref": "#/components/schemas/LegacyApplicationDetail"
+              }
+            }
+          }
+        ]
+      },
+      "LegacyOrgPatchRequest": {
+        "x-legacy-alpha": true,
+        "description": "The fields to change. Application fields go at the top level, customer fields under `customer`, and device fields under `customer_devices`, each device with its integer `id`. `status` isn't accepted here.",
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "customer": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "customer_devices": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
+        }
+      }
+    }
+  }
+}

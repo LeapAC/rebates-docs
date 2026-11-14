@@ -1,8 +1,7 @@
 {
   "specsDir": "api-reference/specs",
   "repos": {
-    "LeapAC/global-connect-service": { "localEnv": "GCS_REPO", "localDefault": "/Users/sean/Code/global-connect-service" },
-    "LeapAC/incentives-service": { "localEnv": "INCENTIVES_REPO", "localDefault": "/Users/sean/Code/incentives-service" }
+    "LeapAC/global-connect-service": { "localEnv": "GCS_REPO", "localDefault": "/Users/sean/Code/global-connect-service" }
   },
   "gcsServers": [
     { "url": "https://api.leap.energy", "description": "Production" },
@@ -16,7 +15,7 @@
       "serversRef": "gcsServers",
       "security": "bearer",
       "tag": "incentives-lookups",
-      "source": { "repo": "LeapAC/global-connect-service", "ref": "origin/main", "entry": "src/main/resources/openapi/incentives.yaml", "deps": ["src/main/resources/openapi/common-schemas.yaml"] },
+      "source": { "repo": "LeapAC/global-connect-service", "ref": "origin/main", "entry": "src/main/resources/openapi/incentives.yaml", "deps": ["src/main/resources/openapi/common-schemas.yaml", "src/main/resources/openapi/calc-engine.yaml"] },
       "removeProperties": ["CustomerDeviceRef.device_source_id"],
       "replacements": [
         { "from": "`uc_customer_partner_address` makes one address reachable by\n    exactly one customer, so applying the override would have to merge\n    or clobber the other record.", "to": "Leap holds one customer per address per partner, so applying the override would have to merge or clobber the other record.", "required": true }
@@ -151,34 +150,141 @@
       }
     },
     {
-      "output": "incentives-applications.json",
+      "output": "gcs-applications.json",
       "title": "Leap Incentives — Applications",
-      "servers": [
-        { "url": "https://api.incentives.leap.energy/alpha", "description": "Production" },
-        { "url": "https://api.staging.incentives.leap.energy/alpha", "description": "Staging" }
-      ],
-      "security": "apikey",
+      "description": "Read and update the incentive applications Leap creates for your customers. Every route is scoped to your organization: your key reads and writes only your own applications. Authenticate with a Leap API key that holds the **Manage applications** permission, sent as a bearer token.\n",
+      "serversRef": "gcsServers",
+      "security": "bearer",
       "tag": "applications",
-      "source": { "repo": "LeapAC/incentives-service", "ref": "origin/develop", "entry": "supabase/functions/applications/openapi.json", "deps": [] },
-      "removeProperties": ["Application.recaptcha_token", "Customer.is_test", "ApplicationSearchResult.organization_id"],
+      "source": { "repo": "LeapAC/global-connect-service", "ref": "origin/main", "entry": "src/main/resources/openapi/applications.yaml", "deps": [] },
+      "removeParameters": ["LegacyOrganizationId", "LegacyCompany"],
+      "removeProperties": ["LegacyApplication.recaptcha_token", "LegacyApplication.organization_id", "LegacyApplication.uncollected_requirements", "LegacyApplication.verification_status", "LegacyApplication.verification_results", "LegacyApplication.verification_attempted_at", "LegacyApplication.verification_completed_at", "LegacyCustomer.is_test", "LegacyCustomer.ssn", "LegacyCustomer.tax_id", "LegacyApplicationSearchResponse.organization", "LegacyApplicationSearchResponse.customer", "LegacyApplicationSearchResponse.customer_devices", "LegacyApplicationSearchResponse.applications"],
       "replacements": [
-        { "from": "https://your-project.supabase.co/storage/v1/object/sign/attachments/", "to": "https://<storage-host>/attachments/" },
-        { "from": "https://your-project.supabase.co/storage/v1/object/public/attachments/", "to": "https://<storage-host>/attachments/" },
-        { "from": "/uuid-invoice.pdf", "to": "/<uuid>-invoice.pdf" }
+        { "from": "Legacy customer reference (`customer_organizations.reference_id`).", "to": "The `reference_id` you sent on the lookup for this customer.", "required": true },
+        { "from": "Legacy bad request.", "to": "The request is malformed or fails validation. `message` says which part.", "required": true },
+        { "from": "Legacy forbidden, for example an admin only route on a partner key.", "to": "Your key lacks the **Manage applications** permission, or the record belongs to another organization or customer.", "required": true },
+        { "from": "Legacy not found.", "to": "Nothing matches the identifier you sent.", "required": true },
+        { "from": "Legacy conflict: `ambiguous_reference_id` (with `details.reference_id` and `details.organization_ids` on the routes that send them), `invalid_status_transition`, `submission_in_progress` and the other codes the route lists.", "to": "The request conflicts with stored data. `code` names the conflict, for example `ambiguous_reference_id` when more than one customer holds the `refId`.", "required": true },
+        { "from": "Legacy internal error.", "to": "Leap couldn't process the request. Retry it, and send the `requestId` to Leap support if it fails again.", "required": true },
+        { "from": "The `ok` and `requestId` keys most legacy success bodies carry.", "to": "`ok` is true on success. `requestId` identifies the request for Leap support.", "required": true },
+        { "from": "Admin keys require refId query parameter", "to": "customer_devices[].id must be an integer", "required": true },
+        { "from": "requires admin API key", "to": "Application not in your organization", "required": true },
+        { "from": "TH-1004417", "to": "customer-123", "required": true },
+        { "from": "The legacy error envelope.", "to": "An error. `code` names it and `requestId` identifies the request for Leap support.", "required": true },
+        { "from": "Legacy status filter.", "to": "Return only applications in this status.", "required": true },
+        { "from": "Legacy keyset token, base64 `{\"last_id\":n}` or a bare integer.", "to": "The `next_page_token` from the previous page. Leave it out to read the first page.", "required": true },
+        { "from": "Legacy page size.", "to": "Results per page, from 1 to 100.", "required": true },
+        { "from": "Embed customer devices in the search result.", "to": "Include each customer's devices in the results.", "required": true },
+        { "from": "Legacy integer application id, or the `application_uuid`. The legacy router accepts both on the same path.", "to": "The application's integer `id` or its `application_uuid`.", "required": true },
+        { "from": "Legacy dry run flag.", "to": "Validate the request and report what it would change, without writing anything.", "required": true },
+        { "from": "Legacy integer application id. PATCH matches `\\d+` only (`applications/index.ts:204`).", "to": "The application's integer `id`. This route doesn't accept the `application_uuid`.", "required": true }
       ],
       "include": [
-        { "method": "get", "path": "/applications", "title": "Search applications", "description": "Search and filter the applications you're tracking. Returns a paginated list, filterable by reference ID or status." },
-        { "method": "get", "path": "/applications/{application_id}", "title": "Get application", "description": "Retrieve a single application in full, including customer information and device details." },
-        { "method": "patch", "path": "/applications/{application_id}", "title": "Update application", "description": "Provide the information you're supplying on behalf of the customer — customer details, device data, purchase and installation dates, contractor info. Only include the fields you want to change; omitted fields keep their current values.\n\nStatus and system identifiers (`id`, `customer_id`, `program_id`) are read-only and can't be changed here." },
-        { "method": "get", "path": "/applications/attachments", "title": "List attachments", "description": "List the attachments on one or more applications. Pass `application_id` (with an `attachment_type`) for a single application, or `application_ids` (comma-separated) for several." },
-        { "method": "post", "path": "/applications/attachments", "title": "Upload attachment", "description": "Create a signed URL for uploading an attachment. Upload the file to that URL with a PUT request, then confirm it with the commit endpoint." },
-        { "method": "post", "path": "/applications/attachments/commit", "title": "Commit attachment upload", "description": "Confirm an attachment after the file has been uploaded to its signed URL. This finalizes the attachment on the application." },
-        { "method": "get", "path": "/applications/attachments/{id}/download", "title": "Download attachment", "description": "Get a signed URL for downloading an attachment. The URL is valid for one hour." },
-        { "method": "delete", "path": "/applications/attachments/{id}", "title": "Delete attachment", "description": "Permanently delete an attachment. This removes the file and its record and can't be undone." }
+        { "method": "get", "path": "/beta/incentives/applications", "title": "Search applications", "description": "List your applications one page at a time. Filter by `refId` to read one customer's applications, or by `application_status`. Each result's `id` is the application ID the other Applications routes take. Follow `next_page_token` until it's null to read every page." },
+        { "method": "get", "path": "/beta/incentives/applications/customer-summary", "title": "Get customer summary", "description": "Read one customer in a single call: their details, their devices, and their open applications. `refId` is required. Pass `include_terminal=true` to also return approved, rejected, declined, and dismissed applications. The summary holds at most 500 applications." },
+        { "method": "get", "path": "/beta/incentives/applications/{id}", "title": "Get application", "description": "Read one application in full: its fields, the customer with their devices, and its status history. Address it by the integer `id` or by the `application_uuid`." },
+        { "method": "patch", "path": "/beta/incentives/applications/{id}", "title": "Update application", "description": "Supply data on the customer's behalf. Send application fields at the top level, customer fields under `customer`, and device fields under `customer_devices`, each device with its `id`. Only the fields you send change, and `null` clears one.\n\nThis route doesn't change `status`, `dismissal_reason`, or `confirmation_number`, and it sends the customer no email. Add `dryRun=true` to check a request without writing it." },
+        { "method": "patch", "path": "/beta/incentives/applications/bulk", "title": "Update applications in bulk", "description": "Apply several application updates in one request. Each entry in `updates` names an `application_id` and carries the same fields as **Update application**. The route returns 200 with one result per entry, so check each result's `ok` and `error`." }
       ],
       "schemaDescriptions": {
-        "CustomerDevice.quantity": "**Deprecated.** Leap treats each device record as one physical unit, and its incentive calculations ignore this field. Send each unit of a model as its own `customer_devices[]` entry on the lookup, with its own `partner_device_reference`.",
-        "CustomerDevicePatchRequest.quantity": "**Deprecated.** Leave it at 1 or omit it. Leap's incentive calculations ignore it, so a value above 1 doesn't raise the amount. Send each unit of a model as its own `customer_devices[]` entry on the lookup, with its own `partner_device_reference`."
+        "LegacyApplicationStatus": "Where the application is in processing. The [Applications guide](/api-reference/applications/overview#application-status) describes each value.",
+        "LegacyCustomer": "The customer, with the attributes you or the customer supplied. An attribute Leap holds no value for is null.",
+        "LegacyCustomer.created_at": "When Leap first stored this customer.",
+        "LegacyCustomer.utility_account_status": "The status of the customer's utility account.",
+        "LegacyCustomerDevice": "One device on the customer's record, with the catalog device nested under `device`. Its integer `id` is the value you send in `customer_devices[].id` on **Update application**.",
+        "LegacyCustomerDevice.quantity": "**Deprecated.** Leap treats each device record as one physical unit, and its incentive calculations ignore this field. Send each unit of a model as its own `customer_devices[]` entry on the lookup, with its own `partner_device_reference`.",
+        "LegacyApplication": "One application: the customer's claim on one program. Additional fields can appear as Leap adds them, so ignore keys you don't recognise.",
+        "LegacyApplication.dismissal_reason": "Why the application was dismissed. Null unless `status` is `dismissed`.",
+        "LegacyApplication.rejection_reason": "Why the program rejected the application, when Leap recorded a reason.",
+        "LegacyApplicationSearchResponse": "One page of applications. Follow `next_page_token` until it's null to read every page.",
+        "ContractLegacyError": "An error. `code` is a stable identifier you can branch on, `message` explains it, and `requestId` identifies the request for Leap support.",
+        "LegacyCustomerSummary": "One customer with their devices and applications. Terminal applications (approved, rejected, declined, dismissed) appear only with `include_terminal=true`. At most 500 applications.",
+        "LegacyApplicationDetail": "One application with its customer, the customer's devices, and its status history.",
+        "LegacyMutations": "What the request changed: the customer, each device, and each application, with the fields written.",
+        "LegacyBulkPatchResponse": "One result per entry in `updates`. The route returns 200 even when an entry fails, so check each result's `ok`.",
+        "LegacyOrgPatchRequest": "The fields to change. Application fields go at the top level, customer fields under `customer`, and device fields under `customer_devices`, each device with its integer `id`. `status` isn't accepted here."
+      }
+    },
+    {
+      "output": "gcs-applications-attachments.json",
+      "title": "Leap Incentives — Application attachments",
+      "description": "Upload, list, download, and delete the supporting documents on your applications. Authenticate with a Leap API key that holds the **Manage applications** permission, sent as a bearer token.\n",
+      "serversRef": "gcsServers",
+      "security": "bearer",
+      "tag": "applications",
+      "source": { "repo": "LeapAC/global-connect-service", "ref": "origin/main", "entry": "src/main/resources/openapi/applications-attachments.yaml", "deps": [] },
+      "removeParameters": ["LegacyOrganizationId", "LegacyCompany"],
+      "replacements": [
+        { "from": "Legacy customer reference (`customer_organizations.reference_id`).", "to": "The `reference_id` you sent on the lookup for this customer.", "required": true },
+        { "from": "Legacy bad request.", "to": "The request is malformed or fails validation. `message` says which part.", "required": true },
+        { "from": "Legacy forbidden, for example an admin only route on a partner key.", "to": "Your key lacks the **Manage applications** permission, or the record belongs to another organization or customer.", "required": true },
+        { "from": "Legacy not found.", "to": "Nothing matches the identifier you sent.", "required": true },
+        { "from": "Legacy conflict: `ambiguous_reference_id` (with `details.reference_id` and `details.organization_ids` on the routes that send them), `invalid_status_transition`, `submission_in_progress` and the other codes the route lists.", "to": "The request conflicts with stored data. `code` names the conflict, for example `ambiguous_reference_id` when more than one customer holds the `refId`.", "required": true },
+        { "from": "Legacy internal error.", "to": "Leap couldn't process the request. Retry it, and send the `requestId` to Leap support if it fails again.", "required": true },
+        { "from": "The `ok` and `requestId` keys most legacy success bodies carry.", "to": "`ok` is true on success. `requestId` identifies the request for Leap support.", "required": true },
+        { "from": "Admin keys require refId query parameter", "to": "customer_devices[].id must be an integer", "required": true },
+        { "from": "requires admin API key", "to": "Application not in your organization", "required": true },
+        { "from": "TH-1004417", "to": "customer-123", "required": true },
+        { "from": "Legacy error envelope `{code, message, details, requestId}` (`applications/utils.ts:20-22`). Native equivalent `ApplicationsErrorResponse`.", "to": "An error. `code` is a stable identifier you can branch on, `message` explains it, and `requestId` identifies the request for Leap support.", "required": true },
+        { "from": "Legacy integer application id.", "to": "The application's integer `id`.", "required": true },
+        { "from": "Comma separated legacy integer application ids.", "to": "Several applications at once: their integer `id` values, comma-separated.", "required": true },
+        { "from": "Legacy attachment type filter. Required unless `application_ids` is given.", "to": "The attachment type to list. Required unless you send `application_ids`.", "required": true },
+        { "from": "Legacy integer attachment id.", "to": "The attachment's integer `id`, from **List attachments** or **Commit attachment upload**.", "required": true },
+        { "from": "Legacy method not allowed: no route matches the method and path, for example a non-numeric attachment id.", "to": "No route matches the method and path, for example an attachment `id` that isn't a number.", "required": true }
+      ],
+      "include": [
+        { "method": "get", "path": "/beta/incentives/applications/attachments", "title": "List attachments", "description": "List the attachments on your applications, newest upload first. Send `application_id` with an `attachment_type` for one application, or `application_ids` (comma-separated) for several, where `attachment_type` is optional. A file attached to two applications appears once for each." },
+        { "method": "post", "path": "/beta/incentives/applications/attachments", "title": "Upload attachment", "description": "Start an upload. Leap returns a signed `uploadUrl`, valid for two hours, and the file's `path`. `PUT` the file to `uploadUrl` with the same `Content-Type` you sent here, then call **Commit attachment upload** with the `path`. Leap records nothing until the commit." },
+        { "method": "post", "path": "/beta/incentives/applications/attachments/commit", "title": "Commit attachment upload", "description": "Attach an uploaded file to the application. Call it after the `PUT` to `uploadUrl` succeeds. If Leap can't find the file, the call returns 404. A file over 50 MiB returns 400 and is removed. Committing the same `path` again returns the same attachment `id`." },
+        { "method": "get", "path": "/beta/incentives/applications/attachments/{id}/download", "title": "Download attachment", "description": "Get a signed URL for downloading an attachment. The URL is valid for one hour. `downloadUrl`, `url`, and `file_url` carry the same URL." },
+        { "method": "delete", "path": "/beta/incentives/applications/attachments/{id}", "title": "Delete attachment", "description": "Delete an attachment. Leap removes the file from the application and returns 204 with no body. You can't restore a deleted attachment through the API." }
+      ],
+      "schemaDescriptions": {
+        "AttachmentType": "The kind of document. The [requirements reference](/setup-data-preferences) defines each type.",
+        "LegacyAttachment": "One attachment on one application. `created_at` and `updated_at` both hold the upload time.",
+        "LegacyAttachmentListResponse": "The attachments, newest upload first.",
+        "LegacyAttachmentUploadResponse": "Where to upload the file. `PUT` the bytes to `uploadUrl`, then send `path` to **Commit attachment upload**.",
+        "LegacyAttachmentUploadRequest": "The file you're about to upload. Send the same `contentType` as the `Content-Type` header on the `PUT`.",
+        "LegacyAttachmentCommitResponse": "The committed attachment. Use `id` to download or delete it.",
+        "LegacyAttachmentCommitRequest": "The upload to attach. `path` is the value **Upload attachment** returned.",
+        "LegacyAttachmentDownloadResponse": "A signed download URL, valid for one hour, repeated in three keys."
+      }
+    },
+    {
+      "output": "gcs-fields.json",
+      "title": "Leap Incentives — Fields",
+      "description": "List what each program needs before an application can be submitted, grouped by who supplies it. Authenticate with your Leap API key as a bearer token.\n",
+      "serversRef": "gcsServers",
+      "security": "bearer",
+      "tag": "applications",
+      "source": { "repo": "LeapAC/global-connect-service", "ref": "origin/main", "entry": "src/main/resources/openapi/programs.yaml", "deps": ["src/main/resources/openapi/common-schemas.yaml"] },
+      "dropOneOfBranches": ["LegacyFieldsRequest"],
+      "removeProperties": ["FieldsRequest.partner_id"],
+      "replacements": [
+        { "from": "Valid request but invalid data (e.g., non-APPROVED requirement)", "to": "The request is well formed, but Leap can't serve requirements for it.", "required": true },
+        { "from": "The per owner union.", "to": "The requirements, grouped by who supplies them.", "required": true }
+      ],
+      "include": [
+        { "method": "post", "path": "/beta/incentives/fields", "title": "Get required fields", "description": "List the fields, agreements, attachments, and device categories a set of programs needs, grouped by who supplies them: the customer, you, Leap, or the utility. Send `program_identifiers` from **List programs**, and the customer's `customer_eiaid` when you know it. Your **Data Preferences** decide which fields land in the `partner` section. This route takes the same key as **List programs**." }
+      ],
+      "schemaDescriptions": {
+        "FieldsRequest": "The programs to read requirements for. Maps in the response are keyed by the `program_identifiers` you send.",
+        "FieldsRequest.customer_eiaid": "The customer's utility, as an EIA id. When you send it, `utility_connections` is keyed on it. An empty string, `0`, or `null` counts as not sent.",
+        "FieldsProgramIdentifier": "A program's `identifier`, as **List programs** returns it.",
+        "FieldsResponse": "The requirements for the programs you sent, in one section per owner: `customer`, `partner`, `leap`, and `utility`. Maps keyed by program use the `program_identifiers` from the request.",
+        "OwnerSection": "What one owner supplies. `fields` entries are `table.column` paths such as `customers.email`, `customer_devices.purchase_date`, or `applications.agree_terms`. Lists are sorted alphabetically.",
+        "AttachmentMetadataEntry": "Display details for one attachment slot, keyed by the uppercase attachment type. `formats` lists the accepted input formats for a `SIGNATURE`.",
+        "AgreementMetadataEntry.location": "Where Leap records the customer's acceptance.",
+        "AttachmentMetadataByProgram": "Attachment details keyed by program, then attachment type. Present only when a requested program declares its own.",
+        "AgreementMetadataByProgram": "Agreement details keyed by program, then agreement id. Left out when only one program, or none, declares agreement details.",
+        "GenericProgram": "A program whose requirements come from a shared template.",
+        "InferredProgram": "A program whose requirements Leap holds for that program alone.",
+        "FieldsRequest.program_identifiers": "The programs to read. Send at least one.",
+        "AttachmentMetadataEntry.key": "A stable key for this attachment slot.",
+        "AgreementMetadataEntry": "Display details for one agreement, keyed by agreement id.",
+        "AgreementMetadataEntry.type": "How to present the agreement, for example `checkbox` or `esignature`.",
+        "EnrollmentRedirect": "Where to send the customer to enroll with the operator.",
+        "ServedEnrollment": "How the customer enrolls with the program's operator. Present only for programs that need the customer to co-enroll with an operator."
       }
     }
   ]

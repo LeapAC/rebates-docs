@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { filterOperations, retargetServers, ensureSecurity, findBrokenRefs, applyOperationTitles, applyOperationDescriptions, applySchemaDescriptions, findMissingSchemaDescriptions, applyStringReplacements, removeProperties, applyTag, pruneUnusedComponents } from './sync-openapi.mjs';
+import { filterOperations, retargetServers, ensureSecurity, findBrokenRefs, applyOperationTitles, applyOperationDescriptions, applySchemaDescriptions, findMissingSchemaDescriptions, applyStringReplacements, removeProperties, removeParameters, dropOneOfBranches, applyTag, pruneUnusedComponents } from './sync-openapi.mjs';
 
 const sample = () => ({
   openapi: '3.0.0',
@@ -160,4 +160,44 @@ test('findBrokenRefs flags unresolved local refs only', () => {
   spec.paths['/a'].get.responses = { 200: { content: { 'application/json': { schema: { $ref: '#/components/schemas/Missing' } } } } };
   spec.paths['/b'].post.responses = { 200: { content: { 'application/json': { schema: { $ref: '#/components/schemas/Foo' } } } } };
   assert.deepEqual(findBrokenRefs(spec), ['#/components/schemas/Missing']);
+});
+
+test('removeParameters drops component parameter refs from operations and path items, reporting unmatched names', () => {
+  const spec = {
+    paths: {
+      '/a': {
+        parameters: [{ $ref: '#/components/parameters/Org' }],
+        get: { parameters: [{ $ref: '#/components/parameters/RefId' }, { $ref: '#/components/parameters/Org' }, { name: 'inline', in: 'query' }] },
+        post: { parameters: [{ $ref: '#/components/parameters/Org' }] },
+      },
+    },
+    components: { parameters: { RefId: { name: 'refId', in: 'query' }, Org: { name: 'organization_id', in: 'query' } } },
+  };
+  const unmatched = removeParameters(spec, ['Org', 'Gone']);
+  assert.deepEqual(spec.paths['/a'].get.parameters, [{ $ref: '#/components/parameters/RefId' }, { name: 'inline', in: 'query' }]);
+  assert.ok(!('parameters' in spec.paths['/a'].post), 'an emptied list is dropped');
+  assert.ok(!('parameters' in spec.paths['/a']), 'path-level parameters are filtered too');
+  assert.deepEqual(unmatched, ['Gone']);
+  pruneUnusedComponents(spec);
+  assert.deepEqual(Object.keys(spec.components.parameters), ['RefId'], 'the removed component is pruned');
+});
+
+test('dropOneOfBranches removes named branches and collapses a single survivor', () => {
+  const spec = {
+    paths: {
+      '/f': {
+        post: {
+          requestBody: { content: { 'application/json': { schema: { oneOf: [{ $ref: '#/components/schemas/Native' }, { $ref: '#/components/schemas/Legacy' }] } } } },
+          responses: { 200: { content: { 'application/json': { schema: { anyOf: [{ $ref: '#/components/schemas/A' }, { $ref: '#/components/schemas/B' }, { $ref: '#/components/schemas/Legacy' }] } } } } },
+        },
+      },
+    },
+    components: { schemas: { Native: { type: 'object' }, Legacy: { type: 'object' }, A: {}, B: {} } },
+  };
+  const unmatched = dropOneOfBranches(spec, ['Legacy', 'Missing']);
+  assert.deepEqual(spec.paths['/f'].post.requestBody.content['application/json'].schema, { $ref: '#/components/schemas/Native' });
+  assert.deepEqual(spec.paths['/f'].post.responses[200].content['application/json'].schema.anyOf.map((b) => b.$ref), ['#/components/schemas/A', '#/components/schemas/B']);
+  assert.deepEqual(unmatched, ['Missing']);
+  pruneUnusedComponents(spec);
+  assert.ok(!('Legacy' in spec.components.schemas), 'the dropped branch schema is pruned');
 });

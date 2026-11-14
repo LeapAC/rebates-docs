@@ -1,0 +1,68 @@
+---
+title: Migrating from the alpha API
+description: Move an integration from the alpha Applications API to the beta paths, host, and bearer authentication.
+---
+
+The beta Applications API serves the same operations as the alpha API on Leap's main API host. Three things change: the host, the path prefix, and how you authenticate. Request and response bodies keep the alpha shapes, so most integrations change only their base URL and headers.
+
+## Change the host and authentication
+
+Point your client at the new host and send your key as a bearer token:
+
+| | Alpha | Beta |
+|---|---|---|
+| Production host | `https://api.incentives.leap.energy/alpha` | `https://api.leap.energy` |
+| Staging host | `https://api.staging.incentives.leap.energy/alpha` | `https://api.staging.leap.energy` |
+| Path prefix | `/applications` | `/beta/incentives/applications` |
+| Authentication | `x-api-key: leap_live_...` | `Authorization: Bearer your_api_key_here` |
+| Key | The **Alpha · Applications API** key | A Leap API key with the **Manage applications** permission |
+
+Create the key in the Leap portal under **API keys** and grant it the **Manage applications** permission. A key without it receives `403`.
+
+## Map each alpha path to its beta path
+
+Every alpha route you call has a beta twin:
+
+| Alpha | Beta |
+|---|---|
+| `GET /applications` | [`GET /beta/incentives/applications`](/api-reference/applications/search-applications) |
+| `GET /applications/{application_id}` | [`GET /beta/incentives/applications/{id}`](/api-reference/applications/get-application) |
+| `PATCH /applications/{application_id}` | [`PATCH /beta/incentives/applications/{id}`](/api-reference/applications/update-application) |
+| `GET /applications/attachments` | [`GET /beta/incentives/applications/attachments`](/api-reference/applications/list-attachments) |
+| `POST /applications/attachments` | [`POST /beta/incentives/applications/attachments`](/api-reference/applications/upload-attachment) |
+| `POST /applications/attachments/commit` | [`POST /beta/incentives/applications/attachments/commit`](/api-reference/applications/commit-attachment-upload) |
+| `GET /applications/attachments/{id}/download` | [`GET /beta/incentives/applications/attachments/{id}/download`](/api-reference/applications/download-attachment) |
+| `DELETE /applications/attachments/{id}` | [`DELETE /beta/incentives/applications/attachments/{id}`](/api-reference/applications/delete-attachment) |
+
+The beta API also adds three routes the alpha docs didn't cover:
+
+- [Get customer summary](/api-reference/applications/get-customer-summary): one customer, their devices, and their open applications in one call.
+- [Update applications in bulk](/api-reference/applications/update-applications-in-bulk): several updates in one request.
+- [Get required fields](/api-reference/applications/get-required-fields): what each program needs, grouped by who supplies it.
+
+## Check these behaviour differences
+
+A few details differ from the alpha API:
+
+- **Upload URLs**: `PUT` the file with the same `Content-Type` you sent to **Upload attachment**. The type is part of the URL's signature, so a different one fails. The URL stays valid for two hours.
+- **Application IDs**: **Get application** accepts the `application_uuid` as well as the integer `id`. **Update application** takes the integer `id` only.
+- **Sensitive identifiers**: Leap accepts `ssn` and `tax_id` on a customer update but doesn't store them.
+- **Permission errors**: a key without **Manage applications** receives `{ "error": { "message": … } }`. Every other error keeps the alpha body of `code`, `message`, and `requestId`.
+
+## Switch over
+
+Follow these steps to move an integration without a gap:
+
+<Steps>
+<Step title="Create a key with the permission">
+  In the Leap portal under **API keys**, create a key with the **Manage applications** permission.
+</Step>
+
+<Step title="Test against staging">
+  Point your client at `https://api.staging.leap.energy` with the `/beta/incentives` prefix and bearer authentication. Run each call your integration makes and check the responses parse.
+</Step>
+
+<Step title="Switch production">
+  Change your production base URL to `https://api.leap.energy` and deploy. The application IDs you already store keep working on the beta paths.
+</Step>
+</Steps>

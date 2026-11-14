@@ -399,11 +399,24 @@ test('the committed fields spec keys and values every per-program map by program
   const props = schemas.FieldsResponse.properties;
   assert.equal(props.co_enrollment_satisfied_by_program.additionalProperties.items.type, 'string');
   assert.ok(!('pattern' in schemas.FieldsProgramIdentifier));
-  for (const key of ['generic_programs', 'inferred_programs', 'enrollment_by_program', 'co_enrollment_satisfied_by_program']) {
+  for (const key of ['generic_programs', 'inferred_programs', 'enrollment_by_program', 'utility_auth_by_program', 'co_enrollment_satisfied_by_program']) {
     assert.match(props[key].description, /keyed by program identifier/i, key);
   }
   for (const name of ['AgreementMetadataByProgram', 'AttachmentMetadataByProgram']) {
     assert.match(schemas[name].description, /keyed by program identifier/, name);
   }
   assert.doesNotMatch(JSON.stringify(spec), /"type":"integer","example":16473/);
+  const auth = schemas.ProgramUtilityAuth.properties;
+  for (const field of ['requires_auth', 'auth_mechanism', 'login_type', 'self_file_url']) assert.ok(auth[field].description, field);
+  assert.match(auth.self_file_url.example, /^https:\/\/www\.example-utility\.com\//, 'placeholder URL, not a real utility page');
+});
+
+test('the self_file_url example patch fails once GCS changes the source example', () => {
+  const patches = fieldsConfig().patches.filter((p) => p.pointer.includes('ProgramUtilityAuth'));
+  assert.equal(patches.length, 2);
+  const source = (example) => ({ components: { schemas: { ProgramUtilityAuth: { properties: { self_file_url: { type: 'string', example } } } } } });
+  const today = source(patches[0].value);
+  assert.deepEqual(applyPatches(today, patches), []);
+  assert.equal(today.components.schemas.ProgramUtilityAuth.properties.self_file_url.example, 'https://www.example-utility.com/ev-rebate');
+  assert.match(applyPatches(source('https://example.com/other'), patches)[0], /value changed upstream/);
 });

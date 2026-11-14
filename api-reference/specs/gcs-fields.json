@@ -413,6 +413,47 @@
           }
         }
       },
+      "ProgramUtilityAuth": {
+        "description": "One program's utility authorization values, before `utility_connections` combines them across programs.",
+        "type": "object",
+        "required": [
+          "requires_auth",
+          "auth_mechanism",
+          "login_type",
+          "self_file_url"
+        ],
+        "properties": {
+          "requires_auth": {
+            "description": "Whether this program needs the customer's utility authorization. `utility_connections` sets `requires_auth` when any of its programs sets it. `false` when Leap holds no filing details for the program.",
+            "type": "boolean",
+            "example": true
+          },
+          "auth_mechanism": {
+            "description": "What the program asks of the customer, derived from `login_type`: `NONE` asks for no login, `CREDENTIAL_SHARE` asks for the customer's utility account login, `REBATE_PORTAL_LOGIN` asks for a login to the program's rebate portal, and `INFO_REQUIRED` asks for information instead of a login. `null` when Leap doesn't know the login type.",
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "NONE",
+              "CREDENTIAL_SHARE",
+              "REBATE_PORTAL_LOGIN",
+              "INFO_REQUIRED"
+            ],
+            "example": "CREDENTIAL_SHARE"
+          },
+          "login_type": {
+            "description": "The program's login type as Leap stores it, such as `utility_login`, `fact_based`, or `rebate_login`. `null` when Leap doesn't know it.",
+            "type": "string",
+            "nullable": true,
+            "example": "utility_login"
+          },
+          "self_file_url": {
+            "description": "Where the customer can apply on their own: the program's web page, else its login page. `null` when Leap holds neither.",
+            "type": "string",
+            "nullable": true,
+            "example": "https://www.example-utility.com/ev-rebate"
+          }
+        }
+      },
       "GenericProgram": {
         "description": "A program whose requirements come from a shared template.",
         "type": "object",
@@ -573,6 +614,13 @@
               "$ref": "#/components/schemas/ServedEnrollment"
             },
             "description": "How the customer enrolls with each program's operator, keyed by program identifier. Only programs that need the customer to co-enroll with an operator appear."
+          },
+          "utility_auth_by_program": {
+            "description": "Each program's own utility authorization values, keyed by program identifier. Read it to tell which program needs the customer's utility login, which `utility_connections` can't show because it combines every program for a utility. A program Leap has no record of gets no entry, and the map is left out when none of the programs you sent has one.",
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ProgramUtilityAuth"
+            }
           },
           "co_enrollment_satisfied_by_program": {
             "description": "Keyed by program identifier. Each value lists the identifiers of the programs whose enrollment satisfies that program's `co_enrollment_required` agreement.",

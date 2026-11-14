@@ -297,7 +297,9 @@
         {"op": "test", "pointer": "/components/schemas/FieldsResponse/properties/co_enrollment_satisfied_by_program/additionalProperties/items", "value": {"type": "integer", "example": 16473}},
         {"op": "replace", "pointer": "/components/schemas/FieldsResponse/properties/co_enrollment_satisfied_by_program/additionalProperties/items", "value": {"type": "string", "example": "example_utility_demand_response"}},
         {"op": "test", "pointer": "/components/schemas/FieldsProgramIdentifier/pattern", "value": "^[a-z0-9_\\-]{1,200}$"},
-        {"op": "remove", "pointer": "/components/schemas/FieldsProgramIdentifier/pattern"}
+        {"op": "remove", "pointer": "/components/schemas/FieldsProgramIdentifier/pattern"},
+        {"op": "test", "pointer": "/components/schemas/ProgramUtilityAuth/properties/self_file_url/example", "value": "https://www.novec.com/About_NOVEC/EV-1-NOVEC-s-Electric-Vehicle-Rate.cfm"},
+        {"op": "replace", "pointer": "/components/schemas/ProgramUtilityAuth/properties/self_file_url/example", "value": "https://www.example-utility.com/ev-rebate"}
       ],
       "replacements": [
         { "from": "Valid request but invalid data (e.g., non-APPROVED requirement)", "to": "The request is well formed, but Leap can't serve requirements for it.", "required": true },
@@ -314,6 +316,12 @@
         "FieldsResponse.generic_programs": "Programs whose requirements come from a shared template, keyed by program identifier.",
         "FieldsResponse.inferred_programs": "Programs whose requirements Leap holds for that program alone, keyed by program identifier.",
         "FieldsResponse.enrollment_by_program": "How the customer enrolls with each program's operator, keyed by program identifier. Only programs that need the customer to co-enroll with an operator appear.",
+        "FieldsResponse.utility_auth_by_program": "Each program's own utility authorization values, keyed by program identifier. Read it to tell which program needs the customer's utility login, which `utility_connections` can't show because it combines every program for a utility. A program Leap has no record of gets no entry, and the map is left out when none of the programs you sent has one.",
+        "ProgramUtilityAuth": "One program's utility authorization values, before `utility_connections` combines them across programs.",
+        "ProgramUtilityAuth.requires_auth": "Whether this program needs the customer's utility authorization. `utility_connections` sets `requires_auth` when any of its programs sets it. `false` when Leap holds no filing details for the program.",
+        "ProgramUtilityAuth.auth_mechanism": "What the program asks of the customer, derived from `login_type`: `NONE` asks for no login, `CREDENTIAL_SHARE` asks for the customer's utility account login, `REBATE_PORTAL_LOGIN` asks for a login to the program's rebate portal, and `INFO_REQUIRED` asks for information instead of a login. `null` when Leap doesn't know the login type.",
+        "ProgramUtilityAuth.login_type": "The program's login type as Leap stores it, such as `utility_login`, `fact_based`, or `rebate_login`. `null` when Leap doesn't know it.",
+        "ProgramUtilityAuth.self_file_url": "Where the customer can apply on their own: the program's web page, else its login page. `null` when Leap holds neither.",
         "FieldsResponse.co_enrollment_satisfied_by_program": "Keyed by program identifier. Each value lists the identifiers of the programs whose enrollment satisfies that program's `co_enrollment_required` agreement.",
         "OwnerSection": "What one owner supplies. `fields` entries are `table.column` paths such as `customers.email`, `customer_devices.purchase_date`, or `applications.agree_terms`. Lists are sorted alphabetically.",
         "AttachmentMetadataEntry": "Display details for one attachment slot, keyed by the uppercase attachment type. `formats` lists the accepted input formats for a `SIGNATURE`.",

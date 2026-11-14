@@ -85,7 +85,7 @@
         }
       },
       "Unauthorized": {
-        "description": "You are not authorized to perform this operation",
+        "description": "Not returned by this route: a missing or invalid key returns 403.",
         "content": {
           "application/json": {
             "schema": {
@@ -166,7 +166,7 @@
             }
           },
           "customer_eiaid": {
-            "description": "The customer's utility, as an EIA id string. When you send it, `utility_connections` is keyed on it. Leave it out or send `null` when you don't know it; an empty string or a number returns 400.",
+            "description": "The customer's utility, as an EIA id string. When you send it, `utility_connections` is keyed on it. Leave it out when you don't know it. An empty string or a number returns 400.",
             "type": "string",
             "minLength": 1,
             "maxLength": 20,

@@ -183,8 +183,8 @@
       "include": [
         { "method": "get", "path": "/beta/incentives/applications", "title": "Search applications", "description": "List your applications one page at a time. Filter by `refId` to read one customer's applications, or by `application_status`. Each result's `id` is the application ID the other Applications routes take. Follow `next_page_token` until it's null to read every page." },
         { "method": "get", "path": "/beta/incentives/applications/{id}", "title": "Get application", "description": "Read one application in full: its fields, the customer with their devices, and its status history. Address it by the integer `id` or by the `application_uuid`." },
-        { "method": "patch", "path": "/beta/incentives/applications/{id}", "title": "Update application", "description": "Supply data on the customer's behalf. Send application fields at the top level, customer fields under `customer`, and device fields under `customer_devices`, each device with its `id`. Only the fields you send change, and `null` clears one.\n\nThis route doesn't change `status`, `dismissal_reason`, or `confirmation_number`, and it sends the customer no email. Add `dryRun=true` to check a request without writing it." },
-        { "method": "patch", "path": "/beta/incentives/applications/bulk", "title": "Update applications in bulk", "description": "Apply several application updates in one request. Each entry in `updates` names an `application_id` and carries the same fields as **Update application**. The route returns 200 with one result per entry, so check each result's `ok` and `error`." }
+        { "method": "patch", "path": "/beta/incentives/applications/{id}", "title": "Update application", "description": "Supply data on the customer's behalf. Send application fields at the top level, customer fields under `customer`, and device fields under `customer_devices`, each device with its `id`. Only the fields you send change, and `null` clears one.\n\nThis route doesn't change `status`, `dismissal_reason`, or `confirmation_number`, and it sends the customer no email. Add `dryRun=true` to check a request without writing it: the response then carries `dryRun`, `validations`, and `wouldMutate` at the top level.\n\nThe response's `mutations` lists the fields written to the customer and each device, plus an `application` object with the application fields written when you sent any." },
+        { "method": "patch", "path": "/beta/incentives/applications/bulk", "title": "Update applications in bulk", "description": "Apply several application updates in one request. Each entry in `updates` names an `application_id` and carries the same fields as **Update application**. The route returns 200 with one result per entry, so check each result's `ok` and `error`. With `dryRun=true`, nothing is written and each result carries an empty `mutations`." }
       ],
       "schemaDescriptions": {
         "LegacyApplicationStatus": "Where the application is in processing. The [Applications guide](/api-reference/applications/overview#application-status) describes each value.",
@@ -193,15 +193,16 @@
         "LegacyCustomer.utility_account_status": "The status of the customer's utility account.",
         "LegacyCustomerDevice": "One device on the customer's record, with the catalog device nested under `device`. Its integer `id` is the value you send in `customer_devices[].id` on **Update application**.",
         "LegacyCustomerDevice.quantity": "**Deprecated.** Leap treats each device record as one physical unit, and its incentive calculations ignore this field. Send each unit of a model as its own `customer_devices[]` entry on the lookup, with its own `partner_device_reference`.",
-        "LegacyApplication": "One application: the customer's claim on one program. Additional fields can appear as Leap adds them, so ignore keys you don't recognise.",
+        "LegacyApplication": "One application: the customer's claim on one program. Additional fields can appear as Leap adds them, so ignore keys you don't recognize.",
         "LegacyApplication.dismissal_reason": "Why the application was dismissed. Null unless `status` is `dismissed`.",
         "LegacyApplication.rejection_reason": "Why the program rejected the application, when Leap recorded a reason.",
         "LegacyApplicationSearchResponse": "One page of applications. Follow `next_page_token` until it's null to read every page.",
         "ContractLegacyError": "An error. `code` is a stable identifier you can branch on, `message` explains it, and `requestId` identifies the request for Leap support.",
         "LegacyApplicationDetail": "One application with its customer, the customer's devices, and its status history.",
-        "LegacyMutations": "What the request changed. `customer` and `customer_devices` list the fields written to each, and on **Update application** an `application` object holds the application fields written. Leap ignores keys it doesn't recognise, so check this to confirm a change. With `dryRun=true` the response carries `dryRun`, `validations`, and `wouldMutate` instead, and nothing is written.",
+        "LegacyMutations": "What the request changed: the fields written to the customer and to each device. Leap ignores keys it doesn't recognize, so check this to confirm a change.",
+        "LegacyMutations.application_id": "The application the update changed.",
         "LegacyBulkPatchResponse": "One result per entry in `updates`. The route returns 200 even when an entry fails, so check each result's `ok`.",
-        "LegacyOrgPatchRequest": "The fields to change. Application fields go at the top level, customer fields under `customer`, and device fields under `customer_devices`, each device with its integer `id`. `status` isn't accepted here. The [requirements reference](/setup-data-preferences) lists the field names. Leap ignores keys it doesn't recognise, so read `mutations` in the response to confirm what changed."
+        "LegacyOrgPatchRequest": "The fields to change. Application fields go at the top level, customer fields under `customer`, and device fields under `customer_devices`, each device with its integer `id`. `status` isn't accepted here. The [requirements reference](/setup-data-preferences) lists the field names. Leap ignores keys it doesn't recognize, so read `mutations` in the response to confirm what changed."
       }
     },
     {
@@ -262,14 +263,15 @@
       "removeProperties": ["FieldsRequest.partner_id"],
       "replacements": [
         { "from": "Valid request but invalid data (e.g., non-APPROVED requirement)", "to": "The request is well formed, but Leap can't serve requirements for it.", "required": true },
-        { "from": "The per owner union.", "to": "The requirements, grouped by who supplies them.", "required": true }
+        { "from": "The per owner union.", "to": "The requirements, grouped by who supplies them.", "required": true },
+        { "from": "You are not authorized to perform this operation", "to": "Not returned by this route: a missing or invalid key returns 403.", "required": true }
       ],
       "include": [
         { "method": "post", "path": "/beta/incentives/fields", "title": "Get required fields", "description": "List the fields, agreements, attachments, and device categories a set of programs needs, grouped by who supplies them: the customer, you, Leap, or the utility. Send `program_identifiers` from **List programs**, and the customer's `customer_eiaid` when you know it. Your **Data Preferences** decide which fields land in the `partner` section. This route takes the same key as **List programs**." }
       ],
       "schemaDescriptions": {
         "FieldsRequest": "The programs to read requirements for. Maps in the response are keyed by the `program_identifiers` you send.",
-        "FieldsRequest.customer_eiaid": "The customer's utility, as an EIA id string. When you send it, `utility_connections` is keyed on it. Leave it out or send `null` when you don't know it; an empty string or a number returns 400.",
+        "FieldsRequest.customer_eiaid": "The customer's utility, as an EIA id string. When you send it, `utility_connections` is keyed on it. Leave it out when you don't know it. An empty string or a number returns 400.",
         "FieldsProgramIdentifier": "A program's `identifier`, as **List programs** returns it.",
         "FieldsResponse": "The requirements for the programs you sent, in one section per owner: `customer`, `partner`, `leap`, and `utility`. Maps keyed by program use the `program_identifiers` from the request.",
         "OwnerSection": "What one owner supplies. `fields` entries are `table.column` paths such as `customers.email`, `customer_devices.purchase_date`, or `applications.agree_terms`. Lists are sorted alphabetically.",

@@ -89,7 +89,7 @@
           "applications"
         ],
         "summary": "Update applications in bulk",
-        "description": "Apply several application updates in one request. Each entry in `updates` names an `application_id` and carries the same fields as **Update application**. The route returns 200 with one result per entry, so check each result's `ok` and `error`.",
+        "description": "Apply several application updates in one request. Each entry in `updates` names an `application_id` and carries the same fields as **Update application**. The route returns 200 with one result per entry, so check each result's `ok` and `error`. With `dryRun=true`, nothing is written and each result carries an empty `mutations`.",
         "operationId": "bulkPatchApplications",
         "parameters": [
           {
@@ -172,7 +172,7 @@
           "applications"
         ],
         "summary": "Update application",
-        "description": "Supply data on the customer's behalf. Send application fields at the top level, customer fields under `customer`, and device fields under `customer_devices`, each device with its `id`. Only the fields you send change, and `null` clears one.\n\nThis route doesn't change `status`, `dismissal_reason`, or `confirmation_number`, and it sends the customer no email. Add `dryRun=true` to check a request without writing it.",
+        "description": "Supply data on the customer's behalf. Send application fields at the top level, customer fields under `customer`, and device fields under `customer_devices`, each device with its `id`. Only the fields you send change, and `null` clears one.\n\nThis route doesn't change `status`, `dismissal_reason`, or `confirmation_number`, and it sends the customer no email. Add `dryRun=true` to check a request without writing it: the response then carries `dryRun`, `validations`, and `wouldMutate` at the top level.\n\nThe response's `mutations` lists the fields written to the customer and each device, plus an `application` object with the application fields written when you sent any.",
         "operationId": "patchApplication",
         "parameters": [
           {
@@ -973,7 +973,7 @@
         }
       },
       "LegacyApplication": {
-        "description": "One application: the customer's claim on one program. Additional fields can appear as Leap adds them, so ignore keys you don't recognise.",
+        "description": "One application: the customer's claim on one program. Additional fields can appear as Leap adds them, so ignore keys you don't recognize.",
         "type": "object",
         "additionalProperties": true,
         "properties": {
@@ -1368,7 +1368,7 @@
         }
       },
       "LegacyMutations": {
-        "description": "What the request changed. `customer` and `customer_devices` list the fields written to each, and on **Update application** an `application` object holds the application fields written. Leap ignores keys it doesn't recognise, so check this to confirm a change. With `dryRun=true` the response carries `dryRun`, `validations`, and `wouldMutate` instead, and nothing is written.",
+        "description": "What the request changed: the fields written to the customer and to each device. Leap ignores keys it doesn't recognize, so check this to confirm a change.",
         "type": "object",
         "properties": {
           "customer": {
@@ -1420,7 +1420,7 @@
           },
           "application_id": {
             "type": "integer",
-            "description": "PATCH by id only."
+            "description": "The application the update changed."
           }
         }
       },
@@ -1499,7 +1499,7 @@
         ]
       },
       "LegacyOrgPatchRequest": {
-        "description": "The fields to change. Application fields go at the top level, customer fields under `customer`, and device fields under `customer_devices`, each device with its integer `id`. `status` isn't accepted here. The [requirements reference](/setup-data-preferences) lists the field names. Leap ignores keys it doesn't recognise, so read `mutations` in the response to confirm what changed.",
+        "description": "The fields to change. Application fields go at the top level, customer fields under `customer`, and device fields under `customer_devices`, each device with its integer `id`. `status` isn't accepted here. The [requirements reference](/setup-data-preferences) lists the field names. Leap ignores keys it doesn't recognize, so read `mutations` in the response to confirm what changed.",
         "type": "object",
         "additionalProperties": true,
         "properties": {

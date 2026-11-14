@@ -247,14 +247,14 @@
         }
       },
       "AttachmentMetadataByProgram": {
-        "description": "Attachment details keyed by program, then attachment type. Present only when a requested program declares its own.",
+        "description": "Attachment details keyed by program identifier, then attachment type. Present only when a requested program declares its own.",
         "type": "object",
         "additionalProperties": {
           "$ref": "#/components/schemas/AttachmentMetadataMap"
         }
       },
       "AgreementMetadataByProgram": {
-        "description": "Agreement details keyed by program, then agreement id. Left out when only one program, or none, declares agreement details.",
+        "description": "Agreement details keyed by program identifier, then agreement id. Left out when only one program, or none, declares agreement details.",
         "type": "object",
         "additionalProperties": {
           "$ref": "#/components/schemas/AgreementMetadataMap"
@@ -526,7 +526,7 @@
         }
       },
       "FieldsResponse": {
-        "description": "The requirements for the programs you sent, in one section per owner: `customer`, `partner`, `leap`, and `utility`. Maps keyed by program use the `program_identifiers` from the request.",
+        "description": "The requirements for the programs you sent, in one section per owner: `customer`, `partner`, `leap`, and `utility`. Every map keyed by program uses the program identifiers from `program_identifiers`, exactly as you sent them.",
         "type": "object",
         "required": [
           "customer",
@@ -557,39 +557,41 @@
             "type": "object",
             "additionalProperties": {
               "$ref": "#/components/schemas/GenericProgram"
-            }
+            },
+            "description": "Programs whose requirements come from a shared template, keyed by program identifier."
           },
           "inferred_programs": {
             "type": "object",
             "additionalProperties": {
               "$ref": "#/components/schemas/InferredProgram"
-            }
+            },
+            "description": "Programs whose requirements Leap holds for that program alone, keyed by program identifier."
           },
           "enrollment_by_program": {
             "type": "object",
             "additionalProperties": {
               "$ref": "#/components/schemas/ServedEnrollment"
-            }
+            },
+            "description": "How the customer enrolls with each program's operator, keyed by program identifier. Only programs that need the customer to co-enroll with an operator appear."
           },
           "co_enrollment_satisfied_by_program": {
-            "description": "Program to the programs whose enrollment satisfies its `co_enrollment_required`.",
+            "description": "Keyed by program identifier. Each value lists the identifiers of the programs whose enrollment satisfies that program's `co_enrollment_required` agreement.",
             "type": "object",
             "additionalProperties": {
               "type": "array",
               "items": {
-                "type": "integer",
-                "example": 16473
+                "type": "string",
+                "example": "example_utility_demand_response"
               }
             }
           }
         }
       },
       "FieldsProgramIdentifier": {
-        "description": "A program's `identifier`, as **List programs** returns it.",
+        "description": "A program's `identifier`, exactly as **List programs** returns it. Identifiers are case-sensitive, so send and compare them unchanged.",
         "type": "string",
         "minLength": 1,
         "maxLength": 200,
-        "pattern": "^[a-z0-9_\\-]{1,200}$",
         "example": "pge_ev_charger_rebate_residential"
       },
       "ApiKeyError": {

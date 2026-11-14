@@ -30,7 +30,7 @@
           "applications"
         ],
         "summary": "List attachments",
-        "description": "List the attachments on your applications, newest upload first. Send `application_id` with an `attachment_type` for one application, or `application_ids` (comma-separated) for several, where `attachment_type` is optional. A file attached to two applications appears once for each.",
+        "description": "List the attachments on your applications, newest upload first. For one application, send `application_id` and `attachment_type`: `application_id` alone returns 400. For several, send `application_ids` (comma-separated), with an optional `attachment_type` to narrow the list. A file attached to two applications appears once for each.",
         "operationId": "listAttachments",
         "parameters": [
           {
@@ -76,7 +76,7 @@
           "applications"
         ],
         "summary": "Upload attachment",
-        "description": "Start an upload for the application you name in `application_id`, which is required. Leap returns a signed `uploadUrl`, valid for two hours, and the file's `path`. `PUT` the file to `uploadUrl` with the same `Content-Type` you sent here, then call **Commit attachment upload** with the `path`. Leap records nothing until the commit.",
+        "description": "Start an upload for the application you name in the `application_id` query parameter, which is required. Leap doesn't read `application_id` from the request body. Leap returns a signed `uploadUrl`, valid for two hours, and the file's `path`. `PUT` the file to `uploadUrl` with the same `Content-Type` you sent here, then call **Commit attachment upload** with the `path`. Leap records nothing until the commit.",
         "operationId": "createAttachmentUpload",
         "parameters": [
           {
@@ -128,7 +128,7 @@
           "applications"
         ],
         "summary": "Commit attachment upload",
-        "description": "Attach an uploaded file to the application you name in `application_id`, which is required. Call it after the `PUT` to `uploadUrl` succeeds. If Leap can't find the file, the call returns 404. A file over 50 MiB returns 400 and is removed. Committing the same `path` again returns the same attachment `id`.",
+        "description": "Attach an uploaded file to the application you name in the `application_id` query parameter, which is required. Leap doesn't read `application_id` from the request body. Call it after the `PUT` to `uploadUrl` succeeds. If Leap can't find the file, the call returns 404. A file over 50 MiB returns 400 and is removed. Committing the same `path` again returns the same attachment `id`.",
         "operationId": "commitAttachment",
         "parameters": [
           {
@@ -292,8 +292,8 @@
       "LegacyAttachmentTypeQuery": {
         "name": "attachment_type",
         "in": "query",
-        "required": false,
-        "description": "The attachment type to list. Required unless you send `application_ids`.",
+        "required": true,
+        "description": "The attachment type to list. Required when you send a single `application_id`: without it, the call returns 400. With `application_ids`, it narrows the list.",
         "schema": {
           "$ref": "#/components/schemas/AttachmentType"
         }
@@ -328,22 +328,40 @@
         }
       },
       "Legacy403": {
-        "description": "The record belongs to another organization or customer.",
+        "description": "Your key can't make this request. A key without the permission a route or parameter needs gets `error.message`. A missing or invalid key gets `error` as a string, before the request reaches a route.",
         "content": {
           "application/json": {
             "schema": {
-              "$ref": "#/components/schemas/LegacyError"
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/PermissionError"
+                },
+                {
+                  "$ref": "#/components/schemas/ApiKeyError"
+                }
+              ]
             },
-            "example": {
-              "code": "forbidden",
-              "message": "Application not in your organization",
-              "requestId": "78b7cad5-ab45-44af-9c1e-2f0a1b2c3d4e"
+            "examples": {
+              "permission": {
+                "summary": "The key lacks a permission",
+                "value": {
+                  "error": {
+                    "message": "You do not have the required permission to perform this action"
+                  }
+                }
+              },
+              "key": {
+                "summary": "Missing or invalid key",
+                "value": {
+                  "error": "No or invalid API key or JWT provided in authorization header"
+                }
+              }
             }
           }
         }
       },
       "Legacy404": {
-        "description": "Nothing matches the identifier you sent.",
+        "description": "Nothing matches the identifier you sent, or the record belongs to another organization.",
         "content": {
           "application/json": {
             "schema": {
@@ -571,9 +589,6 @@
           "contentType"
         ],
         "properties": {
-          "application_id": {
-            "type": "integer"
-          },
           "attachment_type": {
             "$ref": "#/components/schemas/AttachmentType"
           },
@@ -618,9 +633,6 @@
           "path"
         ],
         "properties": {
-          "application_id": {
-            "type": "integer"
-          },
           "attachment_type": {
             "$ref": "#/components/schemas/AttachmentType"
           },
@@ -658,6 +670,40 @@
             }
           }
         ]
+      },
+      "PermissionError": {
+        "description": "A permission error. `message` says what the key can't do.",
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "object",
+            "required": [
+              "message"
+            ],
+            "properties": {
+              "message": {
+                "type": "string",
+                "example": "You do not have the required permission to perform this action"
+              }
+            }
+          }
+        }
+      },
+      "ApiKeyError": {
+        "description": "A missing or invalid API key. Leap answers before the request reaches a route.",
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "string",
+            "example": "No or invalid API key or JWT provided in authorization header"
+          }
+        }
       }
     },
     "securitySchemes": {

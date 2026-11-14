@@ -3,7 +3,7 @@ title: Migrating from the alpha API
 description: Move an integration from the alpha Applications API to the beta paths, host, and bearer authentication.
 ---
 
-The beta Applications API serves the same operations as the alpha API on Leap's main API host. Three things change: the host, the path prefix, and how you authenticate. Request and response bodies keep the alpha shapes, so most integrations change only their base URL and headers.
+The beta Applications API serves the same operations as the alpha API on Leap's main API host. Three things change: the host, the path prefix, and how you authenticate. Request and response bodies keep the alpha shapes, except the search response. An integration that doesn't search changes only its base URL and headers.
 
 ## Change the host and authentication
 
@@ -45,9 +45,10 @@ A few details differ from the alpha API:
 
 - **Upload URLs**: `PUT` the file with the same `Content-Type` you sent to **Upload attachment**. The type is part of the URL's signature, so a different one fails. The URL stays valid for two hours.
 - **Application IDs**: **Get application** accepts the `application_uuid` as well as the integer `id`. **Update application** takes the integer `id` only.
-- **Sensitive identifiers**: Leap accepts `ssn` and `tax_id` on a customer update but doesn't store them, so reads never return them.
-- **Errors**: route errors keep the alpha body of `code`, `message`, and `requestId`. A missing or invalid key returns `403` with `{ "error": "…" }` before the request reaches a route.
-- **Attachment routes**: send `application_id` on every attachment call. The beta attachment routes don't take `refId`.
+- **Search**: send `refId` on every search. A search without it, or with only `application_status`, returns `403`. The response is one customer's view: `organization`, `customer`, `customer_devices`, and an `applications` array, in place of `results`.
+- **Sensitive identifiers**: Leap accepts `ssn` and `tax_id` on a customer update but doesn't store them, so reads return both as null.
+- **Errors**: route errors keep the alpha body of `code`, `message`, and `requestId`. A missing or invalid key returns `403` with `{ "error": "…" }` before the request reaches a route. A key without the permission a request needs returns `403` with `{ "error": { "message": "…" } }`.
+- **Attachment routes**: send `application_id` as a query parameter on every attachment call, never in the request body. The beta attachment routes don't take `refId`. To list one application's attachments, send `attachment_type` with `application_id`, or use `application_ids`.
 
 ## Switch over
 

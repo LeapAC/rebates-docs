@@ -111,11 +111,11 @@ curl -X GET "https://api.leap.energy/beta/incentives/applications?refId=customer
   -H "Authorization: Bearer your_api_key_here"
 ```
 
-Filter by `refId` (your reference ID) or `application_status`. Each result's top-level `id` is the application ID. See [Search applications](/api-reference/applications/search-applications) for the full response.
+Send your reference ID as `refId`, which your key requires. The response holds the customer, their devices, and an `applications` array. Each application's `id` is the application ID. See [Search applications](/api-reference/applications/search-applications) for the full response.
 
 ### Update the application
 
-Send the data you're providing on behalf of the customer, using the application `id` from the search results in the path.
+Send the data you're providing on behalf of the customer, using an application `id` from the `applications` array in the path.
 
 ```bash
 curl -X PATCH "https://api.leap.energy/beta/incentives/applications/123" \

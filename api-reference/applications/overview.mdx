@@ -25,7 +25,7 @@ Send `create_application: true` on [Look up incentives](/api-reference/incentive
 
 Four routes act on applications, five manage attachments, and one lists requirements:
 
-- **Search applications**: page through your applications, filtered by `refId` or `application_status`. Each result's `id` is the application ID the other routes take.
+- **Search applications**: read one customer's applications by `refId`, which your key must send. Each application's `id` is the application ID the other routes take.
 - **Get application**: one application in full, with the customer, their devices, and its status history.
 - **Update application**: supply data on the customer's behalf. Only the fields you send change, and `null` clears one.
 - **Update applications in bulk**: several updates in one request, with a result per entry.
@@ -34,7 +34,7 @@ Four routes act on applications, five manage attachments, and one lists requirem
 
 ## Read every page of results
 
-[Search applications](/api-reference/applications/search-applications) returns up to `limit` results per page: 50 by default, 100 at most. Each page carries a `next_page_token`. Pass it back as `page_token` to read the next page, and stop when `next_page_token` is `null`:
+[Search applications](/api-reference/applications/search-applications) returns one customer's `applications`, up to `limit` per page: 50 by default, 100 at most. Send the customer's `refId` on every search: a search without it returns `403`. Each page carries a `next_page_token`. Pass it back as `page_token` to read the next page, and stop when `next_page_token` is `null`:
 
 ```bash
 curl "https://api.leap.energy/beta/incentives/applications?refId=customer-123&limit=50" \
@@ -60,6 +60,8 @@ Every application carries a `status`, which Leap updates as the customer and Lea
 
 `approved`, `rejected`, `declined`, and `dismissed` are terminal: an application in one of them is closed.
 
+Partner responses currently omit `dismissal_reason` and `rejection_reason`, pending a ruling.
+
 ## Identifiers on this API
 
 Applications, customers, and installations are numbered, so `id`, `customer_id`, and the entries in `customer_device_id[]` are integers. **Get application** also accepts the `application_uuid` in place of the integer `id`. The catalog `device_id` on a device is a UUID, the same one the incentives lookup takes and returns. Read identifiers back from the application rather than constructing them.
@@ -74,11 +76,19 @@ The application and attachment routes return errors as a JSON body with a stable
 
 Branch on `code`, and send the `requestId` to Leap support when you report a problem. [Get required fields](/api-reference/applications/get-required-fields) returns errors as `{ "error": { "message": "…" } }` instead.
 
-A missing or invalid API key returns `403` before the request reaches a route, with a different body:
+Two `403` bodies come from Leap before a route runs. A key without the permission a request needs gets an `error.message`. A search without `refId` is one example:
+
+```json
+{ "error": { "message": "You do not have the required permission to perform this action" } }
+```
+
+A missing or invalid API key gets `error` as a string. Every route answers this way, including **Get required fields**, which never returns `401`:
 
 ```json
 { "error": "No or invalid API key or JWT provided in authorization header" }
 ```
+
+An application or attachment that belongs to another organization returns `404`, the same as one that doesn't exist.
 
 ## Supplying data on the customer's behalf
 

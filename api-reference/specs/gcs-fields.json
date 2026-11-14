@@ -56,9 +56,6 @@
           "400": {
             "$ref": "#/components/responses/BadRequest"
           },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
           "403": {
             "$ref": "#/components/responses/Forbidden"
           },
@@ -84,22 +81,27 @@
           }
         }
       },
-      "Unauthorized": {
-        "description": "Not returned by this route: a missing or invalid key returns 403.",
-        "content": {
-          "application/json": {
-            "schema": {
-              "$ref": "#/components/schemas/ErrorResponse"
-            }
-          }
-        }
-      },
       "Forbidden": {
-        "description": "You do not have permission to perform this operation",
+        "description": "Your key can't make this request. A missing or invalid key gets 403, not 401, with `error` as a string, before the request reaches the route. A key without access to this route gets `error.message`.",
         "content": {
           "application/json": {
             "schema": {
-              "$ref": "#/components/schemas/ErrorResponse"
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                {
+                  "$ref": "#/components/schemas/ApiKeyError"
+                }
+              ]
+            },
+            "examples": {
+              "key": {
+                "summary": "Missing or invalid key",
+                "value": {
+                  "error": "No or invalid API key or JWT provided in authorization header"
+                }
+              }
             }
           }
         }
@@ -589,6 +591,19 @@
         "maxLength": 200,
         "pattern": "^[a-z0-9_\\-]{1,200}$",
         "example": "pge_ev_charger_rebate_residential"
+      },
+      "ApiKeyError": {
+        "description": "A missing or invalid API key. Leap answers before the request reaches a route.",
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "string",
+            "example": "No or invalid API key or JWT provided in authorization header"
+          }
+        }
       }
     },
     "securitySchemes": {

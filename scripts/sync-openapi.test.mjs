@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { filterOperations, retargetServers, ensureSecurity, findBrokenRefs, applyOperationTitles, applyOperationDescriptions, applySchemaDescriptions, findMissingSchemaDescriptions, applyStringReplacements, removeProperties, removeParameters, dropOneOfBranches, stripExtensions, applyTag, pruneUnusedComponents } from './sync-openapi.mjs';
+import { filterOperations, retargetServers, ensureSecurity, findBrokenRefs, applyOperationTitles, applyOperationDescriptions, applySchemaDescriptions, findMissingSchemaDescriptions, applyStringReplacements, removeProperties, removeParameters, dropOneOfBranches, stripExtensions, applyTag, pruneUnusedComponents, applyPatches } from './sync-openapi.mjs';
 
 const sample = () => ({
   openapi: '3.0.0',
@@ -231,4 +231,45 @@ test('dropOneOfBranches leaves untouched single-branch lists alone and removes a
   dropOneOfBranches(spec, ['Legacy']);
   assert.deepEqual(spec.paths['/g'].get.responses[200].content['application/json'].schema.properties.n, { nullable: true, oneOf: [{ $ref: '#/components/schemas/Kept' }] });
   assert.deepEqual(spec.paths['/g'].get.responses[400].content['application/json'].schema, {});
+});
+
+test('applyPatches adds, replaces, and removes at escaped pointers, guarded by test', () => {
+  const spec = {
+    paths: { '/beta/x': { get: { parameters: [{ $ref: '#/components/parameters/A' }], responses: { 200: {}, 401: { description: 'never sent' } } } } },
+    components: { schemas: { S: { properties: { kind: { type: 'string', enum: ['a', 'b'] }, ids: { type: 'array' } } } } },
+  };
+  const failures = applyPatches(spec, [
+    { op: 'test', pointer: '/components/schemas/S/properties/kind/enum', value: ['a', 'b'] },
+    { op: 'replace', pointer: '/components/schemas/S/properties/kind/enum', value: ['a', 'b', 'c'] },
+    { op: 'add', pointer: '/components/schemas/S/properties/ids/nullable', value: true },
+    { op: 'remove', pointer: '/paths/~1beta~1x/get/responses/401' },
+    { op: 'replace', pointer: '/paths/~1beta~1x/get/parameters/0', value: { name: 'refId', in: 'query', required: true } },
+    { op: 'add', pointer: '/paths/~1beta~1x/get/parameters/-', value: { name: 'limit', in: 'query' } },
+  ]);
+  assert.deepEqual(failures, []);
+  assert.deepEqual(spec.components.schemas.S.properties.kind.enum, ['a', 'b', 'c']);
+  assert.equal(spec.components.schemas.S.properties.ids.nullable, true);
+  assert.ok(!('401' in spec.paths['/beta/x'].get.responses));
+  assert.deepEqual(spec.paths['/beta/x'].get.parameters.map((p) => p.name), ['refId', 'limit']);
+});
+
+test('applyPatches reports a failed test, a missing path, and an unknown op without stopping', () => {
+  const spec = { components: { schemas: { S: { properties: { kind: { enum: ['a', 'b', 'c'] } } } } } };
+  const value = { keep: 1 };
+  const failures = applyPatches(spec, [
+    { op: 'test', pointer: '/components/schemas/S/properties/kind/enum', value: ['a', 'b'] },
+    { op: 'replace', pointer: '/components/schemas/Gone/properties/x', value: 1 },
+    { op: 'remove', pointer: '/components/schemas/S/properties/missing' },
+    { op: 'move', pointer: '/components/schemas/S' },
+    { op: 'add', pointer: 'components/schemas/S/x', value: 1 },
+    { op: 'add', pointer: '/components/schemas/S/properties/copy', value },
+  ]);
+  assert.equal(failures.length, 5);
+  assert.match(failures[0], /value changed upstream/);
+  assert.match(failures[1], /path not found/);
+  assert.match(failures[2], /path not found/);
+  assert.match(failures[3], /unknown op/);
+  assert.match(failures[4], /pointer must start with/);
+  value.keep = 2;
+  assert.deepEqual(spec.components.schemas.S.properties.copy, { keep: 1 }, 'patch values are copied, not shared');
 });

@@ -232,6 +232,53 @@ export function stripExtensions(spec, names) {
   return [...wanted].filter((n) => !hit.has(n));
 }
 
+// Some corrections are structural rather than textual: a property the source
+// types too narrowly, a parameter the route requires but the source marks
+// optional, a response the gateway never lets the route send. `patches` applies
+// a small RFC 6902 subset (`test`, `add`, `replace`, `remove`) at RFC 6901
+// pointers, in order. `test` guards a patch: when the source changes under it,
+// the run fails instead of silently patching the wrong node, so drop the patch
+// once the source is fixed. Returns one message per patch that failed.
+export function applyPatches(spec, patches) {
+  const failures = [];
+  for (const [i, patch] of (patches || []).entries()) {
+    const { op, pointer } = patch || {};
+    const label = `patch ${i} (${op} ${pointer})`;
+    if (typeof pointer !== 'string' || (pointer !== '' && !pointer.startsWith('/'))) { failures.push(`${label}: pointer must start with /`); continue; }
+    const tokens = pointer === '' ? [] : pointer.slice(1).split('/').map((t) => t.replace(/~1/g, '/').replace(/~0/g, '~'));
+    if (tokens.length === 0) { failures.push(`${label}: cannot patch the document root`); continue; }
+    let parent = spec;
+    let missing = false;
+    for (const t of tokens.slice(0, -1)) {
+      const next = Array.isArray(parent) ? parent[Number(t)] : parent?.[t];
+      if (next === null || typeof next !== 'object') { missing = true; break; }
+      parent = next;
+    }
+    if (missing) { failures.push(`${label}: path not found`); continue; }
+    const last = tokens[tokens.length - 1];
+    const isArray = Array.isArray(parent);
+    const index = isArray ? (last === '-' ? parent.length : Number(last)) : undefined;
+    if (isArray && !(Number.isInteger(index) && index >= 0)) { failures.push(`${label}: bad array index`); continue; }
+    const exists = isArray ? index < parent.length : Object.prototype.hasOwnProperty.call(parent, last);
+    if (op === 'test') {
+      const actual = isArray ? parent[index] : parent[last];
+      if (!exists || JSON.stringify(actual) !== JSON.stringify(patch.value)) failures.push(`${label}: value changed upstream`);
+    } else if (op === 'add') {
+      if (isArray) {
+        if (index > parent.length) { failures.push(`${label}: bad array index`); continue; }
+        parent.splice(index, 0, structuredClone(patch.value));
+      } else parent[last] = structuredClone(patch.value);
+    } else if (op === 'replace') {
+      if (!exists) { failures.push(`${label}: path not found`); continue; }
+      if (isArray) parent[index] = structuredClone(patch.value); else parent[last] = structuredClone(patch.value);
+    } else if (op === 'remove') {
+      if (!exists) { failures.push(`${label}: path not found`); continue; }
+      if (isArray) parent.splice(index, 1); else delete parent[last];
+    } else failures.push(`${label}: unknown op`);
+  }
+  return failures;
+}
+
 function resolveSchemaTarget(spec, key) {
   const [name, prop] = key.split('.');
   const schema = spec.components?.schemas?.[name];
@@ -408,6 +455,9 @@ function main() {
     const unremovedParams = removeParameters(spec, s.removeParameters);
     const undroppedBranches = dropOneOfBranches(spec, s.dropOneOfBranches);
     const unstripped = stripExtensions(spec, s.stripExtensions);
+    // After the removals and before pruning, so a patch can drop the last
+    // reference to a component and the prune step takes the component with it.
+    const patchFailures = applyPatches(spec, s.patches);
     spec = pruneUnusedComponents(spec);
     // After pruning, so overrides are only required for schemas that ship.
     const missing = findMissingSchemaDescriptions(spec, s.schemaDescriptions);
@@ -419,6 +469,7 @@ function main() {
     if (unremovedParams.length) { console.error(`✗ ${s.output}: removeParameters matched no operation: ${unremovedParams.join(', ')}`); failures++; }
     if (unstripped.length) { console.error(`✗ ${s.output}: stripExtensions matched no key: ${unstripped.join(', ')}`); failures++; }
     if (undroppedBranches.length) { console.error(`✗ ${s.output}: dropOneOfBranches matched no branch: ${undroppedBranches.join(', ')}`); failures++; }
+    if (patchFailures.length) { console.error(`✗ ${s.output}: patches failed: ${patchFailures.join('; ')}`); failures++; }
     if (unremoved.length) console.warn(`  ! ${s.output}: removeProperties matched nothing (field already gone upstream): ${unremoved.join(', ')}`);
     spec.info = { ...(spec.info || {}), title: s.title, ...(s.description ? { description: s.description } : {}) };
 

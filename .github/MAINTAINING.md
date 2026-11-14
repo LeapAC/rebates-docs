@@ -152,10 +152,11 @@ Use it for four cases, and say which one applies in the PR:
   the applications of `GET /beta/incentives/applications`, which staff and
   partner lanes both answer. The partner lane strips `organization_id`; the staff
   lanes return it, and Connect and the operator portal read it. The same goes
-  for the staff customer view (`organization`, `customer`, `customer_devices`,
-  `applications`) on `LegacyApplicationSearchResponse`: a partner reads
-  `results`. The properties are correct in the source spec, so **do not** try to
-  fix them upstream. incentives-service#566 attempted that for the alpha spec and
+  the other way for `results` on `LegacyApplicationSearchResponse`: only the
+  staff queue returns it. A partner key must send `refId` and reads the customer
+  view (`organization`, `customer`, `customer_devices`, `applications`), as the
+  2026-11-14 API sweep observed on staging and production. The properties are
+  correct in the source spec, so **do not** try to fix them upstream. incentives-service#566 attempted that for the alpha spec and
   was closed. Curate them here, where the published reference documents the
   partner lane.
 
@@ -184,6 +185,32 @@ Leap staff and partners alike:
   page shows only the `program_identifiers` body partners send.
 
 All three **fail the run** when a name matches nothing, like a required replacement.
+
+## Correct a schema the source types wrongly
+
+Some corrections are structural, not textual: an enum missing values the API
+returns, a nullable field typed as non-null, a parameter the route requires but
+the source marks optional, or a response the gateway never lets the route send.
+`patches` on a spec applies a subset of JSON Patch (RFC 6902) at JSON Pointer
+(RFC 6901) paths, in order, after the removals and before the prune step:
+
+```json
+"patches": [
+  { "op": "test", "pointer": "/components/schemas/LegacyApplication/properties/payee_type/enum", "value": ["customer", "contractor", "instant"] },
+  { "op": "replace", "pointer": "/components/schemas/LegacyApplication/properties/payee_type/enum", "value": ["customer", "contractor", "instant", "aggregator", "oem"] }
+]
+```
+
+The ops are `test`, `add`, `replace`, and `remove`. Escape `/` in a path key as
+`~1`, so `/paths/~1beta~1incentives~1fields/post` addresses that operation. Put
+a `test` before each change to pin the source value it corrects. When the source
+changes under the patch, the `test` fails the run instead of patching the wrong
+node: fix the source or drop the patch. `test` compares JSON text, so key order
+counts.
+
+Patches run before `schemaDescriptions` and `replacements`, so a patch that
+overwrites a node also retires any replacement rule that targeted it. Base every
+patch on a captured API response, and record the evidence in the PR.
 
 ## Rewrite a section's blurb
 

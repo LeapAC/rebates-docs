@@ -9,19 +9,13 @@ Applications are the incentive submissions Leap tracks through processing, one p
 
 The Applications API is served at `https://api.leap.energy` in production and `https://api.staging.leap.energy` in staging. Every path starts with `/beta/incentives/applications`, except [Get required fields](/api-reference/applications/get-required-fields) at `/beta/incentives/fields`.
 
-Send your Leap API key as a bearer token:
+Use the same API key you use for lookups, sent as a bearer token:
 
 ```http
 Authorization: Bearer your_api_key_here
 ```
 
-Your key needs the **Manage applications** permission, granted in the Leap portal under **API keys**. Every Applications route is scoped to your organization, so your key reads and writes only your own applications, customers, and attachments. A key without the permission receives `403`:
-
-```json
-{ "error": { "message": "You do not have the required permission to perform this action" } }
-```
-
-[Get required fields](/api-reference/applications/get-required-fields) is the exception: it takes the same key as [List programs](/api-reference/programs/list-programs) and doesn't need **Manage applications**.
+You only ever see your own organization's applications, customers, and attachments.
 
 ## Where applications come from
 
@@ -79,7 +73,7 @@ Route errors return a JSON body with a stable `code`, a readable `message`, and 
 { "code": "not_found", "message": "Application 123 not found", "requestId": "78b7cad5-ab45-44af-9c1e-2f0a1b2c3d4e" }
 ```
 
-Branch on `code`, and send the `requestId` to Leap support when you report a problem. The permission check returns the `{ "error": { "message": … } }` shape shown under [Base URL and authentication](#base-url-and-authentication).
+Branch on `code`, and send the `requestId` to Leap support when you report a problem.
 
 ## Supplying data on the customer's behalf
 

@@ -15,9 +15,9 @@ Point your client at the new host and send your key as a bearer token:
 | Staging host | `https://api.staging.incentives.leap.energy/alpha` | `https://api.staging.leap.energy` |
 | Path prefix | `/applications` | `/beta/incentives/applications` |
 | Authentication | `x-api-key: leap_live_...` | `Authorization: Bearer your_api_key_here` |
-| Key | The **Alpha · Applications API** key | A Leap API key with the **Manage applications** permission |
+| Key | The **Alpha · Applications API** key | The same API key you use for lookups |
 
-Create the key in the Leap portal under **API keys** and grant it the **Manage applications** permission. A key without it receives `403`.
+One key now covers lookups and applications, and you only ever see your own organization's applications.
 
 ## Map each alpha path to its beta path
 
@@ -47,19 +47,15 @@ A few details differ from the alpha API:
 - **Upload URLs**: `PUT` the file with the same `Content-Type` you sent to **Upload attachment**. The type is part of the URL's signature, so a different one fails. The URL stays valid for two hours.
 - **Application IDs**: **Get application** accepts the `application_uuid` as well as the integer `id`. **Update application** takes the integer `id` only.
 - **Sensitive identifiers**: Leap accepts `ssn` and `tax_id` on a customer update but doesn't store them.
-- **Permission errors**: a key without **Manage applications** receives `{ "error": { "message": … } }`. Every other error keeps the alpha body of `code`, `message`, and `requestId`.
+- **Errors**: route errors keep the alpha body of `code`, `message`, and `requestId`.
 
 ## Switch over
 
 Follow these steps to move an integration without a gap:
 
 <Steps>
-<Step title="Create a key with the permission">
-  In the Leap portal under **API keys**, create a key with the **Manage applications** permission.
-</Step>
-
 <Step title="Test against staging">
-  Point your client at `https://api.staging.leap.energy` with the `/beta/incentives` prefix and bearer authentication. Run each call your integration makes and check the responses parse.
+  Point your client at `https://api.staging.leap.energy` with the `/beta/incentives` prefix, and send your staging lookup key as a bearer token. Run each call your integration makes and check the responses parse.
 </Step>
 
 <Step title="Switch production">

@@ -152,7 +152,7 @@
     {
       "output": "gcs-applications.json",
       "title": "Leap Incentives — Applications",
-      "description": "Read and update the incentive applications Leap creates for your customers. Every route is scoped to your organization: your key reads and writes only your own applications. Authenticate with a Leap API key that holds the **Manage applications** permission, sent as a bearer token.\n",
+      "description": "Read and update the incentive applications Leap creates for your customers. Authenticate with the same Leap API key you use for lookups, sent as a bearer token. Your key reads and writes only your own organization's applications.\n",
       "serversRef": "gcsServers",
       "security": "bearer",
       "tag": "applications",
@@ -162,7 +162,7 @@
       "replacements": [
         { "from": "Legacy customer reference (`customer_organizations.reference_id`).", "to": "The `reference_id` you sent on the lookup for this customer.", "required": true },
         { "from": "Legacy bad request.", "to": "The request is malformed or fails validation. `message` says which part.", "required": true },
-        { "from": "Legacy forbidden, for example an admin only route on a partner key.", "to": "Your key lacks the **Manage applications** permission, or the record belongs to another organization or customer.", "required": true },
+        { "from": "Legacy forbidden, for example an admin only route on a partner key.", "to": "The record belongs to another organization or customer.", "required": true },
         { "from": "Legacy not found.", "to": "Nothing matches the identifier you sent.", "required": true },
         { "from": "Legacy conflict: `ambiguous_reference_id` (with `details.reference_id` and `details.organization_ids` on the routes that send them), `invalid_status_transition`, `submission_in_progress` and the other codes the route lists.", "to": "The request conflicts with stored data. `code` names the conflict, for example `ambiguous_reference_id` when more than one customer holds the `refId`.", "required": true },
         { "from": "Legacy internal error.", "to": "Leap couldn't process the request. Retry it, and send the `requestId` to Leap support if it fails again.", "required": true },
@@ -208,7 +208,7 @@
     {
       "output": "gcs-applications-attachments.json",
       "title": "Leap Incentives — Application attachments",
-      "description": "Upload, list, download, and delete the supporting documents on your applications. Authenticate with a Leap API key that holds the **Manage applications** permission, sent as a bearer token.\n",
+      "description": "Upload, list, download, and delete the supporting documents on your applications. Authenticate with the same Leap API key you use for lookups, sent as a bearer token.\n",
       "serversRef": "gcsServers",
       "security": "bearer",
       "tag": "applications",
@@ -217,7 +217,7 @@
       "replacements": [
         { "from": "Legacy customer reference (`customer_organizations.reference_id`).", "to": "The `reference_id` you sent on the lookup for this customer.", "required": true },
         { "from": "Legacy bad request.", "to": "The request is malformed or fails validation. `message` says which part.", "required": true },
-        { "from": "Legacy forbidden, for example an admin only route on a partner key.", "to": "Your key lacks the **Manage applications** permission, or the record belongs to another organization or customer.", "required": true },
+        { "from": "Legacy forbidden, for example an admin only route on a partner key.", "to": "The record belongs to another organization or customer.", "required": true },
         { "from": "Legacy not found.", "to": "Nothing matches the identifier you sent.", "required": true },
         { "from": "Legacy conflict: `ambiguous_reference_id` (with `details.reference_id` and `details.organization_ids` on the routes that send them), `invalid_status_transition`, `submission_in_progress` and the other codes the route lists.", "to": "The request conflicts with stored data. `code` names the conflict, for example `ambiguous_reference_id` when more than one customer holds the `refId`.", "required": true },
         { "from": "Legacy internal error.", "to": "Leap couldn't process the request. Retry it, and send the `requestId` to Leap support if it fails again.", "required": true },

@@ -2,7 +2,7 @@
   "openapi": "3.0.1",
   "info": {
     "title": "Leap Incentives — Applications",
-    "description": "Read and update the incentive applications Leap creates for your customers. Every route is scoped to your organization: your key reads and writes only your own applications. Authenticate with a Leap API key that holds the **Manage applications** permission, sent as a bearer token.\n",
+    "description": "Read and update the incentive applications Leap creates for your customers. Authenticate with the same Leap API key you use for lookups, sent as a bearer token. Your key reads and writes only your own organization's applications.\n",
     "contact": {
       "email": "apiteam@leap.energy"
     },
@@ -397,7 +397,7 @@
         }
       },
       "Legacy403": {
-        "description": "Your key lacks the **Manage applications** permission, or the record belongs to another organization or customer.",
+        "description": "The record belongs to another organization or customer.",
         "content": {
           "application/json": {
             "schema": {

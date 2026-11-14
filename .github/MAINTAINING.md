@@ -255,22 +255,19 @@ Four cases worth naming, because they've all been raised before:
 ### The Applications section: published ahead of the partner lane
 
 The Applications section documents the beta routes as partners will call them:
-a key with the **Manage applications** permission (`MANAGE_APPLICATIONS`), scoped
-to its own organization. On GCS `main` at 4a77a055 that lane is not open yet:
+with the same key they use for lookups (`LOOKUP_INCENTIVES`, which every partner
+key holds), scoped to their own organization (Sean's ruling, 2026-11-14). Never
+name a permission in the partner pages. `MANAGE_APPLICATIONS` is Leap internal
+and cross-organization, and the default key already carries what a partner needs.
 
-- `MANAGE_APPLICATIONS` is marked internal in service-protocols, so
-  identity-service refuses to grant it to a key outside Leap's organization.
-- The read, write, attachment and legacy Fields controllers call
-  `requireApplicationsStaff`, which refuses any caller `ApplicationsAccess`
-  scopes to one partner. Only the organization-lane service code
-  (`LegacyCaller.Partner`) is in place.
-- `APPLICATIONS_GATE_LEAP_CHECK_ENFORCED` is `"false"` in staging and production,
-  so a non-Leap key holding `MANAGE_INCENTIVE_DATA` is admitted as staff and reads
-  across partners.
-
-A partner key gets 403 on every Applications route today. `POST
-/beta/incentives/fields` with the `program_identifiers` body is the exception: it
-takes `READ_INCENTIVES_DATA` and is already partner-scoped.
+On GCS `main` at 4a77a055 that lane is not served yet. Every Applications route
+runs `ApplicationsAccess`, which admits only `LEAP_ADMIN`, `MANAGE_APPLICATIONS`
+or `MANAGE_INCENTIVE_DATA`, and the read, write and attachment controllers then
+call `requireApplicationsStaff`. A partner key gets 403 on every route today. The
+partner lane on the beta Applications API is a GCS change; publish this section
+only after it reaches production. `POST /beta/incentives/fields` with the
+`program_identifiers` body is the exception: it takes `READ_INCENTIVES_DATA` and
+is already partner-scoped.
 
 Excluded on purpose, so don't re-add them as coverage gaps: every
 `/beta/incentives/legacy-alpha/*` alias (deprecated), the staff refId `PATCH

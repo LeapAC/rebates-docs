@@ -2,7 +2,7 @@
   "openapi": "3.0.1",
   "info": {
     "title": "Leap Incentives — Application attachments",
-    "description": "Upload, list, download, and delete the supporting documents on your applications. Authenticate with a Leap API key that holds the **Manage applications** permission, sent as a bearer token.\n",
+    "description": "Upload, list, download, and delete the supporting documents on your applications. Authenticate with the same Leap API key you use for lookups, sent as a bearer token.\n",
     "contact": {
       "email": "apiteam@leap.energy"
     },
@@ -355,7 +355,7 @@
         }
       },
       "Legacy403": {
-        "description": "Your key lacks the **Manage applications** permission, or the record belongs to another organization or customer.",
+        "description": "The record belongs to another organization or customer.",
         "content": {
           "application/json": {
             "schema": {

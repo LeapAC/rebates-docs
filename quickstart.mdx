@@ -111,7 +111,7 @@ curl -X GET "https://api.leap.energy/beta/incentives/applications?refId=customer
   -H "Authorization: Bearer your_api_key_here"
 ```
 
-Send your reference ID as `refId`, which your key requires. The response holds the customer, their devices, and an `applications` array. Each application's `id` is the application ID. See [Search applications](/api-reference/applications/search-applications) for the full response.
+Send your reference ID as `refId`. Search returns 403 without it. The response holds the customer, their devices, and an `applications` array. Each application's `id` is the application ID. See [Search applications](/api-reference/applications/search-applications) for the full response.
 
 ### Update the application
 

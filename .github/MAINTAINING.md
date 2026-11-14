@@ -289,26 +289,26 @@ Four cases worth naming, because they've all been raised before:
   required, owner, options, validation rules, and template ids. The audience
   question is the same one already answered there.
 
-### The Applications section: published ahead of the partner lane
+### The Applications section: the partner lane
 
-The Applications section documents the beta routes as partners will call them:
-with the same key they use for lookups (`LOOKUP_INCENTIVES`, which every partner
-key holds), scoped to their own organization (Sean's ruling, 2026-11-14). Never
-name a permission in the partner pages. `MANAGE_APPLICATIONS` is Leap internal
-and cross-organization, and the default key already carries what a partner needs.
+The Applications section documents the beta routes as partners call them: with
+the same key they use for lookups (`LOOKUP_INCENTIVES`, which every partner key
+holds), scoped to their own organization. Never name a permission in the
+partner pages. `MANAGE_APPLICATIONS` is Leap internal and cross-organization,
+and the default key already carries what a partner needs.
 
-On GCS `main` at 4a77a055 that lane is not served yet. Every Applications route
-runs `ApplicationsAccess`, which admits only `LEAP_ADMIN`, `MANAGE_APPLICATIONS`
-or `MANAGE_INCENTIVE_DATA`, and the read, write and attachment controllers then
-call `requireApplicationsStaff`. A partner key gets 403 on every route today. The
-partner lane on the beta Applications API is a GCS change; publish this section
-only after it reaches production. `POST /beta/incentives/fields` with the
-`program_identifiers` body is the exception: it takes `READ_INCENTIVES_DATA` and
-is already partner-scoped.
+GCS MR !2250 serves that lane, and it reached production on 2026-11-14. The
+2026-11-14 API sweep confirmed it on staging: a partner key reaches every
+documented route for its own organization's records, and staff-only routes
+return 403. Another organization's records return 404, except on PATCH and bulk
+PATCH, which return 403 until a pending GCS fix lands. `POST
+/beta/incentives/fields` with the `program_identifiers` body takes
+`READ_INCENTIVES_DATA` and is partner-scoped.
 
 Excluded on purpose, so don't re-add them as coverage gaps: `GET
-/beta/incentives/applications/customer-summary` (staff only in the alpha API too:
-`get_customer_applications_summary.ts` answers an organization key 403), every
+/beta/incentives/applications/customer-summary` (the alpha reference never
+published it, and it returns the same customer view as **Search applications**
+by `refId`), every
 `/beta/incentives/legacy-alpha/*` alias (deprecated), the staff refId `PATCH
 /beta/incentives/applications`, `POST …/status` and `POST …/utility-change`, the
 backfill importer `POST …/admin/imports`, the seven Wallet hub routes under

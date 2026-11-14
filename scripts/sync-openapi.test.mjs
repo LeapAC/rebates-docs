@@ -306,55 +306,62 @@ test('applyPatches unescapes ~0 and ~1 and tests an array element', () => {
   assert.deepEqual(spec.paths['/a~b/c'].get.tags, ['x', 'z']);
 });
 
-test('sync exits 1 and leaves the output unwritten when a patch fails', () => {
+// The sync bundles with Redocly through npx. Skip the end-to-end run when no
+// local copy resolves, rather than fail on a machine without network access.
+const redoclyLocal = spawnSync('npx', ['--no-install', 'redocly', '--version'], { cwd: fileURLToPath(new URL('..', import.meta.url)), stdio: 'ignore' }).status === 0;
+
+test('sync exits 1 and leaves the output unwritten when a patch fails', { skip: redoclyLocal ? false : 'no local @redocly/cli; run npm install' }, () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sync-patch-'));
-  const repo = path.join(root, 'repo');
-  const out = path.join(root, 'specs');
-  fs.mkdirSync(repo);
-  fs.mkdirSync(out);
-  fs.writeFileSync(path.join(repo, 'api.yaml'), [
-    'openapi: 3.0.1',
-    'info: { title: t, version: "1" }',
-    'paths:',
-    '  /x:',
-    '    get:',
-    '      responses:',
-    "        '200': { description: ok, content: { application/json: { schema: { $ref: '#/components/schemas/S' } } } }",
-    'components:',
-    '  schemas:',
-    '    S: { type: object, properties: { kind: { type: string, enum: [a, b, c] } } }',
-    '',
-  ].join('\n'));
-  const git = (...args) => execFileSync('git', ['-C', repo, ...args], { stdio: 'ignore' });
-  git('init', '-q');
-  git('add', 'api.yaml');
-  git('-c', 'user.name=t', '-c', 'user.email=t@example.com', 'commit', '-q', '-m', 'seed');
-  const committed = '{ "committed": true }\n';
-  fs.writeFileSync(path.join(out, 'x.json'), committed);
-  const cfg = {
-    specsDir: out,
-    repos: { 'test/repo': { localEnv: 'SYNC_TEST_REPO_UNSET', localDefault: repo } },
-    specs: [{
-      output: 'x.json', title: 'x', servers: [{ url: 'https://example.com' }], security: 'bearer',
-      source: { repo: 'test/repo', ref: 'HEAD', entry: 'api.yaml', deps: [] },
-      include: [{ method: 'get', path: '/x' }],
-      patches: [
-        { op: 'test', pointer: '/components/schemas/S/properties/kind/enum', value: ['a', 'b'] },
-        { op: 'replace', pointer: '/components/schemas/S/properties/kind/enum', value: ['a', 'b', 'x'] },
-      ],
-    }],
-  };
-  const cfgPath = path.join(root, 'sources.json');
-  fs.writeFileSync(cfgPath, JSON.stringify(cfg));
-  const script = fileURLToPath(new URL('./sync-openapi.mjs', import.meta.url));
-  const run = spawnSync(process.execPath, [script, '--local'], {
-    cwd: fileURLToPath(new URL('..', import.meta.url)),
-    env: { ...process.env, SYNC_OPENAPI_CONFIG: cfgPath },
-    encoding: 'utf8',
-  });
-  assert.equal(run.status, 1, run.stderr);
-  assert.match(run.stderr, /patches failed/);
-  assert.match(run.stderr, /x\.json: not written/);
-  assert.equal(fs.readFileSync(path.join(out, 'x.json'), 'utf8'), committed);
-  fs.rmSync(root, { recursive: true, force: true });
+  try {
+    const repo = path.join(root, 'repo');
+    const out = path.join(root, 'specs');
+    fs.mkdirSync(repo);
+    fs.mkdirSync(out);
+    fs.writeFileSync(path.join(repo, 'api.yaml'), [
+      'openapi: 3.0.1',
+      'info: { title: t, version: "1" }',
+      'paths:',
+      '  /x:',
+      '    get:',
+      '      responses:',
+      "        '200': { description: ok, content: { application/json: { schema: { $ref: '#/components/schemas/S' } } } }",
+      'components:',
+      '  schemas:',
+      '    S: { type: object, properties: { kind: { type: string, enum: [a, b, c] } } }',
+      '',
+    ].join('\n'));
+    const git = (...args) => execFileSync('git', ['-C', repo, ...args], { stdio: 'ignore' });
+    git('init', '-q');
+    git('add', 'api.yaml');
+    git('-c', 'user.name=t', '-c', 'user.email=t@example.com', 'commit', '-q', '-m', 'seed');
+    const committed = '{ "committed": true }\n';
+    fs.writeFileSync(path.join(out, 'x.json'), committed);
+    const cfg = {
+      specsDir: out,
+      repos: { 'test/repo': { localEnv: 'SYNC_TEST_REPO_UNSET', localDefault: repo } },
+      specs: [{
+        output: 'x.json', title: 'x', servers: [{ url: 'https://example.com' }], security: 'bearer',
+        source: { repo: 'test/repo', ref: 'HEAD', entry: 'api.yaml', deps: [] },
+        include: [{ method: 'get', path: '/x' }],
+        patches: [
+          { op: 'test', pointer: '/components/schemas/S/properties/kind/enum', value: ['a', 'b'] },
+          { op: 'replace', pointer: '/components/schemas/S/properties/kind/enum', value: ['a', 'b', 'x'] },
+        ],
+      }],
+    };
+    const cfgPath = path.join(root, 'sources.json');
+    fs.writeFileSync(cfgPath, JSON.stringify(cfg));
+    const script = fileURLToPath(new URL('./sync-openapi.mjs', import.meta.url));
+    const run = spawnSync(process.execPath, [script, '--local'], {
+      cwd: fileURLToPath(new URL('..', import.meta.url)),
+      env: { ...process.env, SYNC_OPENAPI_CONFIG: cfgPath },
+      encoding: 'utf8',
+    });
+    assert.equal(run.status, 1, run.stderr);
+    assert.match(run.stderr, /patches failed/);
+    assert.match(run.stderr, /x\.json: not written/);
+    assert.equal(fs.readFileSync(path.join(out, 'x.json'), 'utf8'), committed);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
 });

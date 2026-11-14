@@ -236,9 +236,7 @@
         "required": false,
         "description": "The `reference_id` you sent on the lookup for this customer.",
         "schema": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 200
+          "type": "string"
         },
         "example": "customer-123"
       },

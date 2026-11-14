@@ -161,6 +161,8 @@
       "stripExtensions": ["x-legacy-alpha"],
       "removeProperties": ["LegacyMutations.applications", "LegacyApplication.partner_open_order_count", "LegacyApplication.recaptcha_token", "LegacyApplication.organization_id", "LegacyApplication.uncollected_requirements", "LegacyApplication.verification_status", "LegacyApplication.verification_results", "LegacyApplication.verification_attempted_at", "LegacyApplication.verification_completed_at", "LegacyCustomer.is_test", "LegacyCustomer.ssn", "LegacyCustomer.tax_id", "LegacyApplicationSearchResponse.results"],
       "patches": [
+        {"op": "test", "pointer": "/components/parameters/LegacyRefId/schema", "value": {"type": "string", "minLength": 1, "maxLength": 200}},
+        {"op": "replace", "pointer": "/components/parameters/LegacyRefId/schema", "value": {"type": "string"}},
         {"op": "test", "pointer": "/paths/~1beta~1incentives~1applications/get/parameters/0", "value": {"$ref": "#/components/parameters/LegacyRefId"}},
         {"op": "replace", "pointer": "/paths/~1beta~1incentives~1applications/get/parameters/0", "value": {"name": "refId", "in": "query", "required": true, "description": "The `reference_id` you sent on the lookup for this customer. Your key must send it: a search without `refId` returns 403.", "schema": {"type": "string"}, "example": "customer-123"}},
         {"op": "test", "pointer": "/components/schemas/LegacyApplicationSearchResponse/properties/applications/items", "value": {"$ref": "#/components/schemas/LegacyApplication"}},

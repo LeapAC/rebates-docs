@@ -44,9 +44,7 @@
             "required": true,
             "description": "The `reference_id` you sent on the lookup for this customer. Your key must send it: a search without `refId` returns 403.",
             "schema": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 200
+              "type": "string"
             },
             "example": "customer-123"
           },
@@ -1010,13 +1008,13 @@
             "type": "string",
             "nullable": true,
             "readOnly": true,
-            "description": "Why the application was dismissed. Null unless `status` is `dismissed`. Partner responses currently omit this field, pending a ruling."
+            "description": "Why the application was dismissed. Null unless `status` is `dismissed`. Partner responses don't include this field today."
           },
           "rejection_reason": {
             "type": "string",
             "nullable": true,
             "readOnly": true,
-            "description": "Why the program rejected the application, when Leap recorded a reason. Partner responses currently omit this field, pending a ruling."
+            "description": "Why the program rejected the application, when Leap recorded a reason. Partner responses don't include this field today."
           },
           "connect_completed_at": {
             "type": "string",

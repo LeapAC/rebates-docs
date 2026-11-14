@@ -148,15 +148,17 @@ Use it for four cases, and say which one applies in the PR:
   `uncollected_requirements` columns on the same schema are Leap's own processing
   state, and `LegacyCustomer.ssn` and `tax_id` are accepted on a write but never
   stored, so a read always returns null.
-- **True of the endpoint, wrong for this audience.** `LegacyApplication` types
-  the applications of `GET /beta/incentives/applications`, which staff and
-  partner lanes both answer. The partner lane strips `organization_id`; the staff
-  lanes return it, and Connect and the operator portal read it. The same goes
-  the other way for `results` on `LegacyApplicationSearchResponse`: only the
-  staff queue returns it. A partner key must send `refId` and reads the customer
-  view (`organization`, `customer`, `customer_devices`, `applications`), as the
+  `LegacyApplication.organization_id` is Leap's internal organization key.
+  Partner keys get it too, as the sweep's partner search showed, and Connect and
+  the operator portal read it, so it stays in the source. The `organization`
+  block already identifies the partner, so the reference leaves it out.
+- **True of the endpoint, wrong for this audience.** `results` on
+  `LegacyApplicationSearchResponse` is the staff queue, and only staff keys get
+  it. A partner key must send `refId` and reads the customer view
+  (`organization`, `customer`, `customer_devices`, `applications`), as the
   2026-11-14 API sweep observed on staging and production. The properties are
-  correct in the source spec, so **do not** try to fix them upstream. incentives-service#566 attempted that for the alpha spec and
+  correct in the source spec, so **do not** try to fix them upstream.
+  incentives-service#566 attempted that for the alpha spec and
   was closed. Curate them here, where the published reference documents the
   partner lane.
 
@@ -207,6 +209,11 @@ a `test` before each change to pin the source value it corrects. When the source
 changes under the patch, the `test` fails the run instead of patching the wrong
 node: fix the source or drop the patch. `test` compares JSON text, so key order
 counts.
+
+The first failed patch stops the list, and the run doesn't write that spec, so
+the committed file keeps its last good content. `add` on an object key refuses
+a key that already exists, so a patch can't overwrite a schema the source later
+defines under the same name.
 
 Patches run before `schemaDescriptions` and `replacements`, so a patch that
 overwrites a node also retires any replacement rule that targeted it. Base every

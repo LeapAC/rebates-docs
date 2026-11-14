@@ -238,10 +238,18 @@ export function stripExtensions(spec, names) {
 // a small RFC 6902 subset (`test`, `add`, `replace`, `remove`) at RFC 6901
 // pointers, in order. `test` guards a patch: when the source changes under it,
 // the run fails instead of silently patching the wrong node, so drop the patch
-// once the source is fixed. Returns one message per patch that failed.
+// once the source is fixed. The first failure stops the list, so no later patch
+// writes over a node that has changed. `add` on an object refuses a key that
+// already exists, so a patch never clobbers a schema the source later defines.
+// Returns the failure message plus one per skipped patch.
 export function applyPatches(spec, patches) {
   const failures = [];
-  for (const [i, patch] of (patches || []).entries()) {
+  const list = patches || [];
+  for (const [i, patch] of list.entries()) {
+    if (failures.length) {
+      for (let j = i; j < list.length; j++) failures.push(`patch ${j} (${list[j]?.op} ${list[j]?.pointer}): skipped after an earlier failure`);
+      break;
+    }
     const { op, pointer } = patch || {};
     const label = `patch ${i} (${op} ${pointer})`;
     if (typeof pointer !== 'string' || (pointer !== '' && !pointer.startsWith('/'))) { failures.push(`${label}: pointer must start with /`); continue; }
@@ -267,7 +275,7 @@ export function applyPatches(spec, patches) {
       if (isArray) {
         if (index > parent.length) { failures.push(`${label}: bad array index`); continue; }
         parent.splice(index, 0, structuredClone(patch.value));
-      } else parent[last] = structuredClone(patch.value);
+      } else if (exists) { failures.push(`${label}: key already exists`); continue; } else parent[last] = structuredClone(patch.value);
     } else if (op === 'replace') {
       if (!exists) { failures.push(`${label}: path not found`); continue; }
       if (isArray) parent[index] = structuredClone(patch.value); else parent[last] = structuredClone(patch.value);
@@ -431,12 +439,15 @@ function bundle(entryPath) {
 
 function main() {
   const opts = { local: process.argv.includes('--local'), ref: 'main' };
-  const cfg = JSON.parse(fs.readFileSync(new URL('./openapi-sources.json', import.meta.url), 'utf8'));
+  // SYNC_OPENAPI_CONFIG points a test run at its own config.
+  const cfgPath = process.env.SYNC_OPENAPI_CONFIG || fileURLToPath(new URL('./openapi-sources.json', import.meta.url));
+  const cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
   const outDir = path.resolve(cfg.specsDir);
   fs.mkdirSync(outDir, { recursive: true });
   let failures = 0;
 
   for (const s of cfg.specs) {
+    const failuresBefore = failures;
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'oas-'));
     const repoCfg = cfg.repos[s.source.repo];
     const entry = fetchFile(repoCfg, s.source.repo, s.source.entry, tmp, opts, s.source.ref);
@@ -478,6 +489,9 @@ function main() {
     if (missing.length) { console.error(`✗ ${s.output}: schemaDescriptions no longer match: ${missing.join(', ')}`); failures++; }
     if (replaced.missingRequired.length) { console.error(`✗ ${s.output}: required replacements matched nothing: ${replaced.missingRequired.join(', ')}`); failures++; }
 
+    // A spec that failed any check keeps its committed content: writing it would
+    // stage a half-curated reference for whoever commits regardless of the exit.
+    if (failures > failuresBefore) { console.error(`✗ ${s.output}: not written`); continue; }
     const opCount = Object.values(spec.paths || {}).reduce((n, ops) => n + Object.keys(ops).filter((m) => HTTP_METHODS.includes(m)).length, 0);
     fs.writeFileSync(path.join(outDir, s.output), JSON.stringify(spec, null, 2) + '\n');
     console.log(`✓ ${s.output}: ${opCount} operations`);

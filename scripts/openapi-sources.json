@@ -162,7 +162,7 @@
       "removeProperties": ["LegacyMutations.applications", "LegacyApplication.partner_open_order_count", "LegacyApplication.recaptcha_token", "LegacyApplication.organization_id", "LegacyApplication.uncollected_requirements", "LegacyApplication.verification_status", "LegacyApplication.verification_results", "LegacyApplication.verification_attempted_at", "LegacyApplication.verification_completed_at", "LegacyCustomer.is_test", "LegacyCustomer.ssn", "LegacyCustomer.tax_id", "LegacyApplicationSearchResponse.results"],
       "patches": [
         {"op": "test", "pointer": "/paths/~1beta~1incentives~1applications/get/parameters/0", "value": {"$ref": "#/components/parameters/LegacyRefId"}},
-        {"op": "replace", "pointer": "/paths/~1beta~1incentives~1applications/get/parameters/0", "value": {"name": "refId", "in": "query", "required": true, "description": "The `reference_id` you sent on the lookup for this customer. Your key must send it: a search without `refId` returns 403.", "schema": {"type": "string", "minLength": 1, "maxLength": 200}, "example": "customer-123"}},
+        {"op": "replace", "pointer": "/paths/~1beta~1incentives~1applications/get/parameters/0", "value": {"name": "refId", "in": "query", "required": true, "description": "The `reference_id` you sent on the lookup for this customer. Your key must send it: a search without `refId` returns 403.", "schema": {"type": "string"}, "example": "customer-123"}},
         {"op": "test", "pointer": "/components/schemas/LegacyApplicationSearchResponse/properties/applications/items", "value": {"$ref": "#/components/schemas/LegacyApplication"}},
         {"op": "replace", "pointer": "/components/schemas/LegacyApplicationSearchResponse/properties/applications/items", "value": {"allOf": [{"$ref": "#/components/schemas/LegacyApplication"}, {"type": "object", "properties": {"program_slug": {"type": "string", "nullable": true, "example": "georgia_power_heip_residential_level_2_ev_charger_rebate"}}}]}},
         {"op": "replace", "pointer": "/components/schemas/LegacyOrganizationRef/properties/leap_partner_id/example", "value": "0b6c2f4e-1d3a-4c5b-9e8f-7a6b5c4d3e2f"},
@@ -209,8 +209,8 @@
         "LegacyCustomerDevice": "One device on the customer's record, with the catalog device nested under `device`. Its integer `id` is the value you send in `customer_devices[].id` on **Update application**.",
         "LegacyCustomerDevice.quantity": "**Deprecated.** Leap treats each device record as one physical unit, and its incentive calculations ignore this field. Send each unit of a model as its own `customer_devices[]` entry on the lookup, with its own `partner_device_reference`.",
         "LegacyApplication": "One application: the customer's claim on one program. Additional fields can appear as Leap adds them, so ignore keys you don't recognize.",
-        "LegacyApplication.dismissal_reason": "Why the application was dismissed. Null unless `status` is `dismissed`. Partner responses currently omit this field, pending a ruling.",
-        "LegacyApplication.rejection_reason": "Why the program rejected the application, when Leap recorded a reason. Partner responses currently omit this field, pending a ruling.",
+        "LegacyApplication.dismissal_reason": "Why the application was dismissed. Null unless `status` is `dismissed`. Partner responses don't include this field today.",
+        "LegacyApplication.rejection_reason": "Why the program rejected the application, when Leap recorded a reason. Partner responses don't include this field today.",
         "LegacyApplicationSearchResponse": "One customer's applications, with your organization, the customer, and the customer's devices. Follow `next_page_token` until it's null to read every page of `applications`.",
         "ContractLegacyError": "An error. `code` is a stable identifier you can branch on, `message` explains it, and `requestId` identifies the request for Leap support.",
         "LegacyApplicationDetail": "One application with its customer, the customer's devices, and its status history.",
@@ -237,8 +237,6 @@
       "stripExtensions": ["x-legacy-alpha"],
       "removeProperties": ["LegacyAttachmentUploadRequest.application_id", "LegacyAttachmentCommitRequest.application_id"],
       "patches": [
-        {"op": "test", "pointer": "/components/parameters/LegacyAttachmentTypeQuery/required", "value": false},
-        {"op": "replace", "pointer": "/components/parameters/LegacyAttachmentTypeQuery/required", "value": true},
         {"op": "test", "pointer": "/components/responses/Legacy403/description", "value": "Legacy forbidden, for example an admin only route on a partner key."},
         {"op": "add", "pointer": "/components/schemas/PermissionError", "value": {"description": "A permission error. `message` says what the key can't do.", "type": "object", "required": ["error"], "properties": {"error": {"type": "object", "required": ["message"], "properties": {"message": {"type": "string", "example": "You do not have the required permission to perform this action"}}}}}},
         {"op": "add", "pointer": "/components/schemas/ApiKeyError", "value": {"description": "A missing or invalid API key. Leap answers before the request reaches a route.", "type": "object", "required": ["error"], "properties": {"error": {"type": "string", "example": "No or invalid API key or JWT provided in authorization header"}}}},

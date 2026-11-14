@@ -292,7 +292,7 @@
       "LegacyAttachmentTypeQuery": {
         "name": "attachment_type",
         "in": "query",
-        "required": true,
+        "required": false,
         "description": "The attachment type to list. Required when you send a single `application_id`: without it, the call returns 400. With `application_ids`, it narrows the list.",
         "schema": {
           "$ref": "#/components/schemas/AttachmentType"

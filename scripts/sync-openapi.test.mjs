@@ -1,5 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { execFileSync, spawnSync } from 'node:child_process';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { filterOperations, retargetServers, ensureSecurity, findBrokenRefs, applyOperationTitles, applyOperationDescriptions, applySchemaDescriptions, findMissingSchemaDescriptions, applyStringReplacements, removeProperties, removeParameters, dropOneOfBranches, stripExtensions, applyTag, pruneUnusedComponents, applyPatches } from './sync-openapi.mjs';
 
 const sample = () => ({
@@ -253,23 +258,103 @@ test('applyPatches adds, replaces, and removes at escaped pointers, guarded by t
   assert.deepEqual(spec.paths['/beta/x'].get.parameters.map((p) => p.name), ['refId', 'limit']);
 });
 
-test('applyPatches reports a failed test, a missing path, and an unknown op without stopping', () => {
+test('applyPatches reports each kind of failure', () => {
+  const fresh = () => ({ components: { schemas: { S: { properties: { kind: { enum: ['a', 'b', 'c'] } } } } } });
+  const one = (patch) => applyPatches(fresh(), [patch]);
+  assert.match(one({ op: 'test', pointer: '/components/schemas/S/properties/kind/enum', value: ['a', 'b'] })[0], /value changed upstream/);
+  assert.match(one({ op: 'replace', pointer: '/components/schemas/Gone/properties/x', value: 1 })[0], /path not found/);
+  assert.match(one({ op: 'remove', pointer: '/components/schemas/S/properties/missing' })[0], /path not found/);
+  assert.match(one({ op: 'move', pointer: '/components/schemas/S' })[0], /unknown op/);
+  assert.match(one({ op: 'add', pointer: 'components/schemas/S/x', value: 1 })[0], /pointer must start with/);
+  assert.match(one({ op: 'add', pointer: '', value: 1 })[0], /document root/);
+  assert.match(one({ op: 'add', pointer: '/components/schemas/S/properties/kind/enum/9', value: 'z' })[0], /bad array index/);
+});
+
+test('applyPatches stops at a failed test, so a later op leaves the changed node alone', () => {
   const spec = { components: { schemas: { S: { properties: { kind: { enum: ['a', 'b', 'c'] } } } } } };
-  const value = { keep: 1 };
   const failures = applyPatches(spec, [
     { op: 'test', pointer: '/components/schemas/S/properties/kind/enum', value: ['a', 'b'] },
-    { op: 'replace', pointer: '/components/schemas/Gone/properties/x', value: 1 },
-    { op: 'remove', pointer: '/components/schemas/S/properties/missing' },
-    { op: 'move', pointer: '/components/schemas/S' },
-    { op: 'add', pointer: 'components/schemas/S/x', value: 1 },
-    { op: 'add', pointer: '/components/schemas/S/properties/copy', value },
+    { op: 'replace', pointer: '/components/schemas/S/properties/kind/enum', value: ['a', 'b', 'x'] },
+    { op: 'add', pointer: '/components/schemas/S/properties/extra', value: 1 },
   ]);
-  assert.equal(failures.length, 5);
-  assert.match(failures[0], /value changed upstream/);
-  assert.match(failures[1], /path not found/);
-  assert.match(failures[2], /path not found/);
-  assert.match(failures[3], /unknown op/);
-  assert.match(failures[4], /pointer must start with/);
+  assert.deepEqual(spec.components.schemas.S.properties.kind.enum, ['a', 'b', 'c'], 'the upstream value survives');
+  assert.ok(!('extra' in spec.components.schemas.S.properties));
+  assert.equal(failures.length, 3);
+  assert.match(failures[1], /skipped after an earlier failure/);
+  assert.match(failures[2], /skipped after an earlier failure/);
+});
+
+test('applyPatches add refuses to overwrite an existing key and copies its value', () => {
+  const upstream = { type: 'object', description: 'defined upstream' };
+  const spec = { components: { schemas: { ApiKeyError: upstream } } };
+  const failures = applyPatches(spec, [{ op: 'add', pointer: '/components/schemas/ApiKeyError', value: { type: 'string' } }]);
+  assert.match(failures[0], /key already exists/);
+  assert.equal(spec.components.schemas.ApiKeyError, upstream);
+  const value = { keep: 1 };
+  assert.deepEqual(applyPatches(spec, [{ op: 'add', pointer: '/components/schemas/Copy', value }]), []);
   value.keep = 2;
-  assert.deepEqual(spec.components.schemas.S.properties.copy, { keep: 1 }, 'patch values are copied, not shared');
+  assert.deepEqual(spec.components.schemas.Copy, { keep: 1 }, 'patch values are copied, not shared');
+});
+
+test('applyPatches unescapes ~0 and ~1 and tests an array element', () => {
+  const spec = { paths: { '/a~b/c': { get: { tags: ['x', 'y'] } } } };
+  const failures = applyPatches(spec, [
+    { op: 'test', pointer: '/paths/~1a~0b~1c/get/tags/1', value: 'y' },
+    { op: 'replace', pointer: '/paths/~1a~0b~1c/get/tags/1', value: 'z' },
+  ]);
+  assert.deepEqual(failures, []);
+  assert.deepEqual(spec.paths['/a~b/c'].get.tags, ['x', 'z']);
+});
+
+test('sync exits 1 and leaves the output unwritten when a patch fails', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sync-patch-'));
+  const repo = path.join(root, 'repo');
+  const out = path.join(root, 'specs');
+  fs.mkdirSync(repo);
+  fs.mkdirSync(out);
+  fs.writeFileSync(path.join(repo, 'api.yaml'), [
+    'openapi: 3.0.1',
+    'info: { title: t, version: "1" }',
+    'paths:',
+    '  /x:',
+    '    get:',
+    '      responses:',
+    "        '200': { description: ok, content: { application/json: { schema: { $ref: '#/components/schemas/S' } } } }",
+    'components:',
+    '  schemas:',
+    '    S: { type: object, properties: { kind: { type: string, enum: [a, b, c] } } }',
+    '',
+  ].join('\n'));
+  const git = (...args) => execFileSync('git', ['-C', repo, ...args], { stdio: 'ignore' });
+  git('init', '-q');
+  git('add', 'api.yaml');
+  git('-c', 'user.name=t', '-c', 'user.email=t@example.com', 'commit', '-q', '-m', 'seed');
+  const committed = '{ "committed": true }\n';
+  fs.writeFileSync(path.join(out, 'x.json'), committed);
+  const cfg = {
+    specsDir: out,
+    repos: { 'test/repo': { localEnv: 'SYNC_TEST_REPO_UNSET', localDefault: repo } },
+    specs: [{
+      output: 'x.json', title: 'x', servers: [{ url: 'https://example.com' }], security: 'bearer',
+      source: { repo: 'test/repo', ref: 'HEAD', entry: 'api.yaml', deps: [] },
+      include: [{ method: 'get', path: '/x' }],
+      patches: [
+        { op: 'test', pointer: '/components/schemas/S/properties/kind/enum', value: ['a', 'b'] },
+        { op: 'replace', pointer: '/components/schemas/S/properties/kind/enum', value: ['a', 'b', 'x'] },
+      ],
+    }],
+  };
+  const cfgPath = path.join(root, 'sources.json');
+  fs.writeFileSync(cfgPath, JSON.stringify(cfg));
+  const script = fileURLToPath(new URL('./sync-openapi.mjs', import.meta.url));
+  const run = spawnSync(process.execPath, [script, '--local'], {
+    cwd: fileURLToPath(new URL('..', import.meta.url)),
+    env: { ...process.env, SYNC_OPENAPI_CONFIG: cfgPath },
+    encoding: 'utf8',
+  });
+  assert.equal(run.status, 1, run.stderr);
+  assert.match(run.stderr, /patches failed/);
+  assert.match(run.stderr, /x\.json: not written/);
+  assert.equal(fs.readFileSync(path.join(out, 'x.json'), 'utf8'), committed);
+  fs.rmSync(root, { recursive: true, force: true });
 });

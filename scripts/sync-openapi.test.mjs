@@ -354,7 +354,7 @@ test('sync exits 1 and leaves the output unwritten when a patch fails', { skip: 
     const script = fileURLToPath(new URL('./sync-openapi.mjs', import.meta.url));
     const run = spawnSync(process.execPath, [script, '--local'], {
       cwd: fileURLToPath(new URL('..', import.meta.url)),
-      env: { ...process.env, SYNC_OPENAPI_CONFIG: cfgPath },
+      env: { ...process.env, SYNC_OPENAPI_CONFIG: cfgPath, PARTNER_SURFACE_FORBIDDEN_TOKENS: 'zzplaceholdertoken' },
       encoding: 'utf8',
     });
     assert.equal(run.status, 1, run.stderr);

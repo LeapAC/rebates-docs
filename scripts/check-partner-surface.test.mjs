@@ -180,7 +180,10 @@ test('a forbidden token on a committed page or in docs.json fails the site check
 });
 
 test('the check command exits 0 on the committed site', () => {
-  const run = spawnSync(process.execPath, [path.join(root, 'scripts', 'check-partner-surface.mjs')], { encoding: 'utf8' });
+  // A placeholder token keeps this test independent of the CI secret; the
+  // workflow's own check:surface step is the one that needs the real list.
+  const env = { ...process.env, PARTNER_SURFACE_FORBIDDEN_TOKENS: process.env.PARTNER_SURFACE_FORBIDDEN_TOKENS || 'zzplaceholdertoken' };
+  const run = spawnSync(process.execPath, [path.join(root, 'scripts', 'check-partner-surface.mjs')], { encoding: 'utf8', env });
   assert.equal(run.status, 0, run.stderr);
   assert.match(run.stdout, /partner surface: 21 operations allowed/);
 });

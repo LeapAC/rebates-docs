@@ -1,9 +1,9 @@
 ---
-title: Applications Guide
+title: Applications guide
 description: Read, update, and attach documents to the incentive applications Leap creates for your customers.
 ---
 
-Applications are the incentive submissions Leap tracks through processing, one per customer and program. The Applications API lets you read them, supply data on the customer's behalf, and manage supporting documents. It runs on the same host and bearer authentication as the incentives lookup. If you call the alpha API today, read [Migrating from the alpha API](/api-reference/applications/migrating-from-alpha).
+Applications are the incentive submissions Leap tracks through processing, one per customer and program. The Applications API lets you read them, supply data on the customer's behalf, and manage supporting documents. It runs on the same host and bearer authentication as the incentives lookup. For the order of calls from lookup to decision, read [Take a customer from lookup to approved application](/application-lifecycle). If you call the alpha API today, read [Migrating from the alpha API](/api-reference/applications/migrating-from-alpha).
 
 ## Base URL and authentication
 
@@ -23,9 +23,10 @@ Send `create_application: true` on [Look up incentives](/api-reference/incentive
 
 ## Routes in this API
 
-Four routes act on applications, five manage attachments, and one lists requirements:
+Five routes act on applications, five manage attachments, and one lists requirements:
 
 - **Search applications**: read one customer's applications by `refId`, which your key must send. Each application's `id` is the application ID the other routes take.
+- **Get customer summary**: one customer's open applications in one call, each with its `program_identifier` for **Get required fields**.
 - **Get application**: one application in full, with the customer, their devices, and its status history.
 - **Update application**: supply data on the customer's behalf. Only the fields you send change, and `null` clears one.
 - **Update applications in bulk**: several updates in one request, with a result per entry.
@@ -54,13 +55,13 @@ Every application carries a `status`, which Leap updates as the customer and Lea
 | `completed` | The customer's part is done, and Leap prepares the filing. |
 | `submitted` | Leap filed the application with the program. |
 | `approved` | The program approved the application. |
-| `rejected` | The program rejected the application. `rejection_reason` says why when Leap recorded one. |
+| `rejected` | The program rejected the application. |
 | `declined` | The customer withdrew, for example by choosing not to join an optional program in Connect. |
-| `dismissed` | Leap closed the application because of its own error. `dismissal_reason` says why. |
+| `dismissed` | Leap closed the application because of its own error. |
 
 `approved`, `rejected`, `declined`, and `dismissed` are terminal: an application in one of them is closed.
 
-Partner responses don't include `dismissal_reason` or `rejection_reason` today.
+Leap sends no webhook when a status changes, so poll **Get customer summary** for the customers you follow. The [Connect webhooks](/webhooks) report the customer's progress through Connect.
 
 ## Identifiers on this API
 

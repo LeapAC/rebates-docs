@@ -4,7 +4,9 @@
   "type": "module",
   "scripts": {
     "sync:openapi": "node scripts/sync-openapi.mjs",
-    "test:sync": "node --test scripts/*.test.mjs"
+    "test:sync": "node --test scripts/*.test.mjs",
+    "check:surface": "node scripts/check-partner-surface.mjs",
+    "test": "npm run test:sync && npm run check:surface"
   },
   "devDependencies": {
     "@redocly/cli": "^1.25.0"

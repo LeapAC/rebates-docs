@@ -2,3 +2,6 @@
 .mcp.json
 node_modules/
 api-reference/specs/*.bundled.json
+
+# Real partner names and IDs for the partner surface check. Never commit.
+.partner-tokens

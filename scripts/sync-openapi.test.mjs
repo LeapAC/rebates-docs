@@ -366,10 +366,12 @@ test('sync exits 1 and leaves the output unwritten when a patch fails', { skip: 
   }
 });
 
-// REA-1637: per-program keys and values on Get required fields are program
-// identifiers (text). GCS still types co-enrollment values as integers and
-// restricts identifiers to lower case, so the fields config patches both. The
-// guards must fail once GCS serves identifiers, so the patches get dropped.
+// Per-program keys and values on Get required fields are program identifiers
+// (text). GCS types co-enrollment values as a string or an integer, because the
+// legacy body keys them by integer, so the fields config narrows them to the
+// string partners get. GCS now accepts mixed-case identifiers, so its pattern
+// ships as the source writes it. The guard must fail once GCS serves strings
+// alone, so the patch gets dropped.
 const fieldsConfig = () => JSON.parse(fs.readFileSync(fileURLToPath(new URL('./openapi-sources.json', import.meta.url)), 'utf8')).specs.find((s) => s.output === 'gcs-fields.json');
 const identifierPatches = () => fieldsConfig().patches.filter((p) => /FieldsResponse\/properties\/co_enrollment|FieldsProgramIdentifier/.test(p.pointer));
 const fieldsSource = (items, pattern) => ({
@@ -378,19 +380,19 @@ const fieldsSource = (items, pattern) => ({
     FieldsProgramIdentifier: { type: 'string', minLength: 1, maxLength: 200, pattern, example: 'example_program' },
   } },
 });
+const sourceItems = () => ({ anyOf: [{ type: 'string', example: 'golden_program_302' }, { type: 'integer', example: 16473 }] });
 
-test('fields patches type co-enrollment values as identifiers and drop the lower-case pattern', () => {
-  const spec = fieldsSource({ type: 'integer', example: 16473 }, '^[a-z0-9_\\-]{1,200}$');
+test('fields patches type co-enrollment values as identifiers and keep the source pattern', () => {
+  const spec = fieldsSource(sourceItems(), '^[A-Za-z0-9_\\-]{1,200}$');
   assert.deepEqual(applyPatches(spec, identifierPatches()), []);
-  assert.equal(spec.components.schemas.FieldsResponse.properties.co_enrollment_satisfied_by_program.additionalProperties.items.type, 'string');
-  assert.ok(!('pattern' in spec.components.schemas.FieldsProgramIdentifier));
+  assert.deepEqual(spec.components.schemas.FieldsResponse.properties.co_enrollment_satisfied_by_program.additionalProperties.items, { type: 'string', example: 'example_utility_demand_response' });
+  assert.equal(spec.components.schemas.FieldsProgramIdentifier.pattern, '^[A-Za-z0-9_\\-]{1,200}$');
+  assert.ok(identifierPatches().every((p) => !p.pointer.includes('FieldsProgramIdentifier')));
 });
 
 test('fields identifier patches fail once GCS serves identifiers', () => {
-  const served = fieldsSource({ type: 'string' }, '^[a-z0-9_\\-]{1,200}$');
+  const served = fieldsSource({ type: 'string' }, '^[A-Za-z0-9_\\-]{1,200}$');
   assert.match(applyPatches(served, identifierPatches())[0], /co_enrollment_satisfied_by_program.*value changed upstream/);
-  const widened = fieldsSource({ type: 'integer', example: 16473 }, '^[A-Za-z0-9_\\-]{1,200}$');
-  assert.match(applyPatches(widened, identifierPatches()).join('; '), /FieldsProgramIdentifier\/pattern\): value changed upstream/);
 });
 
 test('the committed fields spec keys and values every per-program map by program identifier', () => {
@@ -398,7 +400,7 @@ test('the committed fields spec keys and values every per-program map by program
   const schemas = spec.components.schemas;
   const props = schemas.FieldsResponse.properties;
   assert.equal(props.co_enrollment_satisfied_by_program.additionalProperties.items.type, 'string');
-  assert.ok(!('pattern' in schemas.FieldsProgramIdentifier));
+  assert.equal(schemas.FieldsProgramIdentifier.pattern, '^[A-Za-z0-9_\\-]{1,200}$', 'mixed-case identifiers pass');
   for (const key of ['generic_programs', 'inferred_programs', 'enrollment_by_program', 'utility_auth_by_program', 'co_enrollment_satisfied_by_program']) {
     assert.match(props[key].description, /keyed by program identifier/i, key);
   }

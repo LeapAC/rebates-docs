@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const HTTP_METHODS = ['get', 'post', 'put', 'patch', 'delete', 'options', 'head'];
+const HTTP_METHODS = ['get', 'post', 'put', 'patch', 'delete', 'options', 'head', 'trace'];
 
 const SECURITY_PRESETS = {
   bearer: {
@@ -404,6 +404,134 @@ export function findBrokenRefs(spec) {
   return [...new Set(broken)];
 }
 
+// The published reference documents the partner surface and nothing else.
+// `partnerSurface` in the config lists every operation the docs publish for a
+// partner key, plus the properties, parameters and text that mark staff-only or
+// internal material. Every spec runs through these rules before it is written,
+// and `check-partner-surface.mjs` runs them again over the committed specs, the
+// navigation and every page, so an `include` entry, a re-sync or a hand edit
+// that lets a non-partner route or field through fails instead of shipping.
+const opKey = (method, p) => `${method.toUpperCase()} ${p}`;
+
+function compileRules(surface, scope) {
+  return (surface?.forbiddenText || [])
+    .filter((r) => !r.scopes || r.scopes.includes(scope))
+    .map((r) => ({ re: new RegExp(r.pattern, r.flags || ''), why: r.why, pattern: r.pattern }));
+}
+
+// Real partner names and IDs can't sit in this public repo, not even hashed:
+// a short word's hash is confirmed by guessing it. So the list comes from
+// outside the repo, the PARTNER_SURFACE_FORBIDDEN_TOKENS environment variable
+// (a GitHub Actions secret in CI) or a gitignored `.partner-tokens` file, one
+// token per line or comma-separated. Text is split into letter and digit runs,
+// and a run that equals a listed token fails. The message names the location,
+// never the token.
+export function loadForbiddenTokens(root, env = process.env) {
+  const raw = [env.PARTNER_SURFACE_FORBIDDEN_TOKENS || ''];
+  const file = path.join(root, '.partner-tokens');
+  if (fs.existsSync(file)) raw.push(fs.readFileSync(file, 'utf8'));
+  return [...new Set(raw.join('\n').split(/[\s,]+/).map((s) => s.trim().toLowerCase()).filter(Boolean))];
+}
+
+export function findTextViolations(text, surface, scope, where) {
+  const out = [];
+  // MDX escapes such as `MANAGE\_X` render without the backslash.
+  const plain = scope === 'pages' ? text.replace(/\\(?=[_*`\-])/g, '') : text;
+  for (const { re, why, pattern } of compileRules(surface, scope)) {
+    const m = plain.match(re);
+    if (m) out.push(`${where}: "${m[0]}" matches ${pattern} (${why})`);
+  }
+  const tokens = new Set(surface?.forbiddenTokens || []);
+  if (tokens.size) {
+    for (const token of plain.toLowerCase().match(/[a-z0-9]+/g) || []) {
+      if (tokens.has(token)) { out.push(`${where}: names a real partner or partner ID (a forbidden token)`); break; }
+    }
+  }
+  return out;
+}
+
+export function findSurfaceViolations(spec, surface, label = 'spec') {
+  if (!surface) return [`${label}: no partnerSurface in the config`];
+  const allowed = new Set(surface.operations || []);
+  const badProps = new Set(surface.forbiddenProperties || []);
+  const badParams = new Set((surface.forbiddenParameters || []).map((n) => n.toLowerCase()));
+  const out = [];
+  if (spec.webhooks) out.push(`${label}: top-level webhooks are not on the partner surface`);
+  for (const [p, ops] of Object.entries(spec.paths || {})) {
+    if (ops && typeof ops.$ref === 'string') out.push(`${label}: path ${p} is a $ref, which the guard can't check`);
+    for (const m of Object.keys(ops || {})) {
+      if (!HTTP_METHODS.includes(m.toLowerCase())) continue;
+      if (!allowed.has(opKey(m, p))) out.push(`${label}: ${opKey(m, p)} is not on the partner surface`);
+    }
+  }
+  const esc = (k) => String(k).replace(/~/g, '~0').replace(/\//g, '~1');
+  const walk = (node, ptr) => {
+    if (Array.isArray(node)) return node.forEach((v, i) => walk(v, `${ptr}/${i}`));
+    if (node && typeof node === 'object') {
+      if (node.properties && typeof node.properties === 'object' && !Array.isArray(node.properties)) {
+        for (const name of Object.keys(node.properties)) if (badProps.has(name)) out.push(`${label}: ${ptr}/properties/${esc(name)} is a non-partner field`);
+      }
+      if (typeof node.in === 'string' && typeof node.name === 'string' && badParams.has(node.name.toLowerCase())) out.push(`${label}: ${ptr} is a non-partner parameter (${node.name})`);
+      for (const [k, v] of Object.entries(node)) {
+        if (k === 'callbacks') out.push(`${label}: ${ptr}/callbacks are not on the partner surface`);
+        if (k === '$ref') continue;
+        // Keys are content too: example objects, header names, schema names.
+        out.push(...findTextViolations(k, surface, 'specs', `${label}: ${ptr}/${esc(k)} (key)`));
+        walk(v, `${ptr}/${esc(k)}`);
+      }
+      return;
+    }
+    if (typeof node === 'string') out.push(...findTextViolations(node, surface, 'specs', `${label}: ${ptr || '/'}`));
+  };
+  walk(spec, '');
+  return out;
+}
+
+// Every endpoint in the sidebar must be a partner operation that a configured
+// spec publishes, and every published operation must have a sidebar entry, so
+// the navigation and the specs cannot drift apart. A group's `openapi` and a
+// page's spec prefix must each name a configured spec.
+export function findNavViolations(docs, surface, specs, specsDir = 'api-reference/specs') {
+  const allowed = new Set(surface?.operations || []);
+  const published = new Map();
+  for (const [file, spec] of Object.entries(specs)) {
+    for (const [p, ops] of Object.entries(spec.paths || {})) {
+      for (const m of Object.keys(ops || {})) if (HTTP_METHODS.includes(m.toLowerCase())) published.set(opKey(m, p), file);
+    }
+  }
+  const out = [];
+  const seen = new Set();
+  const specRef = (value, where) => {
+    const v = String(value).replace(/^\.?\//, '');
+    const file = v.startsWith(`${specsDir}/`) ? v.slice(specsDir.length + 1) : undefined;
+    if (!file || !(file in specs)) out.push(`docs.json: ${where} points at ${value}, which no configured spec writes`);
+  };
+  const walk = (node) => {
+    if (Array.isArray(node)) return node.forEach(walk);
+    if (!node || typeof node !== 'object') {
+      if (typeof node === 'string') {
+        const m = node.trim().match(/^(?:(\S+)\s+)?(GET|POST|PUT|PATCH|DELETE|OPTIONS|HEAD|TRACE)\s+(\/\S*)$/i);
+        if (m) {
+          if (m[1]) specRef(m[1], `page "${node}"`);
+          const key = opKey(m[2], m[3]);
+          seen.add(key);
+          if (!allowed.has(key)) out.push(`docs.json: ${key} is not on the partner surface`);
+          else if (!published.has(key)) out.push(`docs.json: ${key} is in the sidebar but no spec publishes it`);
+        }
+      }
+      return;
+    }
+    if ('openapi' in node) {
+      const refs = Array.isArray(node.openapi) ? node.openapi : [node.openapi];
+      for (const r of refs) specRef(typeof r === 'object' && r ? r.source : r, `group "${node.group}"`);
+    }
+    Object.values(node).forEach(walk);
+  };
+  walk(docs.navigation);
+  for (const key of published.keys()) if (!seen.has(key)) out.push(`docs.json: ${key} is published but has no sidebar entry`);
+  return out;
+}
+
 // ---- I/O (not unit-tested; exercised by a real run) ----
 
 function fetchFile(repoCfg, repoKey, filePath, destDir, opts, ref) {
@@ -445,6 +573,8 @@ function main() {
   const outDir = path.resolve(cfg.specsDir);
   fs.mkdirSync(outDir, { recursive: true });
   let failures = 0;
+  const surface = { ...cfg.partnerSurface, forbiddenTokens: loadForbiddenTokens(path.resolve('.')) };
+  if (!surface.forbiddenTokens.length) console.warn('  ! no forbidden partner tokens loaded: set PARTNER_SURFACE_FORBIDDEN_TOKENS or write .partner-tokens');
 
   for (const s of cfg.specs) {
     const failuresBefore = failures;
@@ -486,6 +616,8 @@ function main() {
 
     const broken = findBrokenRefs(spec);
     if (broken.length) { console.error(`✗ ${s.output}: broken refs: ${broken.join(', ')}`); failures++; }
+    const surfaceViolations = findSurfaceViolations(spec, surface, s.output);
+    if (surfaceViolations.length) { console.error(`✗ ${s.output}: outside the partner surface:\n    ${surfaceViolations.join('\n    ')}`); failures++; }
     if (missing.length) { console.error(`✗ ${s.output}: schemaDescriptions no longer match: ${missing.join(', ')}`); failures++; }
     if (replaced.missingRequired.length) { console.error(`✗ ${s.output}: required replacements matched nothing: ${replaced.missingRequired.join(', ')}`); failures++; }
 

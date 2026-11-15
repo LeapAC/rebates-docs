@@ -30,7 +30,7 @@
           "applications"
         ],
         "summary": "Get required fields",
-        "description": "List the fields, agreements, attachments, and device categories a set of programs needs, grouped by who supplies them: the customer, you, Leap, or the utility. Send `program_identifiers` from **List programs**, and the customer's `customer_eiaid` when you know it. Your **Data Preferences** decide which fields land in the `partner` section. This route takes the same key as **List programs**.",
+        "description": "List the fields, agreements, attachments, and device categories a set of programs needs, grouped by who supplies them: the customer, you, Leap, or the utility. Send `program_identifiers`: from **List programs**, or an application's `program_identifier` and `eligible_program_identifiers` on **Get customer summary**. Add the customer's `customer_eiaid` when you know it, and your `organization_id`. Your **Data Preferences** decide which fields land in the `partner` section. This route accepts the API key you use for lookups.",
         "operationId": "getFields",
         "requestBody": {
           "required": true,
@@ -61,9 +61,6 @@
           },
           "413": {
             "description": "The request body is larger than 64 KB. Answered before the body is parsed."
-          },
-          "422": {
-            "$ref": "#/components/responses/UnprocessableEntity"
           }
         }
       }
@@ -102,16 +99,6 @@
                   "error": "No or invalid API key or JWT provided in authorization header"
                 }
               }
-            }
-          }
-        }
-      },
-      "UnprocessableEntity": {
-        "description": "The request is well formed, but Leap can't serve requirements for it.",
-        "content": {
-          "application/json": {
-            "schema": {
-              "$ref": "#/components/schemas/ErrorResponse"
             }
           }
         }
@@ -158,6 +145,13 @@
           "program_identifiers"
         ],
         "properties": {
+          "organization_id": {
+            "description": "Optional. Your organization ID, `organization_id` on **Get customer summary**. Send it so the `partner` section reflects the fields your organization claimed. An organization whose claims belong to another partner returns 403.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "example": "8a1f0c2e-3b4d-4e5f-9a6b-7c8d9e0f1a2b"
+          },
           "program_identifiers": {
             "description": "The programs to read. Send at least one.",
             "type": "array",
@@ -388,7 +382,7 @@
         }
       },
       "RequirementUtilityConnection": {
-        "description": "Per utility connection requirement. `requires_auth` is OR-ed across programs, `login_method` is the first non-null value (the customer's utility wins), and `login_type` lets a credentialed value win.",
+        "description": "What the customer's utility connection needs, combined across the programs you sent. `requires_auth` is true when any of them needs it, and the first known `login_method` wins.",
         "type": "object",
         "required": [
           "requires_auth",
@@ -397,6 +391,7 @@
         ],
         "properties": {
           "requires_auth": {
+            "description": "True when a program you sent needs the customer to share their utility login, which is `auth_mechanism` `CREDENTIAL_SHARE`. A rebate portal login doesn't count, because Leap creates its own account on that portal.",
             "type": "boolean",
             "example": true
           },
@@ -406,7 +401,7 @@
             "example": "username_password"
           },
           "login_type": {
-            "description": "Values include `utility_login`, `credentials`, `sso` and `rebate_login`.",
+            "description": "Values include `utility_login`, `credentials`, `sso` and `rebate_login`. A `rebate_login` never replaces another value, because it is not a credential share.",
             "type": "string",
             "nullable": true,
             "example": "utility_login"
@@ -424,12 +419,12 @@
         ],
         "properties": {
           "requires_auth": {
-            "description": "Whether this program needs the customer's utility authorization. `utility_connections` sets `requires_auth` when any of its programs sets it. `false` when Leap holds no filing details for the program.",
+            "description": "True only when `auth_mechanism` is `CREDENTIAL_SHARE`, so the customer shares their utility login. `false` for every other mechanism, and when Leap holds no filing details for the program. `utility_connections` sets `requires_auth` when any of its programs sets it.",
             "type": "boolean",
             "example": true
           },
           "auth_mechanism": {
-            "description": "What the program asks of the customer, derived from `login_type`: `NONE` asks for no login, `CREDENTIAL_SHARE` asks for the customer's utility account login, `REBATE_PORTAL_LOGIN` asks for a login to the program's rebate portal, and `INFO_REQUIRED` asks for information instead of a login. `null` when Leap doesn't know the login type.",
+            "description": "What the program asks of the customer, derived from `login_type`: `NONE` asks for no login, `CREDENTIAL_SHARE` asks for the customer's utility account login, `REBATE_PORTAL_LOGIN` means Leap files through the program's rebate portal with a login Leap creates, so the customer shares none, and `INFO_REQUIRED` asks for information instead of a login. `null` when Leap doesn't know the login type.",
             "type": "string",
             "nullable": true,
             "enum": [
@@ -632,6 +627,13 @@
                 "example": "example_utility_demand_response"
               }
             }
+          },
+          "unsupported_programs": {
+            "description": "Programs you sent that Leap serves no requirements for, as you named them. They add nothing to the sections, but their `utility_auth_by_program` entry still appears. Present only when the list isn't empty.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         }
       },
@@ -640,6 +642,7 @@
         "type": "string",
         "minLength": 1,
         "maxLength": 200,
+        "pattern": "^[A-Za-z0-9_\\-]{1,200}$",
         "example": "pge_ev_charger_rebate_residential"
       },
       "ApiKeyError": {

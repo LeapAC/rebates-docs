@@ -71,6 +71,45 @@ each output spec:
    (add `{ "method", "path", "title" }`, plus an optional `"description"` to
    override the source prose), then re-run the sync.
 2. Add the matching `"METHOD /path"` string to that group's `pages` in `docs.json`.
+3. Add the same `"METHOD /path"` string to `partnerSurface.operations` in
+   `scripts/openapi-sources.json`. The guard below refuses any operation that
+   isn't listed there, so confirm the route serves a partner key first.
+
+## The partner surface guard
+
+`partnerSurface` in `scripts/openapi-sources.json` defines what the site may
+expose. It holds four lists:
+
+- `operations`: every `METHOD /path` the docs publish for a partner key
+- `forbiddenProperties`: schema properties partners never see, such as
+  `dismissal_reason`, which GCS strips from partner responses on purpose
+- `forbiddenParameters`: staff selectors and controls, such as `dryRun` and the
+  `organization_id` query selector
+- `forbiddenText`: patterns that mark internal material, such as permission
+  names, ticket references, internal system names, and staff-only route paths.
+  A rule with `"scopes": ["specs"]` skips the pages
+
+Real partner names and IDs can't sit in this public repo, hashed or not, because
+a short word's hash is confirmed by guessing. The check reads them from the
+`PARTNER_SURFACE_FORBIDDEN_TOKENS` environment variable, set from the GitHub
+Actions secret of the same name, or from a gitignored `.partner-tokens` file, one
+per line. Without either, the check warns and leaves partner names unchecked.
+
+The sync applies these rules to every spec before it writes it, and a spec that
+breaks one keeps its committed content. `npm run check:surface` runs them over
+the committed specs, every sidebar entry in `docs.json`, and every published
+page. It also fails when a published operation has no sidebar entry, or when a
+spec file in `api-reference/specs/` has no config entry. `npm test` runs the unit
+tests and the check, and the GitHub workflow runs `npm test` on every pull
+request.
+
+When a rule flags upstream prose, override it with `schemaDescriptions`,
+`replacements` or `patches` rather than loosening the rule. As of GCS `main`
+1373e868, a full re-sync stops on `gcs-incentives.json` and `gcs-programs.json`:
+the source added internal names to the Incentives error responses and a
+permission name to the Programs list filter, and a Programs replacement no longer
+matches. Their committed specs still pass the check; curate the new prose before
+you commit a re-sync of either.
 
 ## Edit an endpoint's title or description
 
@@ -247,6 +286,7 @@ auth shows Bearer.
 |---|---|---|
 | Incentives | global-connect-service · `incentives.yaml` (+ `common-schemas.yaml`) | Bearer |
 | Applications | global-connect-service · `applications.yaml` | Bearer |
+| Webhooks | hand-written `webhooks.mdx`, from openapi-schemas `webhooks/session-events-v1.yaml` and GCS `WebhookService.kt` | Bearer |
 | Applications › Attachments | global-connect-service · `applications-attachments.yaml` | Bearer |
 | Applications › Requirements | global-connect-service · `programs.yaml` (+ `common-schemas.yaml`) | Bearer |
 | Programs | global-connect-service · `programs.yaml` (+ `common-schemas.yaml`) | Bearer |
@@ -300,16 +340,25 @@ and the default key already carries what a partner needs.
 GCS MR !2250 serves that lane, and it reached production on 2026-11-14. The
 2026-11-14 API sweep confirmed it on staging: a partner key reaches every
 documented route for its own organization's records, and staff-only routes
-return 403. Another organization's records return 404, except on PATCH and bulk
-PATCH, which return 403 until a pending GCS fix lands. `POST
-/beta/incentives/fields` with the `program_identifiers` body takes
-`READ_INCENTIVES_DATA` and is partner-scoped.
+return 403. GCS `main` now answers another organization's records with 404 on
+every route, PATCH and bulk PATCH included
+(`docs/incentives/applications-beta-remount.md`). `POST /beta/incentives/fields`
+with the `program_identifiers` body accepts the lookup key or the catalog read
+key, and is partner-scoped. Its optional `organization_id` must
+name the caller's own organization; the config drops `partner_id`, which only
+Leap admins use and whose source example is a real partner ID.
 
-Excluded on purpose, so don't re-add them as coverage gaps: `GET
-/beta/incentives/applications/customer-summary` (the alpha reference never
-published it, and it returns the same customer view as **Search applications**
-by `refId`), every
-`/beta/incentives/legacy-alpha/*` alias (deprecated), the staff refId `PATCH
+`GET /beta/incentives/applications/customer-summary` is published: it carries
+`program_identifier` and `eligible_program_identifiers`, the keys `/fields`
+takes, `organization_id` for the `/fields` body, and the customer's Connect link
+in `organization.connect_url`. Its `partner_uuid` is the internal partner key and
+is dropped. Its `organization` block differs from the search route's, so the
+config writes it inline. `dismissal_reason` and
+`rejection_reason` are dropped everywhere, because GCS strips both from partner
+responses on purpose.
+
+Excluded on purpose, so don't re-add them as coverage gaps: the
+`/beta/incentives/legacy-alpha/*` alias (removed in phase 6), the staff refId `PATCH
 /beta/incentives/applications`, `POST …/status` and `POST …/utility-change`, the
 backfill importer `POST …/admin/imports`, the seven Wallet hub routes under
 `/beta/incentives/hub`, and Connect's own server routes

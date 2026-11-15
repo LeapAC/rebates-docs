@@ -1,7 +1,7 @@
 # Maintaining the API Reference
 
 The API-reference specs in `api-reference/specs/*.json` are **generated** from the
-upstream services (`global-connect-service`, `incentives-service`). Do not edit
+upstream service (`global-connect-service`). Do not edit
 them by hand — edit the config and re-run the sync.
 
 ## Every Markdown file in this repo is a public page
@@ -31,10 +31,8 @@ Regenerate from local sibling checkouts (the supported path):
 npm ci
 
 git -C /path/to/global-connect-service fetch origin
-git -C /path/to/incentives-service fetch origin
 
 GCS_REPO=/path/to/global-connect-service \
-INCENTIVES_REPO=/path/to/incentives-service \
 npm run sync:openapi -- --local
 ```
 
@@ -42,8 +40,9 @@ npm run sync:openapi -- --local
 > `gh`-based remote fetch (`npm run sync:openapi` with no flags) can't reach it.
 
 Each spec pins the ref it reads in `openapi-sources.json` (`source.ref`:
-`origin/main` for `global-connect-service`, `origin/develop` for
-`incentives-service`, which is that repo's default branch). The script reads the
+`origin/main` for `global-connect-service`). If your clone's `origin` remote is
+unreachable, fetch `main` into `refs/remotes/origin/main` from a remote that
+works, so `git show origin/main:` reads the current files. The script reads the
 file out of that ref with `git show`, not out of the working tree, so a run does
 not depend on which branch either clone is sitting on, and two people running the
 sync get the same output. That is also why the `git fetch` above matters: `git
@@ -62,7 +61,7 @@ each output spec:
    of the internal source description), and normalizes each spec to one `tag`
    (→ clean URL prefix),
 5. **pins** `servers` (prod + staging) and **injects** the correct auth scheme
-   (Bearer for GCS, `x-api-key` for Applications),
+   (Bearer for every section),
 6. **prunes** components no longer reachable from the kept operations,
 7. **validates** that every `$ref` resolves (fails the run on a broken ref).
 
@@ -72,6 +71,45 @@ each output spec:
    (add `{ "method", "path", "title" }`, plus an optional `"description"` to
    override the source prose), then re-run the sync.
 2. Add the matching `"METHOD /path"` string to that group's `pages` in `docs.json`.
+3. Add the same `"METHOD /path"` string to `partnerSurface.operations` in
+   `scripts/openapi-sources.json`. The guard below refuses any operation that
+   isn't listed there, so confirm the route serves a partner key first.
+
+## The partner surface guard
+
+`partnerSurface` in `scripts/openapi-sources.json` defines what the site may
+expose. It holds four lists:
+
+- `operations`: every `METHOD /path` the docs publish for a partner key
+- `forbiddenProperties`: schema properties partners never see, such as
+  `dismissal_reason`, which GCS strips from partner responses on purpose
+- `forbiddenParameters`: staff selectors and controls, such as `dryRun` and the
+  `organization_id` query selector
+- `forbiddenText`: patterns that mark internal material, such as permission
+  names, ticket references, internal system names, and staff-only route paths.
+  A rule with `"scopes": ["specs"]` skips the pages
+
+Real partner names and IDs can't sit in this public repo, hashed or not, because
+a short word's hash is confirmed by guessing. The check reads them from the
+`PARTNER_SURFACE_FORBIDDEN_TOKENS` environment variable, set from the GitHub
+Actions secret of the same name, or from a gitignored `.partner-tokens` file, one
+per line. Without either, the check warns and leaves partner names unchecked.
+
+The sync applies these rules to every spec before it writes it, and a spec that
+breaks one keeps its committed content. `npm run check:surface` runs them over
+the committed specs, every sidebar entry in `docs.json`, and every published
+page. It also fails when a published operation has no sidebar entry, or when a
+spec file in `api-reference/specs/` has no config entry. `npm test` runs the unit
+tests and the check, and the GitHub workflow runs `npm test` on every pull
+request.
+
+When a rule flags upstream prose, override it with `schemaDescriptions`,
+`replacements` or `patches` rather than loosening the rule. As of GCS `main`
+1373e868, a full re-sync stops on `gcs-incentives.json` and `gcs-programs.json`:
+the source added internal names to the Incentives error responses and a
+permission name to the Programs list filter, and a Programs replacement no longer
+matches. Their committed specs still pass the check; curate the new prose before
+you commit a re-sync of either.
 
 ## Edit an endpoint's title or description
 
@@ -139,22 +177,29 @@ Use it for four cases, and say which one applies in the PR:
   to UUIDs, and `WireDeviceRefResolver` now rejects any request carrying it with
   422 `INVALID_DEVICE_ID`. Publishing it invites an integration against a field
   that always fails.
-- **Lineage or internal state.** `Customer.is_test` marks Leap's own seeded rows,
+- **Lineage or internal state.** `LegacyCustomer.is_test` marks Leap's own seeded rows,
   and means nothing to a partner. The device equivalents are gone from the source
   now: GCS !1835 split `PartnerDeviceResponse` off `DeviceResponse`, so the
   lineage ids and the msrp provenance fields are removed upstream rather than
   here.
-- **Internal.** `Application.recaptcha_token` is the Connect web form's bot
-  token, on a schema a partner reads.
-- **True of the endpoint, wrong for this audience.** `ApplicationSearchResult`
-  types the `results[]` of `GET /applications`, and three different lanes answer
-  that route. The org-key lane strips `organization_id`; the admin lanes return
-  it, one of them re-adding it deliberately so an admin view can show which
-  organization owns each application, and `connect-incentives` reads it off that
-  response. The property is correct in the source spec, so **do not** try to fix
-  this one upstream. incentives-service#566 attempted exactly that and was
-  closed. Curate it here, where the published reference documents the partner
-  lane.
+- **Internal.** `LegacyApplication.recaptcha_token` is the Connect web form's bot
+  token, on a schema a partner reads. The `verification_*` and
+  `uncollected_requirements` columns on the same schema are Leap's own processing
+  state, and `LegacyCustomer.ssn` and `tax_id` are accepted on a write but never
+  stored, so a read always returns null.
+  `LegacyApplication.organization_id` is Leap's internal organization key.
+  Partner keys get it too, as the sweep's partner search showed, and Connect and
+  the operator portal read it, so it stays in the source. The `organization`
+  block already identifies the partner, so the reference leaves it out.
+- **True of the endpoint, wrong for this audience.** `results` on
+  `LegacyApplicationSearchResponse` is the staff queue, and only staff keys get
+  it. A partner key must send `refId` and reads the customer view
+  (`organization`, `customer`, `customer_devices`, `applications`), as the
+  2026-11-14 API sweep observed on staging and production. The properties are
+  correct in the source spec, so **do not** try to fix them upstream.
+  incentives-service#566 attempted that for the alpha spec and
+  was closed. Curate them here, where the published reference documents the
+  partner lane.
 
 Removing a field here changes the **documentation**, not the API: the service
 still returns it. That distinction cuts both ways. When the field is private, fix
@@ -162,6 +207,56 @@ it in the service and treat the removal here as keeping the docs from advertisin
 it in the meantime — GCS !1835 is the worked example. When the field is
 legitimate for another caller of the same route, the removal here is the whole
 fix, and a source-side change would break that caller.
+
+## Drop a staff-only parameter or request shape
+
+Three more curation steps cover the beta Applications routes, which GCS serves to
+Leap staff and partners alike:
+
+- `removeParameters` drops a component parameter from every operation that lists
+  it, keyed by its name under `#/components/parameters`. The Applications specs
+  drop `LegacyOrganizationId` and `LegacyCompany`, the staff organization
+  selectors. The Attachments spec also drops `LegacyRefId`: the
+  partner attachment routes take `application_id`.
+- `stripExtensions` deletes named vendor `x-` keys anywhere in the spec, such as
+  `x-leap-permission`, which names an internal permission.
+- `dropOneOfBranches` removes `oneOf` or `anyOf` branches that point at the named
+  schemas, and collapses a single survivor into its parent. The Fields spec drops
+  `LegacyFieldsRequest`, the staff body of `POST /beta/incentives/fields`, so the
+  page shows only the `program_identifiers` body partners send.
+
+All three **fail the run** when a name matches nothing, like a required replacement.
+
+## Correct a schema the source types wrongly
+
+Some corrections are structural, not textual: an enum missing values the API
+returns, a nullable field typed as non-null, a parameter the route requires but
+the source marks optional, or a response the gateway never lets the route send.
+`patches` on a spec applies a subset of JSON Patch (RFC 6902) at JSON Pointer
+(RFC 6901) paths, in order, after the removals and before the prune step:
+
+```json
+"patches": [
+  { "op": "test", "pointer": "/components/schemas/LegacyApplication/properties/payee_type/enum", "value": ["customer", "contractor", "instant"] },
+  { "op": "replace", "pointer": "/components/schemas/LegacyApplication/properties/payee_type/enum", "value": ["customer", "contractor", "instant", "aggregator", "oem"] }
+]
+```
+
+The ops are `test`, `add`, `replace`, and `remove`. Escape `/` in a path key as
+`~1`, so `/paths/~1beta~1incentives~1fields/post` addresses that operation. Put
+a `test` before each change to pin the source value it corrects. When the source
+changes under the patch, the `test` fails the run instead of patching the wrong
+node: fix the source or drop the patch. `test` compares JSON text, so key order
+counts.
+
+The first failed patch stops the list, and the run doesn't write that spec, so
+the committed file keeps its last good content. `add` on an object key refuses
+a key that already exists, so a patch can't overwrite a schema the source later
+defines under the same name.
+
+Patches run before `schemaDescriptions` and `replacements`, so a patch that
+overwrites a node also retires any replacement rule that targeted it. Base every
+patch on a captured API response, and record the evidence in the PR.
 
 ## Rewrite a section's blurb
 
@@ -176,26 +271,32 @@ through.
 
 ```bash
 npm run test:sync            # unit-tests the transform functions
-GCS_REPO=... INCENTIVES_REPO=... npm run sync:openapi -- --local
+GCS_REPO=... npm run sync:openapi -- --local
 npx mint dev --port 3333     # http://localhost:3333
 npx mint broken-links        # expect zero
 ```
 
 On an API endpoint page, confirm the method+path header shows **Try it**, the
 right panel has cURL/response samples, request/response schemas expand, and the
-auth matches the section (Bearer for Incentives, `x-api-key` for Applications).
+auth shows Bearer.
 
 ## Sections & sources
 
 | Section | Source repo · file | Auth |
 |---|---|---|
 | Incentives | global-connect-service · `incentives.yaml` (+ `common-schemas.yaml`) | Bearer |
-| Applications | incentives-service · `applications/openapi.json` | `x-api-key` |
+| Applications | global-connect-service · `applications.yaml` | Bearer |
+| Webhooks | hand-written `webhooks.mdx`, from openapi-schemas `webhooks/session-events-v1.yaml` and GCS `WebhookService.kt` | Bearer |
+| Applications › Attachments | global-connect-service · `applications-attachments.yaml` | Bearer |
+| Applications › Requirements | global-connect-service · `programs.yaml` (+ `common-schemas.yaml`) | Bearer |
 | Programs | global-connect-service · `programs.yaml` (+ `common-schemas.yaml`) | Bearer |
 | Devices | global-connect-service · `programs.yaml` (+ `common-schemas.yaml`) | Bearer |
 
 Programs and Devices read the same source file into two output specs, because a
-`docs.json` nav group binds to exactly one `openapi` file.
+`docs.json` nav group binds to exactly one `openapi` file. For the same reason the
+Applications section uses three specs: its Attachments and Requirements subgroups
+each carry their own `openapi`. The Incentives spec also needs `calc-engine.yaml`
+in `deps`, because `incentives.yaml` references it.
 
 ## What stays unpublished, and why
 
@@ -227,6 +328,43 @@ Four cases worth naming, because they've all been raised before:
   `field_groups[].fields[]` carry key, type, label, description, placeholder,
   required, owner, options, validation rules, and template ids. The audience
   question is the same one already answered there.
+
+### The Applications section: the partner lane
+
+The Applications section documents the beta routes as partners call them: with
+the same key they use for lookups (`LOOKUP_INCENTIVES`, which every partner key
+holds), scoped to their own organization. Never name a permission in the
+partner pages. `MANAGE_APPLICATIONS` is Leap internal and cross-organization,
+and the default key already carries what a partner needs.
+
+GCS MR !2250 serves that lane, and it reached production on 2026-11-14. The
+2026-11-14 API sweep confirmed it on staging: a partner key reaches every
+documented route for its own organization's records, and staff-only routes
+return 403. GCS `main` now answers another organization's records with 404 on
+every route, PATCH and bulk PATCH included
+(`docs/incentives/applications-beta-remount.md`). `POST /beta/incentives/fields`
+with the `program_identifiers` body accepts the lookup key or the catalog read
+key, and is partner-scoped. Its optional `organization_id` must
+name the caller's own organization; the config drops `partner_id`, which only
+Leap admins use and whose source example is a real partner ID.
+
+`GET /beta/incentives/applications/customer-summary` is published: it carries
+`program_identifier` and `eligible_program_identifiers`, the keys `/fields`
+takes, `organization_id` for the `/fields` body, and the customer's Connect link
+in `organization.connect_url`. Its `partner_uuid` is the internal partner key and
+is dropped. Its `organization` block differs from the search route's, so the
+config writes it inline. `dismissal_reason` and
+`rejection_reason` are dropped everywhere, because GCS strips both from partner
+responses on purpose.
+
+Excluded on purpose, so don't re-add them as coverage gaps: the
+`/beta/incentives/legacy-alpha/*` alias (removed in phase 6), the staff refId `PATCH
+/beta/incentives/applications`, `POST …/status` and `POST …/utility-change`, the
+backfill importer `POST …/admin/imports`, the seven Wallet hub routes under
+`/beta/incentives/hub`, and Connect's own server routes
+(`PATCH /beta/incentives/devices/customer-devices/{id}`, the customer utility
+credential routes, `POST /beta/incentives/customers/share/init` and
+`/beta/incentives/utility-authorizations*`).
 
 ### The Programs section: permission shipped, response shape still moving
 

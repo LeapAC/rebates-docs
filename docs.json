@@ -35,6 +35,7 @@
         "pages": [
           "index",
           "quickstart",
+          "application-lifecycle",
           "setup-data-preferences"
         ]
       },
@@ -57,22 +58,39 @@
       },
       {
         "group": "Applications",
-        "openapi": "api-reference/specs/incentives-applications.json",
+        "openapi": "api-reference/specs/gcs-applications.json",
         "pages": [
           "api-reference/applications/overview",
-          "GET /applications",
-          "GET /applications/{application_id}",
-          "PATCH /applications/{application_id}",
+          "api-reference/applications/migrating-from-alpha",
+          "GET /beta/incentives/applications",
+          "GET /beta/incentives/applications/customer-summary",
+          "GET /beta/incentives/applications/{id}",
+          "PATCH /beta/incentives/applications/{id}",
+          "PATCH /beta/incentives/applications/bulk",
           {
             "group": "Attachments",
+            "openapi": "api-reference/specs/gcs-applications-attachments.json",
             "pages": [
-              "GET /applications/attachments",
-              "POST /applications/attachments",
-              "POST /applications/attachments/commit",
-              "GET /applications/attachments/{id}/download",
-              "DELETE /applications/attachments/{id}"
+              "GET /beta/incentives/applications/attachments",
+              "POST /beta/incentives/applications/attachments",
+              "POST /beta/incentives/applications/attachments/commit",
+              "GET /beta/incentives/applications/attachments/{id}/download",
+              "DELETE /beta/incentives/applications/attachments/{id}"
+            ]
+          },
+          {
+            "group": "Requirements",
+            "openapi": "api-reference/specs/gcs-fields.json",
+            "pages": [
+              "POST /beta/incentives/fields"
             ]
           }
+        ]
+      },
+      {
+        "group": "Webhooks",
+        "pages": [
+          "webhooks"
         ]
       },
       {

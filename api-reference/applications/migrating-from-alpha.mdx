@@ -1,0 +1,66 @@
+---
+title: Migrating from the alpha API
+description: Move an integration from the alpha Applications API to the beta paths, host, and bearer authentication.
+---
+
+The beta Applications API serves the same operations as the alpha API on Leap's main API host. Three things change: the host, the path prefix, and how you authenticate. Request and response bodies keep the alpha shapes, except the search response. An integration that doesn't search changes only its base URL and headers.
+
+## Change the host and authentication
+
+Point your client at the new host and send your key as a bearer token:
+
+| | Alpha | Beta |
+|---|---|---|
+| Production host | `https://api.incentives.leap.energy/alpha` | `https://api.leap.energy` |
+| Staging host | `https://api.staging.incentives.leap.energy/alpha` | `https://api.staging.leap.energy` |
+| Path prefix | `/applications` | `/beta/incentives/applications` |
+| Authentication | `x-api-key: leap_live_...` | `Authorization: Bearer your_api_key_here` |
+| Key | The **Alpha · Applications API** key | The same API key you use for lookups |
+
+One key now covers lookups and applications, and you only ever see your own organization's applications.
+
+## Map each alpha path to its beta path
+
+Every alpha route you call has a beta twin:
+
+| Alpha | Beta |
+|---|---|
+| `GET /applications` | [`GET /beta/incentives/applications`](/api-reference/applications/search-applications) |
+| `GET /applications/customer-summary` | [`GET /beta/incentives/applications/customer-summary`](/api-reference/applications/get-customer-summary) |
+| `GET /applications/{application_id}` | [`GET /beta/incentives/applications/{id}`](/api-reference/applications/get-application) |
+| `PATCH /applications/{application_id}` | [`PATCH /beta/incentives/applications/{id}`](/api-reference/applications/update-application) |
+| `GET /applications/attachments` | [`GET /beta/incentives/applications/attachments`](/api-reference/applications/list-attachments) |
+| `POST /applications/attachments` | [`POST /beta/incentives/applications/attachments`](/api-reference/applications/upload-attachment) |
+| `POST /applications/attachments/commit` | [`POST /beta/incentives/applications/attachments/commit`](/api-reference/applications/commit-attachment-upload) |
+| `GET /applications/attachments/{id}/download` | [`GET /beta/incentives/applications/attachments/{id}/download`](/api-reference/applications/download-attachment) |
+| `DELETE /applications/attachments/{id}` | [`DELETE /beta/incentives/applications/attachments/{id}`](/api-reference/applications/delete-attachment) |
+
+The beta API also adds two routes the alpha docs didn't cover:
+
+- [Update applications in bulk](/api-reference/applications/update-applications-in-bulk): several updates in one request.
+- [Get required fields](/api-reference/applications/get-required-fields): what each program needs, grouped by who supplies it.
+
+## Check these behaviour differences
+
+A few details differ from the alpha API:
+
+- **Upload URLs**: `PUT` the file with the same `Content-Type` you sent to **Upload attachment**. The type is part of the URL's signature, so a different one fails. The URL stays valid for two hours.
+- **Application IDs**: **Get application** accepts the `application_uuid` as well as the integer `id`. **Update application** takes the integer `id` only.
+- **Search**: send `refId` on every search. A search without it, or with only `application_status`, returns `403`. The response is one customer's view: `organization`, `customer`, `customer_devices`, and an `applications` array, in place of `results`.
+- **Sensitive identifiers**: Leap accepts `ssn` and `tax_id` on a customer update but doesn't store them, so reads return both as null.
+- **Errors**: route errors keep the alpha body of `code`, `message`, and `requestId`. A missing or invalid key returns `403` with `{ "error": "…" }` before the request reaches a route. A key without the permission a request needs returns `403` with `{ "error": { "message": "…" } }`.
+- **Attachment routes**: send `application_id` as a query parameter on every attachment call, never in the request body. The beta attachment routes don't take `refId`. To list one application's attachments, send `attachment_type` with `application_id`, or use `application_ids`.
+
+## Switch over
+
+Follow these steps to move an integration without a gap:
+
+<Steps>
+<Step title="Test against staging">
+  Point your client at `https://api.staging.leap.energy` with the `/beta/incentives` prefix, and send your staging lookup key as a bearer token. Run each call your integration makes and check the responses parse.
+</Step>
+
+<Step title="Switch production">
+  Change your production base URL to `https://api.leap.energy` and deploy. The application IDs you already store keep working on the beta paths.
+</Step>
+</Steps>

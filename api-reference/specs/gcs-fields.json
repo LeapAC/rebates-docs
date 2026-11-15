@@ -1,0 +1,675 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Leap Incentives — Fields",
+    "description": "List what each program needs before an application can be submitted, grouped by who supplies it. Authenticate with your Leap API key as a bearer token.\n",
+    "contact": {
+      "email": "apiteam@leap.energy"
+    },
+    "version": "0.1"
+  },
+  "servers": [
+    {
+      "url": "https://api.leap.energy",
+      "description": "Production"
+    },
+    {
+      "url": "https://api.staging.leap.energy",
+      "description": "Staging"
+    }
+  ],
+  "tags": [
+    {
+      "name": "applications"
+    }
+  ],
+  "paths": {
+    "/beta/incentives/fields": {
+      "post": {
+        "tags": [
+          "applications"
+        ],
+        "summary": "Get required fields",
+        "description": "List the fields, agreements, attachments, and device categories a set of programs needs, grouped by who supplies them: the customer, you, Leap, or the utility. Send `program_identifiers`: from **List programs**, or an application's `program_identifier` and `eligible_program_identifiers` on **Get customer summary**. Add the customer's `customer_eiaid` when you know it, and your `organization_id`. Your **Data Preferences** decide which fields land in the `partner` section. This route accepts the API key you use for lookups.",
+        "operationId": "getFields",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FieldsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The requirements, grouped by who supplies them.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FieldsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "413": {
+            "description": "The request body is larger than 64 KB. Answered before the body is parsed."
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "responses": {
+      "BadRequest": {
+        "description": "Malformed or invalid request",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "Your key can't make this request. A missing or invalid key gets 403, not 401, with `error` as a string, before the request reaches the route. A key without access to this route gets `error.message`.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                {
+                  "$ref": "#/components/schemas/ApiKeyError"
+                }
+              ]
+            },
+            "examples": {
+              "key": {
+                "summary": "Missing or invalid key",
+                "value": {
+                  "error": "No or invalid API key or JWT provided in authorization header"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "ErrorResponse": {
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "object",
+            "required": [
+              "message"
+            ],
+            "properties": {
+              "message": {
+                "type": "string"
+              },
+              "details": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "error_code": {
+                      "type": "string"
+                    },
+                    "reason": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "FieldsRequest": {
+        "description": "The programs to read requirements for. Maps in the response are keyed by the `program_identifiers` you send.",
+        "type": "object",
+        "required": [
+          "program_identifiers"
+        ],
+        "properties": {
+          "organization_id": {
+            "description": "Optional. Your organization ID, `organization_id` on **Get customer summary**. Send it so the `partner` section reflects the fields your organization claimed. An organization whose claims belong to another partner returns 403.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "example": "8a1f0c2e-3b4d-4e5f-9a6b-7c8d9e0f1a2b"
+          },
+          "program_identifiers": {
+            "description": "The programs to read. Send at least one.",
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 200,
+            "items": {
+              "$ref": "#/components/schemas/FieldsProgramIdentifier"
+            }
+          },
+          "customer_eiaid": {
+            "description": "The customer's utility, as an EIA id string. When you send it, `utility_connections` is keyed on it. Leave it out when you don't know it. An empty string or a number returns 400.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 20,
+            "example": "14328"
+          }
+        }
+      },
+      "AttachmentMetadataEntry": {
+        "description": "Display details for one attachment slot, keyed by the uppercase attachment type. `formats` lists the accepted input formats for a `SIGNATURE`.",
+        "type": "object",
+        "properties": {
+          "formats": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "example": "draw"
+            }
+          },
+          "key": {
+            "description": "A stable key for this attachment slot.",
+            "type": "string",
+            "example": "signature_primary"
+          },
+          "label": {
+            "type": "string",
+            "example": "Customer signature"
+          },
+          "helper_text": {
+            "type": "string",
+            "example": "Sign with your finger or mouse."
+          },
+          "text": {
+            "type": "string",
+            "example": "I confirm the information is accurate."
+          }
+        }
+      },
+      "AgreementMetadataEntry": {
+        "description": "Display details for one agreement, keyed by agreement id.",
+        "type": "object",
+        "properties": {
+          "text": {
+            "description": "Program supplied consent copy.",
+            "type": "string",
+            "example": "I agree to the program terms."
+          },
+          "url": {
+            "description": "Passed through for ids whose text links `program_terms_url`.",
+            "type": "string",
+            "example": "https://example.org/terms"
+          },
+          "type": {
+            "description": "How to present the agreement, for example `checkbox` or `esignature`.",
+            "type": "string",
+            "example": "checkbox"
+          },
+          "location": {
+            "description": "Where Leap records the customer's acceptance.",
+            "type": "string",
+            "example": "applications.agree_terms"
+          }
+        }
+      },
+      "AttachmentMetadataMap": {
+        "description": "Attachment metadata keyed by uppercase doc type.",
+        "type": "object",
+        "additionalProperties": {
+          "$ref": "#/components/schemas/AttachmentMetadataEntry"
+        }
+      },
+      "AgreementMetadataMap": {
+        "description": "Agreement metadata keyed by agreement id.",
+        "type": "object",
+        "additionalProperties": {
+          "$ref": "#/components/schemas/AgreementMetadataEntry"
+        }
+      },
+      "AttachmentMetadataByProgram": {
+        "description": "Attachment details keyed by program identifier, then attachment type. Present only when a requested program declares its own.",
+        "type": "object",
+        "additionalProperties": {
+          "$ref": "#/components/schemas/AttachmentMetadataMap"
+        }
+      },
+      "AgreementMetadataByProgram": {
+        "description": "Agreement details keyed by program identifier, then agreement id. Left out when only one program, or none, declares agreement details.",
+        "type": "object",
+        "additionalProperties": {
+          "$ref": "#/components/schemas/AgreementMetadataMap"
+        }
+      },
+      "DeviceCategoryRequirement": {
+        "description": "A device category id, or an id with the subcategories that satisfy it.",
+        "oneOf": [
+          {
+            "type": "integer",
+            "example": 4
+          },
+          {
+            "type": "object",
+            "required": [
+              "id"
+            ],
+            "properties": {
+              "id": {
+                "type": "integer",
+                "example": 4
+              },
+              "subcategories": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "example": "LEVEL_2"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "OptionalRequirements": {
+        "description": "Optional items, same shape as the required lists.",
+        "type": "object",
+        "properties": {
+          "fields": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "example": "customers.alt_phone"
+            }
+          },
+          "agreements": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "example": "leap_agent_terms"
+            }
+          },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "example": "PHOTO_INSTALL"
+            }
+          },
+          "attachment_metadata": {
+            "$ref": "#/components/schemas/AttachmentMetadataMap"
+          },
+          "agreement_metadata": {
+            "$ref": "#/components/schemas/AgreementMetadataMap"
+          },
+          "agreement_metadata_by_program": {
+            "$ref": "#/components/schemas/AgreementMetadataByProgram"
+          },
+          "attachment_metadata_by_program": {
+            "$ref": "#/components/schemas/AttachmentMetadataByProgram"
+          },
+          "device_categories": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DeviceCategoryRequirement"
+            }
+          }
+        }
+      },
+      "OwnerSection": {
+        "description": "What one owner supplies. `fields` entries are `table.column` paths such as `customers.email`, `customer_devices.purchase_date`, or `applications.agree_terms`. Lists are sorted alphabetically.",
+        "type": "object",
+        "required": [
+          "fields",
+          "agreements",
+          "attachments"
+        ],
+        "properties": {
+          "fields": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "example": "customers.first_name"
+            }
+          },
+          "agreements": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "example": "terms_and_conditions"
+            }
+          },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "example": "INVOICE_EQUIPMENT"
+            }
+          },
+          "attachment_metadata": {
+            "$ref": "#/components/schemas/AttachmentMetadataMap"
+          },
+          "agreement_metadata": {
+            "$ref": "#/components/schemas/AgreementMetadataMap"
+          },
+          "agreement_metadata_by_program": {
+            "$ref": "#/components/schemas/AgreementMetadataByProgram"
+          },
+          "attachment_metadata_by_program": {
+            "$ref": "#/components/schemas/AttachmentMetadataByProgram"
+          },
+          "device_categories": {
+            "description": "Customer section only.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DeviceCategoryRequirement"
+            }
+          },
+          "optional": {
+            "$ref": "#/components/schemas/OptionalRequirements"
+          }
+        }
+      },
+      "RequirementUtilityConnection": {
+        "description": "What the customer's utility connection needs, combined across the programs you sent. `requires_auth` is true when any of them needs it, and the first known `login_method` wins.",
+        "type": "object",
+        "required": [
+          "requires_auth",
+          "login_method",
+          "login_type"
+        ],
+        "properties": {
+          "requires_auth": {
+            "description": "True when a program you sent needs the customer to share their utility login, which is `auth_mechanism` `CREDENTIAL_SHARE`. A rebate portal login doesn't count, because Leap creates its own account on that portal.",
+            "type": "boolean",
+            "example": true
+          },
+          "login_method": {
+            "type": "string",
+            "nullable": true,
+            "example": "username_password"
+          },
+          "login_type": {
+            "description": "Values include `utility_login`, `credentials`, `sso` and `rebate_login`. A `rebate_login` never replaces another value, because it is not a credential share.",
+            "type": "string",
+            "nullable": true,
+            "example": "utility_login"
+          }
+        }
+      },
+      "ProgramUtilityAuth": {
+        "description": "One program's utility authorization values, before `utility_connections` combines them across programs.",
+        "type": "object",
+        "required": [
+          "requires_auth",
+          "auth_mechanism",
+          "login_type",
+          "self_file_url"
+        ],
+        "properties": {
+          "requires_auth": {
+            "description": "True only when `auth_mechanism` is `CREDENTIAL_SHARE`, so the customer shares their utility login. `false` for every other mechanism, and when Leap holds no filing details for the program. `utility_connections` sets `requires_auth` when any of its programs sets it.",
+            "type": "boolean",
+            "example": true
+          },
+          "auth_mechanism": {
+            "description": "What the program asks of the customer, derived from `login_type`: `NONE` asks for no login, `CREDENTIAL_SHARE` asks for the customer's utility account login, `REBATE_PORTAL_LOGIN` means Leap files through the program's rebate portal with a login Leap creates, so the customer shares none, and `INFO_REQUIRED` asks for information instead of a login. `null` when Leap doesn't know the login type.",
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "NONE",
+              "CREDENTIAL_SHARE",
+              "REBATE_PORTAL_LOGIN",
+              "INFO_REQUIRED"
+            ],
+            "example": "CREDENTIAL_SHARE"
+          },
+          "login_type": {
+            "description": "The program's login type as Leap stores it, such as `utility_login`, `fact_based`, or `rebate_login`. `null` when Leap doesn't know it.",
+            "type": "string",
+            "nullable": true,
+            "example": "utility_login"
+          },
+          "self_file_url": {
+            "description": "Where the customer can apply on their own: the program's web page, else its login page. `null` when Leap holds neither.",
+            "type": "string",
+            "nullable": true,
+            "example": "https://www.example-utility.com/ev-rebate"
+          }
+        }
+      },
+      "GenericProgram": {
+        "description": "A program whose requirements come from a shared template.",
+        "type": "object",
+        "required": [
+          "spec_key",
+          "name",
+          "subcategories"
+        ],
+        "properties": {
+          "spec_key": {
+            "type": "string",
+            "example": "generic/ev_charger_level_2.yaml"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true,
+            "example": "EV charger level 2"
+          },
+          "subcategories": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "example": "LEVEL_2"
+            }
+          }
+        }
+      },
+      "InferredProgram": {
+        "description": "A program whose requirements Leap holds for that program alone.",
+        "type": "object",
+        "required": [
+          "spec_key",
+          "name",
+          "login_type"
+        ],
+        "properties": {
+          "spec_key": {
+            "type": "string",
+            "example": "program_16465.yml"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true,
+            "example": "Heat pump rebate"
+          },
+          "login_type": {
+            "type": "string",
+            "nullable": true,
+            "example": "credentials"
+          }
+        }
+      },
+      "EnrollmentRedirect": {
+        "description": "Where to send the customer to enroll with the operator.",
+        "type": "object",
+        "properties": {
+          "default_url": {
+            "type": "string",
+            "example": "https://enroll.example.org"
+          },
+          "match_on": {
+            "description": "A device category name, for example `EV_CHARGER`.",
+            "type": "string",
+            "example": "EV_CHARGER"
+          },
+          "match_key": {
+            "description": "Entity field path matched against `by_manufacturer`, default `devices.manufacturer`.",
+            "type": "string",
+            "example": "devices.manufacturer"
+          },
+          "by_manufacturer": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "example": "https://enroll.example.org/chargepoint"
+            }
+          }
+        }
+      },
+      "ServedEnrollment": {
+        "description": "How the customer enrolls with the program's operator. Present only for programs that need the customer to co-enroll with an operator.",
+        "type": "object",
+        "required": [
+          "method"
+        ],
+        "properties": {
+          "method": {
+            "description": "One of `redirect`, `operator_api` or `oauth_deeplink`.",
+            "type": "string",
+            "example": "redirect"
+          },
+          "copy_key": {
+            "type": "string",
+            "example": "enroll_operator_default"
+          },
+          "redirect": {
+            "$ref": "#/components/schemas/EnrollmentRedirect"
+          },
+          "operator": {
+            "type": "object",
+            "required": [
+              "name"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "example": "Example Energy"
+              }
+            }
+          }
+        }
+      },
+      "FieldsResponse": {
+        "description": "The requirements for the programs you sent, in one section per owner: `customer`, `partner`, `leap`, and `utility`. Every map keyed by program uses the program identifiers from `program_identifiers`, exactly as you sent them.",
+        "type": "object",
+        "required": [
+          "customer",
+          "partner",
+          "leap"
+        ],
+        "properties": {
+          "customer": {
+            "$ref": "#/components/schemas/OwnerSection"
+          },
+          "partner": {
+            "$ref": "#/components/schemas/OwnerSection"
+          },
+          "leap": {
+            "$ref": "#/components/schemas/OwnerSection"
+          },
+          "utility": {
+            "$ref": "#/components/schemas/OwnerSection"
+          },
+          "utility_connections": {
+            "description": "Keyed by the customer's eiaid when the request supplies one, else by each program's eiaid.",
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/RequirementUtilityConnection"
+            }
+          },
+          "generic_programs": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/GenericProgram"
+            },
+            "description": "Programs whose requirements come from a shared template, keyed by program identifier."
+          },
+          "inferred_programs": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/InferredProgram"
+            },
+            "description": "Programs whose requirements Leap holds for that program alone, keyed by program identifier."
+          },
+          "enrollment_by_program": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ServedEnrollment"
+            },
+            "description": "How the customer enrolls with each program's operator, keyed by program identifier. Only programs that need the customer to co-enroll with an operator appear."
+          },
+          "utility_auth_by_program": {
+            "description": "Each program's own utility authorization values, keyed by program identifier. Read it to tell which program needs the customer's utility login, which `utility_connections` can't show because it combines every program for a utility. A program Leap has no record of gets no entry, and the map is left out when none of the programs you sent has one.",
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ProgramUtilityAuth"
+            }
+          },
+          "co_enrollment_satisfied_by_program": {
+            "description": "Keyed by program identifier. Each value lists the identifiers of the programs whose enrollment satisfies that program's `co_enrollment_required` agreement.",
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "example": "example_utility_demand_response"
+              }
+            }
+          },
+          "unsupported_programs": {
+            "description": "Programs you sent that Leap serves no requirements for, as you named them. They add nothing to the sections, but their `utility_auth_by_program` entry still appears. Present only when the list isn't empty.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "FieldsProgramIdentifier": {
+        "description": "A program's `identifier`, exactly as **List programs** returns it. Identifiers are case-sensitive, so send and compare them unchanged.",
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 200,
+        "pattern": "^[A-Za-z0-9_\\-]{1,200}$",
+        "example": "pge_ev_charger_rebate_residential"
+      },
+      "ApiKeyError": {
+        "description": "A missing or invalid API key. Leap answers before the request reaches a route.",
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "string",
+            "example": "No or invalid API key or JWT provided in authorization header"
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Your Leap API key as a Bearer token. Send it in the `Authorization` header: `Authorization: Bearer <api-key>`."
+      }
+    }
+  },
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ]
+}

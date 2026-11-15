@@ -1,0 +1,89 @@
+---
+title: "Get notified when a customer uses Connect"
+description: "Register an endpoint for the Connect session events, read each payload, and know which changes you still poll for."
+---
+
+Leap sends two webhook events about a customer's Connect session. `connect_session.updated` reports when the customer opens, advances through, or finishes Connect. `connect_session.authorization_updated` reports when they authorize their utility. Each event names the customer by the `reference_id` you sent on the lookup. Leap sends no event when an application's status changes, so you read that from the Applications API.
+
+## Register an endpoint
+
+Create a webhook with Leap's webhooks API on the same host as the rest of this API. The request needs an API key with account management access:
+
+```bash
+curl -X POST "https://api.leap.energy/v1.1/webhooks" \
+  -H "Authorization: Bearer your_account_api_key_here" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "receiver_url": "https://example.com/leap-webhooks",
+    "event_types": ["connect_session.updated", "connect_session.authorization_updated"],
+    "headers": [{ "name": "x-receiver-token", "value": "your_receiver_token_here" }]
+  }'
+```
+
+Leap sends each event to `receiver_url` as a `POST`, with any `headers` you listed. The response returns the `webhook_id` and a `signing_secret`. Store the secret: Leap shows it once, and you need it to [verify each delivery](#verify-a-delivery). Manage your webhooks with these calls:
+
+- **`GET /v1.1/webhooks`**: list your webhooks
+- **`PUT /v1.1/webhooks/{webhook_id}`**: replace the URL, events, and headers. Send `receiver_url` and `event_types` every time. Add `?rotate_secret=true` to get a new `signing_secret`
+- **`DELETE /v1.1/webhooks/{webhook_id}`**: stop the deliveries
+- **`POST /v1.1/webhooks/{webhook_id}/test`**: send your endpoint the event you put in the body, in the `payload` shape below
+
+## Receive a delivery
+
+Every delivery is a JSON body with a unique `webhook_event_id` and the event in `payload`. `payload.webhook_event_type` names the event:
+
+```json
+{
+  "webhook_event_id": "31f6b61a-712e-42e7-83af-ea441777a32f",
+  "payload": {
+    "webhook_event_type": "connect_session.updated",
+    "partner_reference": "customer-123",
+    "status": "COMPLETED"
+  }
+}
+```
+
+Answer with a `2xx` status to confirm receipt. Leap treats any other status as a failed delivery and retries it every two minutes. A retry repeats the `webhook_event_id`, so process each `webhook_event_id` once.
+
+## Verify a delivery
+
+Each delivery to a webhook with a signing secret carries an `X-Leap-Signature` header, so you can confirm Leap sent it. A webhook created before Leap added signing delivers unsigned until you rotate its secret with `?rotate_secret=true`. The header holds a timestamp and a signature:
+
+```http
+X-Leap-Signature: t=1763078400,v1=5257a869e7ecebeda32affa62cdca3fa51cad7e77a0e56ff536d0ce8e108d8bd
+```
+
+To check it, follow these steps:
+
+1. Join the `t` value, a period, and the raw request body, exactly as received.
+2. Compute the HMAC-SHA256 of that string, keyed with your `signing_secret`, as lowercase hex.
+3. Compare the result with the `v1` value, using a constant-time comparison.
+
+Reject a delivery whose signature doesn't match. To refuse a replayed request, also reject one whose `t` is more than five minutes from your clock.
+
+## Connect session updated
+
+`connect_session.updated` reports the customer's progress through Connect. `partner_reference` is the `reference_id` you sent on the lookup, and `status` is one of these values:
+
+| `status` | Meaning |
+|---|---|
+| `CREATED` | Leap created the customer's Connect session. |
+| `UPDATED` | The customer moved to another step in Connect. |
+| `COMPLETED` | The customer finished Connect. |
+| `CLOSED` | The session closed before the customer finished. |
+
+After `COMPLETED`, read the applications to see what Leap still needs from you. [Get customer summary](/api-reference/applications/get-customer-summary) returns them in one call.
+
+## Connect session authorization updated
+
+`connect_session.authorization_updated` reports the customer's utility authorization in Connect. It carries these fields:
+
+- **`partner_reference`**: the `reference_id` you sent on the lookup
+- **`utility_name`**: the utility the customer authorized, as a fixed name such as `PGE`, or `OTHER` for a utility without one
+- **`utility_eiaid`**: the utility's EIA id, when Leap knows it. Look the utility up by this value rather than by `utility_name`
+- **`status`**: `INITIATED` when the customer starts, `COMPLETED` when the authorization succeeds, or `FAILED` when it doesn't
+
+Leap sends this event while the customer is in Connect. A change after the customer finishes Connect sends no event. Neither does a utility login the customer shares for Leap to file with.
+
+## Follow application status without a webhook
+
+Applications have no webhook event. Poll [Get customer summary](/api-reference/applications/get-customer-summary) for each customer whose applications are open. Pick a schedule that suits your process, such as once a day. The [lifecycle guide](/application-lifecycle#follow-each-application-to-a-decision) shows the calls.

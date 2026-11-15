@@ -1,0 +1,722 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Leap Incentives — Application attachments",
+    "description": "Upload, list, download, and delete the supporting documents on your applications. Authenticate with the same Leap API key you use for lookups, sent as a bearer token.\n",
+    "contact": {
+      "email": "apiteam@leap.energy"
+    },
+    "version": "0.1"
+  },
+  "servers": [
+    {
+      "url": "https://api.leap.energy",
+      "description": "Production"
+    },
+    {
+      "url": "https://api.staging.leap.energy",
+      "description": "Staging"
+    }
+  ],
+  "tags": [
+    {
+      "name": "applications"
+    }
+  ],
+  "paths": {
+    "/beta/incentives/applications/attachments": {
+      "get": {
+        "tags": [
+          "applications"
+        ],
+        "summary": "List attachments",
+        "description": "List the attachments on your applications, newest upload first. For one application, send `application_id` and `attachment_type`: `application_id` alone returns 400. For several, send `application_ids` (comma-separated), with an optional `attachment_type` to narrow the list. A file attached to two applications appears once for each.",
+        "operationId": "listAttachments",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/LegacyApplicationIdQuery"
+          },
+          {
+            "$ref": "#/components/parameters/LegacyApplicationIdsQuery"
+          },
+          {
+            "$ref": "#/components/parameters/LegacyAttachmentTypeQuery"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LegacyAttachmentListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Legacy400"
+          },
+          "403": {
+            "$ref": "#/components/responses/Legacy403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Legacy404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Legacy409"
+          },
+          "500": {
+            "$ref": "#/components/responses/Legacy500"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "applications"
+        ],
+        "summary": "Upload attachment",
+        "description": "Start an upload for the application you name in the `application_id` query parameter, which is required. Leap doesn't read `application_id` from the request body. Leap returns a signed `uploadUrl`, valid for two hours, and the file's `path`. `PUT` the file to `uploadUrl` with the same `Content-Type` you sent here, then call **Commit attachment upload** with the `path`. Leap records nothing until the commit.",
+        "operationId": "createAttachmentUpload",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/LegacyApplicationIdQuery"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LegacyAttachmentUploadRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LegacyAttachmentUploadResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Legacy400"
+          },
+          "403": {
+            "$ref": "#/components/responses/Legacy403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Legacy404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Legacy409"
+          },
+          "500": {
+            "$ref": "#/components/responses/Legacy500"
+          }
+        }
+      }
+    },
+    "/beta/incentives/applications/attachments/commit": {
+      "post": {
+        "tags": [
+          "applications"
+        ],
+        "summary": "Commit attachment upload",
+        "description": "Attach an uploaded file to the application you name in the `application_id` query parameter, which is required. Leap doesn't read `application_id` from the request body. Call it after the `PUT` to `uploadUrl` succeeds. If Leap can't find the file, the call returns 404. A file over 50 MiB returns 400 and is removed. Committing the same `path` again returns the same attachment `id`.",
+        "operationId": "commitAttachment",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/LegacyApplicationIdQuery"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LegacyAttachmentCommitRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LegacyAttachmentCommitResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Legacy400"
+          },
+          "403": {
+            "$ref": "#/components/responses/Legacy403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Legacy404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Legacy409"
+          },
+          "500": {
+            "$ref": "#/components/responses/Legacy500"
+          }
+        }
+      }
+    },
+    "/beta/incentives/applications/attachments/{id}/download": {
+      "get": {
+        "tags": [
+          "applications"
+        ],
+        "summary": "Download attachment",
+        "description": "Get a signed URL for downloading an attachment. Send the attachment's `application_id` too. The URL is valid for one hour. `downloadUrl`, `url`, and `file_url` carry the same URL.",
+        "operationId": "getAttachmentDownload",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/LegacyAttachmentId"
+          },
+          {
+            "$ref": "#/components/parameters/LegacyApplicationIdQuery"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LegacyAttachmentDownloadResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Legacy400"
+          },
+          "403": {
+            "$ref": "#/components/responses/Legacy403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Legacy404"
+          },
+          "405": {
+            "$ref": "#/components/responses/Legacy405"
+          },
+          "409": {
+            "$ref": "#/components/responses/Legacy409"
+          },
+          "500": {
+            "$ref": "#/components/responses/Legacy500"
+          }
+        }
+      }
+    },
+    "/beta/incentives/applications/attachments/{id}": {
+      "delete": {
+        "tags": [
+          "applications"
+        ],
+        "summary": "Delete attachment",
+        "description": "Delete an attachment. Send the attachment's `application_id` too. Leap removes the file from the application and returns 204 with no body. You can't restore a deleted attachment through the API.",
+        "operationId": "deleteAttachment",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/LegacyAttachmentId"
+          },
+          {
+            "$ref": "#/components/parameters/LegacyApplicationIdQuery"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted. No body."
+          },
+          "400": {
+            "$ref": "#/components/responses/Legacy400"
+          },
+          "403": {
+            "$ref": "#/components/responses/Legacy403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Legacy404"
+          },
+          "405": {
+            "$ref": "#/components/responses/Legacy405"
+          },
+          "409": {
+            "$ref": "#/components/responses/Legacy409"
+          },
+          "500": {
+            "$ref": "#/components/responses/Legacy500"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "LegacyApplicationIdQuery": {
+        "name": "application_id",
+        "in": "query",
+        "required": false,
+        "description": "The application's integer `id`.",
+        "schema": {
+          "type": "integer",
+          "format": "int64",
+          "minimum": 1
+        },
+        "example": 48213
+      },
+      "LegacyApplicationIdsQuery": {
+        "name": "application_ids",
+        "in": "query",
+        "required": false,
+        "description": "Several applications at once: their integer `id` values, comma-separated.",
+        "schema": {
+          "type": "string",
+          "pattern": "^\\d+(,\\d+)*$"
+        },
+        "example": "48213,48214"
+      },
+      "LegacyAttachmentTypeQuery": {
+        "name": "attachment_type",
+        "in": "query",
+        "required": false,
+        "description": "The attachment type to list. Required when you send a single `application_id`: without it, the call returns 400. With `application_ids`, it narrows the list.",
+        "schema": {
+          "$ref": "#/components/schemas/AttachmentType"
+        }
+      },
+      "LegacyAttachmentId": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "description": "The attachment's integer `id`, from **List attachments** or **Commit attachment upload**.",
+        "schema": {
+          "type": "integer",
+          "format": "int64",
+          "minimum": 1
+        },
+        "example": 90211
+      }
+    },
+    "responses": {
+      "Legacy400": {
+        "description": "The request is malformed or fails validation. `message` says which part.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/LegacyError"
+            },
+            "example": {
+              "code": "bad_request",
+              "message": "customer_devices[].id must be an integer",
+              "requestId": "78b7cad5-ab45-44af-9c1e-2f0a1b2c3d4e"
+            }
+          }
+        }
+      },
+      "Legacy403": {
+        "description": "Your key can't make this request. A key without the permission a route or parameter needs gets `error.message`. A missing or invalid key gets `error` as a string, before the request reaches a route.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/PermissionError"
+                },
+                {
+                  "$ref": "#/components/schemas/ApiKeyError"
+                }
+              ]
+            },
+            "examples": {
+              "permission": {
+                "summary": "The key lacks a permission",
+                "value": {
+                  "error": {
+                    "message": "You do not have the required permission to perform this action"
+                  }
+                }
+              },
+              "key": {
+                "summary": "Missing or invalid key",
+                "value": {
+                  "error": "No or invalid API key or JWT provided in authorization header"
+                }
+              }
+            }
+          }
+        }
+      },
+      "Legacy404": {
+        "description": "Nothing matches the identifier you sent, or the record belongs to another organization.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/LegacyError"
+            },
+            "example": {
+              "code": "not_found",
+              "message": "No customer for that reference",
+              "requestId": "78b7cad5-ab45-44af-9c1e-2f0a1b2c3d4e"
+            }
+          }
+        }
+      },
+      "Legacy500": {
+        "description": "Leap couldn't process the request. Retry it, and send the `requestId` to Leap support if it fails again.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/LegacyError"
+            },
+            "example": {
+              "code": "internal_error",
+              "message": "Unexpected error",
+              "requestId": "78b7cad5-ab45-44af-9c1e-2f0a1b2c3d4e"
+            }
+          }
+        }
+      },
+      "Legacy409": {
+        "description": "The request conflicts with stored data. `code` names the conflict, for example `ambiguous_reference_id` when more than one customer holds the `refId`.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/LegacyError"
+            },
+            "example": {
+              "code": "ambiguous_reference_id",
+              "message": "refId is shared by more than one organization",
+              "details": {
+                "reference_id": "customer-123",
+                "organization_ids": [
+                  "8a1f0c2e-3b4d-4e5f-9a6b-7c8d9e0f1a2b",
+                  "1b2c3d4e-5f6a-4b7c-8d9e-0f1a2b3c4d5e"
+                ]
+              },
+              "requestId": "78b7cad5-ab45-44af-9c1e-2f0a1b2c3d4e"
+            }
+          }
+        }
+      },
+      "Legacy405": {
+        "description": "No route matches the method and path, for example an attachment `id` that isn't a number.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/LegacyError"
+            },
+            "example": {
+              "code": "method_not_allowed",
+              "message": "Unsupported route or method",
+              "requestId": "78b7cad5-ab45-44af-9c1e-2f0a1b2c3d4e"
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "AttachmentType": {
+        "description": "The kind of document. The [requirements reference](/setup-data-preferences) defines each type.",
+        "type": "string",
+        "enum": [
+          "INVOICE_EQUIPMENT",
+          "INVOICE_INSTALL",
+          "PERMIT",
+          "PHOTO_NAMEPLATE",
+          "PHOTO_INSTALL",
+          "PHOTO_METER",
+          "AHRI_CERT",
+          "NEAT_REPORT",
+          "INCOME_FORM",
+          "W9",
+          "OTHER",
+          "MODEL_TECH_SPECS",
+          "VEHICLE_PURCHASE",
+          "UTILITY_BILL",
+          "VEHICLE_REGISTRATION",
+          "SIGNATURE",
+          "TARIFF_CONFIRMATION",
+          "SPEC_SHEET_INVERTER",
+          "DIAGRAM_ONE_LINE",
+          "DIAGRAM_SITE_PLAN",
+          "PHOTO_SERIAL_NUMBER"
+        ]
+      },
+      "LegacyEnvelope": {
+        "description": "`ok` is true on success. `requestId` identifies the request for Leap support.",
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "example": true
+          },
+          "requestId": {
+            "type": "string",
+            "example": "78b7cad5-ab45-44af-9c1e-2f0a1b2c3d4e"
+          }
+        }
+      },
+      "LegacyAttachment": {
+        "description": "One attachment on one application. `created_at` and `updated_at` both hold the upload time.",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 456
+          },
+          "application_id": {
+            "type": "integer",
+            "example": 27
+          },
+          "attachment_type": {
+            "$ref": "#/components/schemas/AttachmentType"
+          },
+          "file_url": {
+            "type": "string",
+            "example": "storage://attachments/982734ihksjhfwoe8u/27/uuid-invoice.pdf"
+          },
+          "filename": {
+            "type": "string",
+            "example": "invoice.pdf"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2024-01-15 10:30:00+00:00"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2024-01-15 10:30:00+00:00"
+          },
+          "slot_key": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "LegacyAttachmentListResponse": {
+        "description": "The attachments, newest upload first.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/LegacyEnvelope"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "attachments": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/LegacyAttachment"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "LegacyError": {
+        "description": "An error. `code` is a stable identifier you can branch on, `message` explains it, and `requestId` identifies the request for Leap support.",
+        "type": "object",
+        "required": [
+          "code",
+          "message"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "ambiguous_reference_id"
+          },
+          "message": {
+            "type": "string",
+            "example": "refId is shared by more than one organization"
+          },
+          "details": {
+            "nullable": true,
+            "type": "object",
+            "additionalProperties": true
+          },
+          "requestId": {
+            "type": "string",
+            "example": "78b7cad5-ab45-44af-9c1e-2f0a1b2c3d4e"
+          }
+        }
+      },
+      "LegacyAttachmentUploadResponse": {
+        "description": "Where to upload the file. `PUT` the bytes to `uploadUrl`, then send `path` to **Commit attachment upload**.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/LegacyEnvelope"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "uploadUrl": {
+                "type": "string"
+              },
+              "path": {
+                "type": "string"
+              },
+              "bucket": {
+                "type": "string"
+              },
+              "instructions": {
+                "type": "string"
+              }
+            }
+          }
+        ]
+      },
+      "LegacyAttachmentUploadRequest": {
+        "description": "The file you're about to upload. Send the same `contentType` as the `Content-Type` header on the `PUT`.",
+        "type": "object",
+        "required": [
+          "attachment_type",
+          "filename",
+          "contentType"
+        ],
+        "properties": {
+          "attachment_type": {
+            "$ref": "#/components/schemas/AttachmentType"
+          },
+          "filename": {
+            "type": "string"
+          },
+          "contentType": {
+            "type": "string"
+          }
+        }
+      },
+      "LegacyAttachmentCommitResponse": {
+        "description": "The committed attachment. Use `id` to download or delete it.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/LegacyEnvelope"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "file_url": {
+                "type": "string"
+              },
+              "bucket": {
+                "type": "string"
+              },
+              "path": {
+                "type": "string"
+              }
+            }
+          }
+        ]
+      },
+      "LegacyAttachmentCommitRequest": {
+        "description": "The upload to attach. `path` is the value **Upload attachment** returned.",
+        "type": "object",
+        "required": [
+          "attachment_type",
+          "path"
+        ],
+        "properties": {
+          "attachment_type": {
+            "$ref": "#/components/schemas/AttachmentType"
+          },
+          "path": {
+            "type": "string"
+          },
+          "makePublic": {
+            "type": "boolean",
+            "default": false
+          },
+          "slot_key": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "LegacyAttachmentDownloadResponse": {
+        "description": "A signed download URL, valid for one hour, repeated in three keys.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/LegacyEnvelope"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "downloadUrl": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              },
+              "file_url": {
+                "type": "string"
+              }
+            }
+          }
+        ]
+      },
+      "PermissionError": {
+        "description": "A permission error. `message` says what the key can't do.",
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "object",
+            "required": [
+              "message"
+            ],
+            "properties": {
+              "message": {
+                "type": "string",
+                "example": "You do not have the required permission to perform this action"
+              }
+            }
+          }
+        }
+      },
+      "ApiKeyError": {
+        "description": "A missing or invalid API key. Leap answers before the request reaches a route.",
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "string",
+            "example": "No or invalid API key or JWT provided in authorization header"
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Your Leap API key as a Bearer token. Send it in the `Authorization` header: `Authorization: Bearer <api-key>`."
+      }
+    }
+  },
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ]
+}

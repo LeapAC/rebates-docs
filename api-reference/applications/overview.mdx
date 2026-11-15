@@ -1,38 +1,99 @@
 ---
-title: Applications Guide
-description: Search, update, and attach documentation to the incentive applications you submit.
+title: Applications guide
+description: Read, update, and attach documents to the incentive applications Leap creates for your customers.
 ---
 
-Applications are the incentive submissions you track through processing. Search and update them, and manage supporting attachments.
+Applications are the incentive submissions Leap tracks through processing, one per customer and program. The Applications API lets you read them, supply data on the customer's behalf, and manage supporting documents. It runs on the same host and bearer authentication as the incentives lookup. For the order of calls from lookup to decision, read [Take a customer from lookup to approved application](/application-lifecycle). If you call the alpha API today, read [Migrating from the alpha API](/api-reference/applications/migrating-from-alpha).
 
 ## Base URL and authentication
 
-`https://api.incentives.leap.energy/alpha` in production, `https://api.staging.incentives.leap.energy/alpha` in staging. Send your Leap API key in the `x-api-key` header:
+The Applications API is served at `https://api.leap.energy` in production and `https://api.staging.leap.energy` in staging. Every path starts with `/beta/incentives/applications`, except [Get required fields](/api-reference/applications/get-required-fields) at `/beta/incentives/fields`.
+
+Use the same API key you use for lookups, sent as a bearer token:
 
 ```http
-x-api-key: leap_live_your_api_key_here
+Authorization: Bearer your_api_key_here
 ```
+
+You only ever see your own organization's applications, customers, and attachments.
 
 ## Where applications come from
 
-Send `create_application: true` on [Look up incentives](/api-reference/incentives-lookups/look-up-incentives) and Leap creates one application per eligible program in the background, usually within a few seconds and before the customer opens the Connect URL. Without the flag, Leap creates no applications.
+Send `create_application: true` on [Look up incentives](/api-reference/incentives-lookups/look-up-incentives) and Leap creates one application per eligible program in the background. That happens within a few seconds, before the customer opens the Connect URL. Without the flag, the lookup creates no applications.
 
-## Endpoints
+## Routes in this API
 
-Three operations act on the application itself, and five more manage its attachments:
+Five routes act on applications, five manage attachments, and one lists requirements:
 
-- **Search applications**: filter by reference ID or status. Each result's top-level `id` is the application ID you pass as `application_id` everywhere else.
-- **Get application**: one application in full, with customer and device detail.
-- **Update application**: supply data on the customer's behalf. Only the fields you include change; `null` clears one. Status and system identifiers (`id`, `customer_id`, `program_id`) are read-only.
-- **Attachments**: upload, list, download, and delete supporting files. See the [Requirements reference](/setup-data-preferences).
+- **Search applications**: read one customer's applications by `refId`, which your key must send. Each application's `id` is the application ID the other routes take.
+- **Get customer summary**: one customer's open applications in one call, each with its `program_identifier` for **Get required fields**.
+- **Get application**: one application in full, with the customer, their devices, and its status history.
+- **Update application**: supply data on the customer's behalf. Only the fields you send change, and `null` clears one.
+- **Update applications in bulk**: several updates in one request, with a result per entry.
+- **Attachments**: upload, commit, list, download, and delete supporting files, up to 50 MiB each. The [Requirements reference](/setup-data-preferences#send-documents-as-attachments) walks through an upload.
+- **Get required fields**: the fields, agreements, and attachments each program needs, grouped by who supplies them.
+
+## Read every page of results
+
+[Search applications](/api-reference/applications/search-applications) returns one customer's `applications`, up to `limit` per page: 50 by default, 100 at most. Send the customer's `refId` on every search: a search without it returns `403`. Each page carries a `next_page_token`. Pass it back as `page_token` to read the next page, and stop when `next_page_token` is `null`:
+
+```bash
+curl "https://api.leap.energy/beta/incentives/applications?refId=customer-123&limit=50" \
+  -H "Authorization: Bearer your_api_key_here"
+```
+
+## Application status
+
+Every application carries a `status`, which Leap updates as the customer and Leap complete their parts. You can read and filter on `status`, but **Update application** doesn't change it. Status values:
+
+| Status | Meaning |
+|---|---|
+| `not_started` | Leap created the application, and nobody has worked on it yet. |
+| `in_progress` | The customer still has required fields, attachments, or agreements to provide. |
+| `awaiting_customer` | After Connect, Leap is waiting on something from the customer. |
+| `awaiting_partner` | After Connect, Leap is waiting on something from you. |
+| `completed` | The customer's part is done, and Leap prepares the filing. |
+| `submitted` | Leap filed the application with the program. |
+| `approved` | The program approved the application. |
+| `rejected` | The program rejected the application. |
+| `declined` | The customer withdrew, for example by choosing not to join an optional program in Connect. |
+| `dismissed` | Leap closed the application because of its own error. |
+
+`approved`, `rejected`, `declined`, and `dismissed` are terminal: an application in one of them is closed.
+
+Leap sends no webhook when a status changes, so poll **Get customer summary** for the customers you follow. The [Connect webhooks](/webhooks) report the customer's progress through Connect.
 
 ## Identifiers on this API
 
-Applications, customers, and installations are numbered, so `id`, `customer_id`, and the entries in `customer_device_id[]` are integers. The catalog `device_id` on a device is not: it's the same UUID the incentives lookup takes and returns. Read an identifier back from the application rather than constructing one, and the difference stays invisible.
+Applications, customers, and installations are numbered, so `id`, `customer_id`, and the entries in `customer_device_id[]` are integers. **Get application** also accepts the `application_uuid` in place of the integer `id`. The catalog `device_id` on a device is a UUID, the same one the incentives lookup takes and returns. Read identifiers back from the application rather than constructing them.
+
+## Error responses
+
+The application and attachment routes return errors as a JSON body with a stable `code`, a readable `message`, and a `requestId`:
+
+```json
+{ "code": "not_found", "message": "Application 123 not found", "requestId": "78b7cad5-ab45-44af-9c1e-2f0a1b2c3d4e" }
+```
+
+Branch on `code`, and send the `requestId` to Leap support when you report a problem. [Get required fields](/api-reference/applications/get-required-fields) returns errors as `{ "error": { "message": "…" } }` instead.
+
+Two `403` bodies come from Leap before a route runs. A key without the permission a request needs gets an `error.message`. A search without `refId` is one example:
+
+```json
+{ "error": { "message": "You do not have the required permission to perform this action" } }
+```
+
+A missing or invalid API key gets `error` as a string. Every route answers this way, including **Get required fields**, which never returns `401`:
+
+```json
+{ "error": "No or invalid API key or JWT provided in authorization header" }
+```
+
+An application or attachment that belongs to another organization returns `404`, the same as one that doesn't exist.
 
 ## Supplying data on the customer's behalf
 
-When you claim a field under **Data Preferences** in the portal, Leap removes it from the customer-facing form and expects the value from you. On devices you registered, the customer never sees a claimed field and can't correct it: if a value turns out to be wrong, send another **Update application** request. Claimed fields reappear for any device the customer adds themselves.
+When you claim a field under **Data Preferences** in the portal, Leap removes it from the customer-facing form and expects the value from you. On devices you registered, the customer never sees a claimed field and can't correct it. If a value turns out to be wrong, send another **Update application** request. Claimed fields reappear for any device the customer adds themselves.
 
 <Tip>
   Claim only the fields you can supply for every customer, and send extras as you get them. Values you submit before the customer opens Connect appear pre-filled for them.

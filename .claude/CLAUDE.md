@@ -228,8 +228,8 @@ agent-browser close
 - Quickstart: `http://localhost:3333/quickstart`
 - Incentives Guide (section overview, Bearer auth): `http://localhost:3333/api-reference/incentives-lookups/overview`
 - GCS endpoint (rich schemas + Try it, Bearer auth): `http://localhost:3333/api-reference/incentives-lookups/look-up-incentives`
-- Applications Guide (section overview, x-api-key auth): `http://localhost:3333/api-reference/applications/overview`
-- Applications endpoint (rich schemas + Try it, x-api-key auth): `http://localhost:3333/api-reference/applications/search-applications`
+- Applications Guide (section overview, Bearer auth): `http://localhost:3333/api-reference/applications/overview`
+- Applications endpoint (rich schemas + Try it, Bearer auth): `http://localhost:3333/api-reference/applications/search-applications`
 
 **What to verify on API endpoint pages:**
 - Try-it button is visible next to the method badge (e.g., `POST /incentives [Try it]`)

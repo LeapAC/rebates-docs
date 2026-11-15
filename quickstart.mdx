@@ -3,16 +3,16 @@ title: "Quickstart"
 description: "Look up a customer's incentives, share a Connect URL, and provide data on their behalf"
 ---
 
-Check a customer's incentive eligibility, share a Connect URL they apply through, and submit supporting data on their behalf. You'll call two APIs:
+Check a customer's incentive eligibility, share a Connect URL they apply through, and submit supporting data on their behalf. You'll call two APIs on one host, `https://api.leap.energy`, both authenticated with a **Bearer token**:
 
-- **Incentives Lookups**: `https://api.leap.energy`, authenticated with a **Bearer token**
-- **Applications**: `https://api.incentives.leap.energy/alpha`, authenticated with an **`x-api-key`** header
+- **Incentives Lookups**, under `/beta/incentives`
+- **Applications**, under `/beta/incentives/applications`
 
 ## Set up your integration
 
 <Steps>
-<Step title="Create your API keys">
-  Create both keys under [**Settings → Developer**](https://partner.incentives.leap.energy/settings/developer): an **API Key** (the Bearer token for Incentives Lookups) and an **Alpha · Applications API** key (the `x-api-key` for Applications).
+<Step title="Create your API key">
+  Create an API key under [**Settings → Developer**](https://partner.incentives.leap.energy/settings/developer). The same key covers lookups and applications: send it as a Bearer token on every request.
 </Step>
 
 <Step title="Get device IDs">
@@ -107,19 +107,19 @@ A lookup with `create_application: true` creates one application per eligible pr
 ### Find the application
 
 ```bash
-curl -X GET "https://api.incentives.leap.energy/alpha/applications?refId=customer-123" \
-  -H "x-api-key: leap_live_your_api_key_here"
+curl -X GET "https://api.leap.energy/beta/incentives/applications?refId=customer-123" \
+  -H "Authorization: Bearer your_api_key_here"
 ```
 
-Filter by `refId` (your reference ID) or `application_status`. Each result's top-level `id` is the application ID. See [Search applications](/api-reference/applications/search-applications) for the full response.
+Send your reference ID as `refId`. Search returns 403 without it. The response holds the customer, their devices, and an `applications` array. Each application's `id` is the application ID. See [Search applications](/api-reference/applications/search-applications) for the full response.
 
 ### Update the application
 
-Send the data you're providing on behalf of the customer, using the application `id` from the search results as `application_id`.
+Send the data you're providing on behalf of the customer, using an application `id` from the `applications` array in the path.
 
 ```bash
-curl -X PATCH "https://api.incentives.leap.energy/alpha/applications/123" \
-  -H "x-api-key: leap_live_your_api_key_here" \
+curl -X PATCH "https://api.leap.energy/beta/incentives/applications/123" \
+  -H "Authorization: Bearer your_api_key_here" \
   -H "Content-Type: application/json" \
   -d '{
     "customer": {
@@ -154,6 +154,12 @@ Two identifiers named `id` appear in that request, and they are different things
   Full reference for the lookup, refresh, and override endpoints.
 </Card>
 <Card title="Applications Guide" icon="file-text" href="/api-reference/applications/overview">
-  Search, update, and attach documentation to applications.
+  Read, update, and attach documents to applications.
+</Card>
+<Card title="Application lifecycle" icon="route" href="/application-lifecycle">
+  Every call from the lookup to the program's decision, in order.
+</Card>
+<Card title="Webhooks" icon="webhook" href="/webhooks">
+  Hear when the customer opens or finishes Connect.
 </Card>
 </CardGroup>

@@ -1,0 +1,111 @@
+---
+title: "Take a customer from lookup to approved application"
+description: "The order of calls that creates applications, shares the Connect link, supplies your data and documents, and follows each application to a decision."
+---
+
+Each customer's claim starts with a lookup and ends when the program approves or rejects it. You create the applications with one lookup flag and send the customer the Connect link. Then you supply the fields and documents you claimed. Leap files each application and updates its `status`, which you read back through the Applications API. Webhooks tell you when the customer opens or finishes Connect.
+
+Every call on this page uses the host `https://api.leap.energy` and your API key as a bearer token. Use `https://api.staging.leap.energy` with your staging key while you build.
+
+## Look up incentives and create the applications
+
+The lookup prices the customer's devices and, with one flag, creates their applications. Send `create_application: true` on [Look up incentives](/api-reference/incentives-lookups/look-up-incentives):
+
+```bash
+curl -X POST "https://api.leap.energy/beta/incentives/lookups" \
+  -H "Authorization: Bearer your_api_key_here" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "reference_id": "customer-123",
+    "customer_classification": "RESIDENTIAL",
+    "create_application": true,
+    "address": { "address_line_1": "456 Main St", "city": "Bend", "state": "OR", "zip_code": "97701" },
+    "customer_devices": [
+      { "device_id": "d290f1ee-6c54-4b01-90e6-d701748f0851", "partner_device_reference": "order-9001" }
+    ]
+  }'
+```
+
+Leap creates the customer's applications as part of the lookup, one for each eligible program Leap files. The `reference_id` you send is how you address this customer on every later call, as `refId`. A lookup without the flag only prices the devices and creates nothing. Confirm the applications exist with [Get customer summary](/api-reference/applications/get-customer-summary) before you rely on them.
+
+## Share the Connect link
+
+The lookup response carries the customer's `connect_url`. Send it in your order confirmation, a follow-up email, or your product's setup flow. In Connect, the customer reviews their incentives and fills in what you didn't supply. They also sign the agreements, and connect their utility account when a program needs it.
+
+Some responses omit `connect_url`, such as a lookup without `create_application: true` or one with nothing eligible. Check for the field before you show the link. [Get customer summary](/api-reference/applications/get-customer-summary) also returns the link, as `organization.connect_url`. Subscribe to the [Connect webhooks](/webhooks) to hear when the customer opens Connect, finishes it, or authorizes their utility.
+
+## Find out what each application needs
+
+Read the customer's applications, then ask Leap what their programs require. [Get customer summary](/api-reference/applications/get-customer-summary) returns the open applications for one `refId` in a single call:
+
+```bash
+curl "https://api.leap.energy/beta/incentives/applications/customer-summary?refId=customer-123" \
+  -H "Authorization: Bearer your_api_key_here"
+```
+
+Each application carries a `program_identifier`. A partner offer application also lists the programs behind it in `eligible_program_identifiers`. Send those identifiers to [Get required fields](/api-reference/applications/get-required-fields), with the `organization_id` from the summary:
+
+```bash
+curl -X POST "https://api.leap.energy/beta/incentives/fields" \
+  -H "Authorization: Bearer your_api_key_here" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "program_identifiers": ["example_utility_ev_charger_rebate"],
+    "organization_id": "8a1f0c2e-3b4d-4e5f-9a6b-7c8d9e0f1a2b",
+    "customer_eiaid": "14354"
+  }'
+```
+
+The response groups the requirements by who supplies them: `customer`, `partner`, `leap`, and `utility`. The `partner` section lists the fields you claimed under **Data Preferences**. Read the answers per program from these keys:
+
+- **`enrollment_by_program`**: a map keyed by `program_identifier` of how the customer enrolls with the program's operator, for programs that need a co-enrollment
+- **`utility_auth_by_program`**: a map keyed by `program_identifier` of whether the program needs the customer's utility login (`requires_auth`), and why (`auth_mechanism`, `login_type`). `self_file_url` is where the customer can apply on their own
+- **`unsupported_programs`**: a list of the programs Leap serves no requirements for, present when there are any
+
+## Supply the data you claimed
+
+Send each claimed field with [Update application](/api-reference/applications/update-application), addressed by the application's integer `id`. Customer fields go under `customer`, and installation fields go under `customer_devices` with each device's `id`:
+
+```bash
+curl -X PATCH "https://api.leap.energy/beta/incentives/applications/123" \
+  -H "Authorization: Bearer your_api_key_here" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "customer": { "email": "jordan.lee@example.com" },
+    "customer_devices": [{ "id": 45, "purchase_date": "2026-01-15", "purchase_price": 699.00 }]
+  }'
+```
+
+Only the fields you send change, and `null` clears one. Values you send before the customer opens Connect appear there pre-filled. To update several applications at once, use [Update applications in bulk](/api-reference/applications/update-applications-in-bulk) and check the `ok` result for each entry. The [Requirements reference](/setup-data-preferences) lists every field name.
+
+## Attach the documents you claimed
+
+Documents such as invoices and permits upload straight to storage, then attach to the application. The upload takes three calls:
+
+<Steps>
+<Step title="Request an upload URL">
+  Call [Upload attachment](/api-reference/applications/upload-attachment) with `application_id` in the query and the `attachment_type`, `filename`, and `contentType` in the body.
+</Step>
+
+<Step title="Upload the file">
+  `PUT` the file to the returned `uploadUrl` with the same `Content-Type`. The URL stays valid for two hours.
+</Step>
+
+<Step title="Commit the attachment">
+  Call [Commit attachment upload](/api-reference/applications/commit-attachment-upload) with the same `attachment_type` and the returned `path`. Leap records nothing until you commit, and refuses a file over 50 MiB.
+</Step>
+</Steps>
+
+[List attachments](/api-reference/applications/list-attachments) shows what you've attached, and [Download attachment](/api-reference/applications/download-attachment) returns a signed URL valid for one hour. The [Requirements reference](/setup-data-preferences#send-documents-as-attachments) walks through each step with a full example.
+
+## Follow each application to a decision
+
+Leap updates each application's `status` as the customer, you, and Leap complete your parts, and as the program decides. Read it with [Get customer summary](/api-reference/applications/get-customer-summary), [Search applications](/api-reference/applications/search-applications), or [Get application](/api-reference/applications/get-application). The [Applications guide](/api-reference/applications/overview#application-status) describes each status value.
+
+Leap sends no webhook when an application's status changes, so poll for it. Read the customer summary on a schedule that suits your process, such as once a day. Add `include_terminal=true` to see the applications that reached `approved`, `rejected`, `declined`, or `dismissed`.
+
+## Correct a customer's details
+
+Refresh the lookup to add devices or details, and override it to start the customer over. [Refresh incentives](/api-reference/incentives-lookups/refresh-incentives) re-prices from stored data and keeps what you sent before. [Override incentives](/api-reference/incentives-lookups/override-incentives) replaces the customer with a fresh body, address included.
+
+An override refuses to discard work Leap has started. Once any of the customer's applications has left `not_started`, the override returns `409`. Its `error_code` is `CONNECT_APPLICATIONS_IN_FLIGHT`, and `reason` names the blocking applications. Nothing changes on a `409`. Use a new `reference_id` for the corrected customer instead.

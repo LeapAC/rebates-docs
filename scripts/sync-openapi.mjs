@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const HTTP_METHODS = ['get', 'post', 'put', 'patch', 'delete', 'options', 'head'];
+const HTTP_METHODS = ['get', 'post', 'put', 'patch', 'delete', 'options', 'head', 'trace'];
 
 const SECURITY_PRESETS = {
   bearer: {
@@ -153,6 +153,140 @@ export function removeProperties(spec, keys) {
   return unmatched;
 }
 
+// Some operations take selectors that only Leap staff may use, such as an
+// organization picker on an admin lane. Partners cannot send them, so drop the
+// parameter from every operation that lists it. Keyed by the component name in
+// `#/components/parameters`; pruning then removes the unused component.
+// Returns the names no operation referenced (the parameter is gone upstream).
+export function removeParameters(spec, names) {
+  const wanted = new Set(names || []);
+  const hit = new Set();
+  for (const ops of Object.values(spec.paths || {})) {
+    if (!ops || typeof ops !== 'object') continue;
+    for (const [m, op] of Object.entries(ops)) {
+      const lists = m === 'parameters' ? [ops] : HTTP_METHODS.includes(m.toLowerCase()) && op && typeof op === 'object' ? [op] : [];
+      for (const holder of lists) {
+        if (!Array.isArray(holder.parameters)) continue;
+        holder.parameters = holder.parameters.filter((param) => {
+          const name = typeof param?.$ref === 'string' && param.$ref.startsWith('#/components/parameters/') ? param.$ref.slice('#/components/parameters/'.length) : undefined;
+          if (name && wanted.has(name)) { hit.add(name); return false; }
+          return true;
+        });
+        if (holder.parameters.length === 0) delete holder.parameters;
+      }
+    }
+  }
+  return [...wanted].filter((n) => !hit.has(n));
+}
+
+// A request body can accept a second, staff-only shape through `oneOf`. Drop the
+// branches that point at the named schemas so partners see only the shape they
+// can send, and collapse a `oneOf` or `anyOf` left with one branch into that
+// branch. Returns the schema names no branch referenced.
+export function dropOneOfBranches(spec, names) {
+  const wanted = new Set(names || []);
+  const hit = new Set();
+  const branchName = (b) => (typeof b?.$ref === 'string' && b.$ref.startsWith('#/components/schemas/') ? b.$ref.slice('#/components/schemas/'.length) : undefined);
+  const walk = (node) => {
+    if (Array.isArray(node)) return node.forEach(walk);
+    if (!node || typeof node !== 'object') return;
+    for (const key of ['oneOf', 'anyOf']) {
+      if (!Array.isArray(node[key])) continue;
+      const before = node[key].length;
+      node[key] = node[key].filter((b) => {
+        const n = branchName(b);
+        if (n && wanted.has(n)) { hit.add(n); return false; }
+        return true;
+      });
+      // Only reshape a list this step trimmed: a source `oneOf` with one branch
+      // (the OAS 3.0 nullable idiom) stays as the source wrote it.
+      if (node[key].length === before) continue;
+      if (node[key].length === 0) delete node[key];
+      else if (node[key].length === 1) {
+        const [only] = node[key];
+        delete node[key];
+        Object.assign(node, only);
+      }
+    }
+    Object.values(node).forEach(walk);
+  };
+  if (wanted.size) walk(spec.paths);
+  return [...wanted].filter((n) => !hit.has(n));
+}
+
+// Source specs carry vendor extensions for their own tooling, such as the
+// permission a route checks or a marker for vendored operations. Mintlify ignores
+// them, but they ship in the published JSON. Delete the named `x-` keys anywhere
+// in the spec. Returns the names that matched nothing.
+export function stripExtensions(spec, names) {
+  const wanted = new Set(names || []);
+  const hit = new Set();
+  const walk = (node) => {
+    if (Array.isArray(node)) return node.forEach(walk);
+    if (!node || typeof node !== 'object') return;
+    for (const key of Object.keys(node)) {
+      if (wanted.has(key)) { hit.add(key); delete node[key]; } else walk(node[key]);
+    }
+  };
+  if (wanted.size) walk(spec);
+  return [...wanted].filter((n) => !hit.has(n));
+}
+
+// Some corrections are structural rather than textual: a property the source
+// types too narrowly, a parameter the route requires but the source marks
+// optional, a response the gateway never lets the route send. `patches` applies
+// a small RFC 6902 subset (`test`, `add`, `replace`, `remove`) at RFC 6901
+// pointers, in order. `test` guards a patch: when the source changes under it,
+// the run fails instead of silently patching the wrong node, so drop the patch
+// once the source is fixed. The first failure stops the list, so no later patch
+// writes over a node that has changed. `add` on an object refuses a key that
+// already exists, so a patch never clobbers a schema the source later defines.
+// Returns the failure message plus one per skipped patch.
+export function applyPatches(spec, patches) {
+  const failures = [];
+  const list = patches || [];
+  for (const [i, patch] of list.entries()) {
+    if (failures.length) {
+      for (let j = i; j < list.length; j++) failures.push(`patch ${j} (${list[j]?.op} ${list[j]?.pointer}): skipped after an earlier failure`);
+      break;
+    }
+    const { op, pointer } = patch || {};
+    const label = `patch ${i} (${op} ${pointer})`;
+    if (typeof pointer !== 'string' || (pointer !== '' && !pointer.startsWith('/'))) { failures.push(`${label}: pointer must start with /`); continue; }
+    const tokens = pointer === '' ? [] : pointer.slice(1).split('/').map((t) => t.replace(/~1/g, '/').replace(/~0/g, '~'));
+    if (tokens.length === 0) { failures.push(`${label}: cannot patch the document root`); continue; }
+    let parent = spec;
+    let missing = false;
+    for (const t of tokens.slice(0, -1)) {
+      const next = Array.isArray(parent) ? parent[Number(t)] : parent?.[t];
+      if (next === null || typeof next !== 'object') { missing = true; break; }
+      parent = next;
+    }
+    if (missing) { failures.push(`${label}: path not found`); continue; }
+    const last = tokens[tokens.length - 1];
+    const isArray = Array.isArray(parent);
+    const index = isArray ? (last === '-' ? parent.length : Number(last)) : undefined;
+    if (isArray && !(Number.isInteger(index) && index >= 0)) { failures.push(`${label}: bad array index`); continue; }
+    const exists = isArray ? index < parent.length : Object.prototype.hasOwnProperty.call(parent, last);
+    if (op === 'test') {
+      const actual = isArray ? parent[index] : parent[last];
+      if (!exists || JSON.stringify(actual) !== JSON.stringify(patch.value)) failures.push(`${label}: value changed upstream`);
+    } else if (op === 'add') {
+      if (isArray) {
+        if (index > parent.length) { failures.push(`${label}: bad array index`); continue; }
+        parent.splice(index, 0, structuredClone(patch.value));
+      } else if (exists) { failures.push(`${label}: key already exists`); continue; } else parent[last] = structuredClone(patch.value);
+    } else if (op === 'replace') {
+      if (!exists) { failures.push(`${label}: path not found`); continue; }
+      if (isArray) parent[index] = structuredClone(patch.value); else parent[last] = structuredClone(patch.value);
+    } else if (op === 'remove') {
+      if (!exists) { failures.push(`${label}: path not found`); continue; }
+      if (isArray) parent.splice(index, 1); else delete parent[last];
+    } else failures.push(`${label}: unknown op`);
+  }
+  return failures;
+}
+
 function resolveSchemaTarget(spec, key) {
   const [name, prop] = key.split('.');
   const schema = spec.components?.schemas?.[name];
@@ -270,6 +404,157 @@ export function findBrokenRefs(spec) {
   return [...new Set(broken)];
 }
 
+// The published reference documents the partner surface and nothing else.
+// `partnerSurface` in the config lists every operation the docs publish for a
+// partner key, plus the properties, parameters and text that mark staff-only or
+// internal material. Every spec runs through these rules before it is written,
+// and `check-partner-surface.mjs` runs them again over the committed specs, the
+// navigation and every page, so an `include` entry, a re-sync or a hand edit
+// that lets a non-partner route or field through fails instead of shipping.
+const opKey = (method, p) => `${method.toUpperCase()} ${p}`;
+
+function compileRules(surface, scope) {
+  return (surface?.forbiddenText || [])
+    .filter((r) => !r.scopes || r.scopes.includes(scope))
+    .map((r) => ({ re: new RegExp(r.pattern, r.flags || ''), why: r.why, pattern: r.pattern }));
+}
+
+// Real partner names and IDs can't sit in this public repo, not even hashed:
+// a short word's hash is confirmed by guessing it. So the list comes from
+// outside the repo, the PARTNER_SURFACE_FORBIDDEN_TOKENS environment variable
+// (a GitHub Actions secret in CI) or a gitignored `.partner-tokens` file, one
+// token per line or comma-separated. Text is split into letter and digit runs,
+// and a run that equals a listed token fails. The message names the location,
+// never the token.
+export function loadForbiddenTokens(root, env = process.env) {
+  const raw = [env.PARTNER_SURFACE_FORBIDDEN_TOKENS || ''];
+  const file = path.join(root, '.partner-tokens');
+  if (fs.existsSync(file)) raw.push(fs.readFileSync(file, 'utf8'));
+  return [...new Set(raw.join('\n').split(/[\s,]+/).map((s) => s.trim().toLowerCase()).filter(Boolean))];
+}
+
+// Reduce text to what a reader sees before matching: drop invisible characters,
+// and on pages also MDX escapes, character entities, tags and backticks, so
+// `MANAGE\_X`, `MANAGE&lowbar;X` or `<b>MANAGE</b>_X` can't hide a name.
+const ENTITIES = { lowbar: '_', hyphen: '-', dash: '-', amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' };
+export function normalizeText(text, scope) {
+  let s = String(text).replace(/[\u00ad\u200b-\u200f\u2060\ufeff]/g, '');
+  if (scope !== 'pages') return s;
+  s = s.replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16)))
+    .replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(Number(d)))
+    .replace(/&([a-z]+);/gi, (m, n) => ENTITIES[n.toLowerCase()] ?? m);
+  return s.replace(/<[^>]*>/g, '').replace(/\\(?=[_*`\-])/g, '').replace(/`/g, '').replace(/[\u00ad\u200b-\u200f\u2060\ufeff]/g, '');
+}
+
+// Field and parameter names compare without case, `_` or `-`, so `Is-Test` or
+// `X_Force_Status` can't slip past the list.
+const nameKey = (s) => String(s).toLowerCase().replace(/[_-]/g, '');
+
+export function findTextViolations(text, surface, scope, where) {
+  const out = [];
+  const plain = normalizeText(text, scope);
+  for (const { re, why, pattern } of compileRules(surface, scope)) {
+    const m = plain.match(re);
+    if (m) out.push(`${where}: "${m[0]}" matches ${pattern} (${why})`);
+  }
+  const tokens = new Set(surface?.forbiddenTokens || []);
+  if (tokens.size) {
+    for (const token of plain.toLowerCase().match(/[a-z0-9]+/g) || []) {
+      if (tokens.has(token)) { out.push(`${where}: names a real partner or partner ID (a forbidden token)`); break; }
+    }
+  }
+  return out;
+}
+
+export function findSurfaceViolations(spec, surface, label = 'spec') {
+  if (!surface) return [`${label}: no partnerSurface in the config`];
+  const allowed = new Set(surface.operations || []);
+  const badProps = new Set((surface.forbiddenProperties || []).map(nameKey));
+  const badParams = new Set((surface.forbiddenParameters || []).map(nameKey));
+  const out = [];
+  if (spec.webhooks || spec['x-webhooks']) out.push(`${label}: top-level webhooks are not on the partner surface`);
+  for (const [p, ops] of Object.entries(spec.paths || {})) {
+    if (ops && typeof ops.$ref === 'string') out.push(`${label}: path ${p} is a $ref, which the guard can't check`);
+    for (const m of Object.keys(ops || {})) {
+      if (!HTTP_METHODS.includes(m.toLowerCase())) continue;
+      if (!allowed.has(opKey(m, p))) out.push(`${label}: ${opKey(m, p)} is not on the partner surface`);
+    }
+  }
+  const esc = (k) => String(k).replace(/~/g, '~0').replace(/\//g, '~1');
+  const walk = (node, ptr) => {
+    if (Array.isArray(node)) return node.forEach((v, i) => walk(v, `${ptr}/${i}`));
+    if (node && typeof node === 'object') {
+      if (node.properties && typeof node.properties === 'object' && !Array.isArray(node.properties)) {
+        for (const name of Object.keys(node.properties)) if (badProps.has(nameKey(name))) out.push(`${label}: ${ptr}/properties/${esc(name)} is a non-partner field`);
+      }
+      if (typeof node.in === 'string' && typeof node.name === 'string' && badParams.has(nameKey(node.name))) out.push(`${label}: ${ptr} is a non-partner parameter (${node.name})`);
+      for (const [k, v] of Object.entries(node)) {
+        if (k === 'callbacks') out.push(`${label}: ${ptr}/callbacks are not on the partner surface`);
+        // A non-partner field name as a key anywhere, such as in an example object.
+        if (k !== 'properties' && badProps.has(nameKey(k))) out.push(`${label}: ${ptr}/${esc(k)} is a non-partner field name`);
+        if (k === '$ref') continue;
+        // Keys are content too: example objects, header names, schema names.
+        out.push(...findTextViolations(k, surface, 'specs', `${label}: ${ptr}/${esc(k)} (key)`));
+        walk(v, `${ptr}/${esc(k)}`);
+      }
+      return;
+    }
+    if (typeof node === 'string') out.push(...findTextViolations(node, surface, 'specs', `${label}: ${ptr || '/'}`));
+  };
+  walk(spec, '');
+  return out;
+}
+
+// Every endpoint in the sidebar must be a partner operation that a configured
+// spec publishes, and every published operation must have a sidebar entry, so
+// the navigation and the specs cannot drift apart. A group's `openapi` and a
+// page's spec prefix must each name a configured spec.
+export function findNavViolations(docs, surface, specs, specsDir = 'api-reference/specs') {
+  const allowed = new Set(surface?.operations || []);
+  const published = new Map();
+  for (const [file, spec] of Object.entries(specs)) {
+    for (const [p, ops] of Object.entries(spec.paths || {})) {
+      for (const m of Object.keys(ops || {})) if (HTTP_METHODS.includes(m.toLowerCase())) published.set(opKey(m, p), file);
+    }
+  }
+  const out = [];
+  const seen = new Set();
+  const specRef = (value, where) => {
+    const v = String(value).replace(/^\.?\//, '');
+    const file = v.startsWith(`${specsDir}/`) ? v.slice(specsDir.length + 1) : undefined;
+    if (!file || !(file in specs)) out.push(`docs.json: ${where} points at ${value}, which no configured spec writes`);
+  };
+  const walk = (node) => {
+    if (Array.isArray(node)) return node.forEach(walk);
+    if (!node || typeof node !== 'object') {
+      if (typeof node === 'string') {
+        const m = node.trim().match(/^(?:(\S+)\s+)?(GET|POST|PUT|PATCH|DELETE|OPTIONS|HEAD|TRACE)\s+(\/\S*)$/i);
+        if (m) {
+          if (m[1]) specRef(m[1], `page "${node}"`);
+          const key = opKey(m[2], m[3]);
+          seen.add(key);
+          if (!allowed.has(key)) out.push(`docs.json: ${key} is not on the partner surface`);
+          else if (!published.has(key)) out.push(`docs.json: ${key} is in the sidebar but no spec publishes it`);
+        }
+      }
+      return;
+    }
+    if ('openapi' in node) {
+      const refs = Array.isArray(node.openapi) ? node.openapi : [node.openapi];
+      for (const r of refs) specRef(typeof r === 'object' && r ? r.source : r, `group "${node.group}"`);
+    }
+    Object.values(node).forEach(walk);
+  };
+  walk(docs.navigation);
+  // An `openapi` key anywhere else in docs.json must also name a configured spec.
+  for (const [k, v] of Object.entries(docs)) if (k !== 'navigation' && k !== '$schema') {
+    const scan = (n) => { if (Array.isArray(n)) return n.forEach(scan); if (n && typeof n === 'object') { if ('openapi' in n) walk({ openapi: n.openapi, group: k }); Object.values(n).forEach(scan); } };
+    if (k === 'openapi') walk({ openapi: v, group: '(top level)' }); else scan(v);
+  }
+  for (const key of published.keys()) if (!seen.has(key)) out.push(`docs.json: ${key} is published but has no sidebar entry`);
+  return out;
+}
+
 // ---- I/O (not unit-tested; exercised by a real run) ----
 
 function fetchFile(repoCfg, repoKey, filePath, destDir, opts, ref) {
@@ -305,12 +590,20 @@ function bundle(entryPath) {
 
 function main() {
   const opts = { local: process.argv.includes('--local'), ref: 'main' };
-  const cfg = JSON.parse(fs.readFileSync(new URL('./openapi-sources.json', import.meta.url), 'utf8'));
+  // SYNC_OPENAPI_CONFIG points a test run at its own config.
+  const cfgPath = process.env.SYNC_OPENAPI_CONFIG || fileURLToPath(new URL('./openapi-sources.json', import.meta.url));
+  const cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
   const outDir = path.resolve(cfg.specsDir);
   fs.mkdirSync(outDir, { recursive: true });
   let failures = 0;
+  const surface = { ...cfg.partnerSurface, forbiddenTokens: loadForbiddenTokens(path.resolve('.')) };
+  if (!surface.forbiddenTokens.length) {
+    if (process.env.CI) { console.error('✗ no forbidden partner tokens loaded: set the PARTNER_SURFACE_FORBIDDEN_TOKENS secret'); process.exit(1); }
+    console.warn('  ! no forbidden partner tokens loaded: set PARTNER_SURFACE_FORBIDDEN_TOKENS or write .partner-tokens');
+  }
 
   for (const s of cfg.specs) {
+    const failuresBefore = failures;
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'oas-'));
     const repoCfg = cfg.repos[s.source.repo];
     const entry = fetchFile(repoCfg, s.source.repo, s.source.entry, tmp, opts, s.source.ref);
@@ -326,6 +619,12 @@ function main() {
     // Before pruning, so a schema that only the removed property referenced goes
     // with it.
     const unremoved = removeProperties(spec, s.removeProperties);
+    const unremovedParams = removeParameters(spec, s.removeParameters);
+    const undroppedBranches = dropOneOfBranches(spec, s.dropOneOfBranches);
+    const unstripped = stripExtensions(spec, s.stripExtensions);
+    // After the removals and before pruning, so a patch can drop the last
+    // reference to a component and the prune step takes the component with it.
+    const patchFailures = applyPatches(spec, s.patches);
     spec = pruneUnusedComponents(spec);
     // After pruning, so overrides are only required for schemas that ship.
     const missing = findMissingSchemaDescriptions(spec, s.schemaDescriptions);
@@ -334,14 +633,23 @@ function main() {
     spec = replaced.spec;
     const optionalUnused = replaced.unused.filter((f) => !replaced.missingRequired.includes(f));
     if (optionalUnused.length) console.warn(`  ! ${s.output}: replacements matched nothing (source may be fixed): ${optionalUnused.join(', ')}`);
+    if (unremovedParams.length) { console.error(`✗ ${s.output}: removeParameters matched no operation: ${unremovedParams.join(', ')}`); failures++; }
+    if (unstripped.length) { console.error(`✗ ${s.output}: stripExtensions matched no key: ${unstripped.join(', ')}`); failures++; }
+    if (undroppedBranches.length) { console.error(`✗ ${s.output}: dropOneOfBranches matched no branch: ${undroppedBranches.join(', ')}`); failures++; }
+    if (patchFailures.length) { console.error(`✗ ${s.output}: patches failed: ${patchFailures.join('; ')}`); failures++; }
     if (unremoved.length) console.warn(`  ! ${s.output}: removeProperties matched nothing (field already gone upstream): ${unremoved.join(', ')}`);
     spec.info = { ...(spec.info || {}), title: s.title, ...(s.description ? { description: s.description } : {}) };
 
     const broken = findBrokenRefs(spec);
     if (broken.length) { console.error(`✗ ${s.output}: broken refs: ${broken.join(', ')}`); failures++; }
+    const surfaceViolations = findSurfaceViolations(spec, surface, s.output);
+    if (surfaceViolations.length) { console.error(`✗ ${s.output}: outside the partner surface:\n    ${surfaceViolations.join('\n    ')}`); failures++; }
     if (missing.length) { console.error(`✗ ${s.output}: schemaDescriptions no longer match: ${missing.join(', ')}`); failures++; }
     if (replaced.missingRequired.length) { console.error(`✗ ${s.output}: required replacements matched nothing: ${replaced.missingRequired.join(', ')}`); failures++; }
 
+    // A spec that failed any check keeps its committed content: writing it would
+    // stage a half-curated reference for whoever commits regardless of the exit.
+    if (failures > failuresBefore) { console.error(`✗ ${s.output}: not written`); continue; }
     const opCount = Object.values(spec.paths || {}).reduce((n, ops) => n + Object.keys(ops).filter((m) => HTTP_METHODS.includes(m)).length, 0);
     fs.writeFileSync(path.join(outDir, s.output), JSON.stringify(spec, null, 2) + '\n');
     console.log(`✓ ${s.output}: ${opCount} operations`);

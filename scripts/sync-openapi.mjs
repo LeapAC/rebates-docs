@@ -433,10 +433,26 @@ export function loadForbiddenTokens(root, env = process.env) {
   return [...new Set(raw.join('\n').split(/[\s,]+/).map((s) => s.trim().toLowerCase()).filter(Boolean))];
 }
 
+// Reduce text to what a reader sees before matching: drop invisible characters,
+// and on pages also MDX escapes, character entities, tags and backticks, so
+// `MANAGE\_X`, `MANAGE&lowbar;X` or `<b>MANAGE</b>_X` can't hide a name.
+const ENTITIES = { lowbar: '_', hyphen: '-', dash: '-', amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' };
+export function normalizeText(text, scope) {
+  let s = String(text).replace(/[\u00ad\u200b-\u200f\u2060\ufeff]/g, '');
+  if (scope !== 'pages') return s;
+  s = s.replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16)))
+    .replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(Number(d)))
+    .replace(/&([a-z]+);/gi, (m, n) => ENTITIES[n.toLowerCase()] ?? m);
+  return s.replace(/<[^>]*>/g, '').replace(/\\(?=[_*`\-])/g, '').replace(/`/g, '').replace(/[\u00ad\u200b-\u200f\u2060\ufeff]/g, '');
+}
+
+// Field and parameter names compare without case, `_` or `-`, so `Is-Test` or
+// `X_Force_Status` can't slip past the list.
+const nameKey = (s) => String(s).toLowerCase().replace(/[_-]/g, '');
+
 export function findTextViolations(text, surface, scope, where) {
   const out = [];
-  // MDX escapes such as `MANAGE\_X` render without the backslash.
-  const plain = scope === 'pages' ? text.replace(/\\(?=[_*`\-])/g, '') : text;
+  const plain = normalizeText(text, scope);
   for (const { re, why, pattern } of compileRules(surface, scope)) {
     const m = plain.match(re);
     if (m) out.push(`${where}: "${m[0]}" matches ${pattern} (${why})`);
@@ -453,10 +469,10 @@ export function findTextViolations(text, surface, scope, where) {
 export function findSurfaceViolations(spec, surface, label = 'spec') {
   if (!surface) return [`${label}: no partnerSurface in the config`];
   const allowed = new Set(surface.operations || []);
-  const badProps = new Set(surface.forbiddenProperties || []);
-  const badParams = new Set((surface.forbiddenParameters || []).map((n) => n.toLowerCase()));
+  const badProps = new Set((surface.forbiddenProperties || []).map(nameKey));
+  const badParams = new Set((surface.forbiddenParameters || []).map(nameKey));
   const out = [];
-  if (spec.webhooks) out.push(`${label}: top-level webhooks are not on the partner surface`);
+  if (spec.webhooks || spec['x-webhooks']) out.push(`${label}: top-level webhooks are not on the partner surface`);
   for (const [p, ops] of Object.entries(spec.paths || {})) {
     if (ops && typeof ops.$ref === 'string') out.push(`${label}: path ${p} is a $ref, which the guard can't check`);
     for (const m of Object.keys(ops || {})) {
@@ -469,11 +485,13 @@ export function findSurfaceViolations(spec, surface, label = 'spec') {
     if (Array.isArray(node)) return node.forEach((v, i) => walk(v, `${ptr}/${i}`));
     if (node && typeof node === 'object') {
       if (node.properties && typeof node.properties === 'object' && !Array.isArray(node.properties)) {
-        for (const name of Object.keys(node.properties)) if (badProps.has(name)) out.push(`${label}: ${ptr}/properties/${esc(name)} is a non-partner field`);
+        for (const name of Object.keys(node.properties)) if (badProps.has(nameKey(name))) out.push(`${label}: ${ptr}/properties/${esc(name)} is a non-partner field`);
       }
-      if (typeof node.in === 'string' && typeof node.name === 'string' && badParams.has(node.name.toLowerCase())) out.push(`${label}: ${ptr} is a non-partner parameter (${node.name})`);
+      if (typeof node.in === 'string' && typeof node.name === 'string' && badParams.has(nameKey(node.name))) out.push(`${label}: ${ptr} is a non-partner parameter (${node.name})`);
       for (const [k, v] of Object.entries(node)) {
         if (k === 'callbacks') out.push(`${label}: ${ptr}/callbacks are not on the partner surface`);
+        // A non-partner field name as a key anywhere, such as in an example object.
+        if (k !== 'properties' && badProps.has(nameKey(k))) out.push(`${label}: ${ptr}/${esc(k)} is a non-partner field name`);
         if (k === '$ref') continue;
         // Keys are content too: example objects, header names, schema names.
         out.push(...findTextViolations(k, surface, 'specs', `${label}: ${ptr}/${esc(k)} (key)`));
@@ -528,6 +546,11 @@ export function findNavViolations(docs, surface, specs, specsDir = 'api-referenc
     Object.values(node).forEach(walk);
   };
   walk(docs.navigation);
+  // An `openapi` key anywhere else in docs.json must also name a configured spec.
+  for (const [k, v] of Object.entries(docs)) if (k !== 'navigation' && k !== '$schema') {
+    const scan = (n) => { if (Array.isArray(n)) return n.forEach(scan); if (n && typeof n === 'object') { if ('openapi' in n) walk({ openapi: n.openapi, group: k }); Object.values(n).forEach(scan); } };
+    if (k === 'openapi') walk({ openapi: v, group: '(top level)' }); else scan(v);
+  }
   for (const key of published.keys()) if (!seen.has(key)) out.push(`docs.json: ${key} is published but has no sidebar entry`);
   return out;
 }
@@ -574,7 +597,10 @@ function main() {
   fs.mkdirSync(outDir, { recursive: true });
   let failures = 0;
   const surface = { ...cfg.partnerSurface, forbiddenTokens: loadForbiddenTokens(path.resolve('.')) };
-  if (!surface.forbiddenTokens.length) console.warn('  ! no forbidden partner tokens loaded: set PARTNER_SURFACE_FORBIDDEN_TOKENS or write .partner-tokens');
+  if (!surface.forbiddenTokens.length) {
+    if (process.env.CI) { console.error('✗ no forbidden partner tokens loaded: set the PARTNER_SURFACE_FORBIDDEN_TOKENS secret'); process.exit(1); }
+    console.warn('  ! no forbidden partner tokens loaded: set PARTNER_SURFACE_FORBIDDEN_TOKENS or write .partner-tokens');
+  }
 
   for (const s of cfg.specs) {
     const failuresBefore = failures;

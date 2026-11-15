@@ -26,7 +26,7 @@ curl -X POST "https://api.leap.energy/beta/incentives/lookups" \
   }'
 ```
 
-Leap creates the customer's applications in the background, one for each eligible program Leap files. The `reference_id` you send is how you address this customer on every later call, as `refId`. A lookup without the flag only prices the devices and creates nothing.
+Leap creates the customer's applications as part of the lookup, one for each eligible program Leap files. The `reference_id` you send is how you address this customer on every later call, as `refId`. A lookup without the flag only prices the devices and creates nothing. Confirm the applications exist with [Get customer summary](/api-reference/applications/get-customer-summary) before you rely on them.
 
 ## Share the Connect link
 

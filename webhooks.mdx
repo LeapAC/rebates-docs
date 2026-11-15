@@ -42,11 +42,11 @@ Every delivery is a JSON body with a unique `webhook_event_id` and the event in 
 }
 ```
 
-Answer with a `2xx` status to confirm receipt. Leap treats any other status as a failed delivery and retries it, first after a minute and then every two minutes. A retry repeats the `webhook_event_id`, so process each `webhook_event_id` once.
+Answer with a `2xx` status to confirm receipt. Leap treats any other status as a failed delivery and retries it every two minutes. A retry repeats the `webhook_event_id`, so process each `webhook_event_id` once.
 
 ## Verify a delivery
 
-Each delivery carries an `X-Leap-Signature` header, so you can confirm Leap sent it. The header holds a timestamp and a signature:
+Each delivery to a webhook with a signing secret carries an `X-Leap-Signature` header, so you can confirm Leap sent it. A webhook created before Leap added signing delivers unsigned until you rotate its secret with `?rotate_secret=true`. The header holds a timestamp and a signature:
 
 ```http
 X-Leap-Signature: t=1763078400,v1=5257a869e7ecebeda32affa62cdca3fa51cad7e77a0e56ff536d0ce8e108d8bd
@@ -58,7 +58,7 @@ To check it, follow these steps:
 2. Compute the HMAC-SHA256 of that string, keyed with your `signing_secret`, as lowercase hex.
 3. Compare the result with the `v1` value, using a constant-time comparison.
 
-Reject a delivery whose signature doesn't match. You can also reject one whose `t` is far from your clock, to refuse a replayed request.
+Reject a delivery whose signature doesn't match. To refuse a replayed request, also reject one whose `t` is more than five minutes from your clock.
 
 ## Connect session updated
 

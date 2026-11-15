@@ -90,6 +90,41 @@ test('forbidden tokens load from the environment and the gitignored file, never 
   assert.match(fs.readFileSync(path.join(root, '.gitignore'), 'utf8'), /^\.partner-tokens$/m);
 });
 
+test('entities, tags, backticks and invisible characters do not hide a name on a page', () => {
+  for (const s of ['MANAGE&lowbar;WIDGETS', 'MANAGE&#95;WIDGETS', '`MANAGE_`WIDGETS', '<span>MANAGE</span>_WIDGETS', 'MANAGE_\u200bWIDGETS', 'MANAGE\u00ad_WIDGETS']) {
+    assert.equal(findTextViolations(s, surface(), 'pages', 'p').length, 1, s);
+  }
+});
+
+test('separator and case variants of a field or parameter name fail, in examples too', () => {
+  const spec = partnerSpec();
+  const get = spec.paths['/beta/incentives/applications/{id}'].get;
+  get.parameters.push({ name: 'X_Force_Status', in: 'header', schema: { type: 'boolean' } });
+  get.responses[200].content['application/json'].example = { 'Is-Test': true };
+  const out = findSurfaceViolations(spec, surface(), 't').join('\n');
+  assert.match(out, /non-partner parameter \(X_Force_Status\)/);
+  assert.match(out, /Is-Test is a non-partner field name/);
+});
+
+test('without partner tokens the check fails in CI and warns elsewhere', () => {
+  const env = { ...process.env, PARTNER_SURFACE_FORBIDDEN_TOKENS: '' };
+  // realpath: on macOS the temp dir is a symlink, and the script's main guard compares real paths.
+  const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'site-')));
+  try {
+    for (const f of ['docs.json', 'scripts', 'api-reference', 'package.json']) fs.cpSync(path.join(root, f), path.join(dir, f), { recursive: true });
+    const script = path.join(dir, 'scripts', 'check-partner-surface.mjs');
+    const ci = spawnSync(process.execPath, [script], { encoding: 'utf8', env: { ...env, CI: 'true' } });
+    assert.equal(ci.status, 1, ci.stdout);
+    assert.match(ci.stderr, /no forbidden partner tokens loaded/);
+    const { CI, ...local } = env;
+    const dev = spawnSync(process.execPath, [script], { encoding: 'utf8', env: local });
+    assert.equal(dev.status, 0, dev.stderr);
+    assert.match(dev.stderr, /Partner names go unchecked/);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('an MDX escape does not hide a forbidden name on a page', () => {
   assert.equal(findTextViolations('Needs MANAGE\\_WIDGETS', surface(), 'pages', 'p').length, 1);
 });

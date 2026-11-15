@@ -63,7 +63,11 @@ function main() {
   const cfgPath = process.env.SYNC_OPENAPI_CONFIG || path.join(root, 'scripts', 'openapi-sources.json');
   const cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
   const tokens = loadForbiddenTokens(root);
-  if (!tokens.length) console.warn('! no forbidden partner tokens loaded: set PARTNER_SURFACE_FORBIDDEN_TOKENS or write .partner-tokens. Partner names go unchecked.');
+  if (!tokens.length) {
+    // CI must never pass without the partner list: fail closed there.
+    if (process.env.CI) { console.error('✗ no forbidden partner tokens loaded: set the PARTNER_SURFACE_FORBIDDEN_TOKENS Actions secret'); process.exit(1); }
+    console.warn('! no forbidden partner tokens loaded: set PARTNER_SURFACE_FORBIDDEN_TOKENS or write .partner-tokens. Partner names go unchecked.');
+  }
   const violations = checkSite(root, cfg, tokens);
   if (violations.length) {
     console.error(`✗ ${violations.length} partner surface violation(s):\n  ${violations.join('\n  ')}`);

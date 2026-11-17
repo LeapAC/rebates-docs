@@ -15,7 +15,9 @@ x-api-key: leap_live_your_api_key_here
 
 ## Where applications come from
 
-Send `create_application: true` on [Look up incentives](/api-reference/incentives-lookups/look-up-incentives) and Leap creates one application per eligible program in the background, usually within a few seconds and before the customer opens the Connect URL. Without the flag, Leap creates no applications.
+Send `create_application: true` on [Look up incentives](/api-reference/incentives-lookups/look-up-incentives) and Leap creates one application per eligible program in the background. It usually finishes within a few seconds, before the customer opens the Connect URL. Without the flag, Leap creates no applications.
+
+Claiming incentives needs the Business plan. Without it, Leap creates no claim applications and leaves out the programs that need a claim. When a left-out program would have paid, the response carries `plan_restrictions`. Partner offers and virtual power plant (VPP) programs still enroll. See [Plans and application creation](/api-reference/incentives-lookups/overview#plans-and-application-creation).
 
 ## Endpoints
 

@@ -97,6 +97,50 @@ Always send the references. Two entries for one model with no reference work onl
 
 Leap checks each entry against a program’s requirements on its own. A program that pays per kWh adds up the capacity of the units that qualify. A capacity minimum applies to each unit, not to the system total. A small expansion unit can fail a minimum that the main unit meets.
 
+## Plans and application creation
+
+Lookups are free on every plan. Claiming incentives needs the Business plan. Every plan receives Connect links.
+
+| | Free | Business | Enterprise |
+|---|---|---|---|
+| Lookups, programs, and VPP offers | Unlimited | Unlimited | Custom terms; contact Leap |
+| Location precision | ZIP level | Street level | Custom terms; contact Leap |
+| Applications | Claims not available | Included | Custom terms; contact Leap |
+| `connect_url` in responses | Included when the request sets `create_application` and an eligible incentive is found | Included when the request sets `create_application` and an eligible incentive is found | Custom terms; contact Leap |
+
+On the Free plan, and on any request that sends only a ZIP code, the `geocoding` coordinates are the ZIP code’s centroid, not the street. Eligibility resolves at ZIP level. Send a full street address on a Business account to get street-level results.
+
+Any plan can send `create_application: true` on a lookup, refresh, override, or report row. Without the Business plan, Leap answers with a normal success and creates no claim application. It leaves the programs that need a claim out of `program_details` and `incentive_summary`.
+
+Leap still evaluates and enrolls partner offers, virtual power plant (VPP) programs, and other programs that need no claim. They carry the same amounts as on the Business plan. The `connect_url` takes the customer to Connect for those programs.
+
+Two fields appear when at least one left-out program would have paid this customer. `plan_restrictions` names what your plan withheld, and its one value today is `applications`. `upgrade_url` links to the portal page where you upgrade to claim incentives. Each environment links to its own portal.
+
+Both fields appear together. Neither appears when nothing withheld would have paid. On a report row, read them from `calc_result.plan_restrictions` and `calc_result.upgrade_url`. This trimmed lookup response shows both fields:
+
+```json
+{
+  "reference_id": "customer-123",
+  "connect_url": "https://connect.incentives.leap.energy/your-company/refId/customer-123",
+  "incentive_summary": {
+    "upfront_amount": 0,
+    "install_amount": 100,
+    "ongoing_amount": 0
+  },
+  "program_details": [
+    {
+      "name": "Your company charger offer",
+      "device_category": "EV_CHARGER",
+      "tiers": [{ "tier_name": "Standard", "incentive_amount": 100 }]
+    }
+  ],
+  "plan_restrictions": ["applications"],
+  "upgrade_url": "https://partner.incentives.leap.energy/settings/billing"
+}
+```
+
+Business includes 250 approved applications per billing cycle, then 5% of the requested incentive value.
+
 ## When a call is refused
 
 Override is a pre-submission correction, so Leap refuses it rather than destroy something you didn't name. A `409` means nothing changed on either side: the address already belongs to another of your customers, an application has already been filed with a program administrator, the customer is shared across organizations, or the `reference_id` belongs to another partner. Read `error_code`, fix the cause, and retry.

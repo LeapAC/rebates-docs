@@ -52,8 +52,7 @@
           "api-reference/incentives-lookups/eligibility-codes",
           "POST /beta/incentives/lookups",
           "POST /beta/incentives/refreshes",
-          "POST /beta/incentives/overrides",
-          "POST /beta/incentives/billing/accept-terms"
+          "POST /beta/incentives/overrides"
         ]
       },
       {

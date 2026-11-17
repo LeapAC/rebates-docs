@@ -101,16 +101,16 @@ Leap checks each entry against a program’s requirements on its own. A program 
 
 Lookups are free on every plan. Creating applications and handing out Connect links needs the Business plan.
 
-| | Free | Business |
-|---|---|---|
-| Lookups, programs, and VPP offers | Unlimited | Unlimited |
-| Location precision | ZIP level | Street level |
-| Applications | Not available | Included |
-| `connect_url` in responses | Omitted | Included |
+| | Free | Business | Enterprise |
+|---|---|---|---|
+| Lookups, programs, and VPP offers | Unlimited | Unlimited | Custom terms; contact Leap |
+| Location precision | ZIP level | Street level | Custom terms; contact Leap |
+| Applications | Not available | Included | Custom terms; contact Leap |
+| `connect_url` in responses | Omitted | Included when an application is created | Custom terms; contact Leap |
 
-On the Free plan, and on any request that sends only a ZIP code, the `geocoding` coordinates are the ZIP code's centroid, not the street. Eligibility resolves at ZIP level. Send a full street address on a Business account to get street-level results.
+On the Free plan, and on any request that sends only a ZIP code, the `geocoding` coordinates are the ZIP code’s centroid, not the street. Eligibility resolves at ZIP level. Send a full street address on a Business account to get street-level results.
 
-A lookup, refresh, or override that sets `create_application` to `true` from an account that is not on the Business plan returns `402` with the error code `PLAN_REQUIRED`. Leap writes nothing: no customer, device, or application changes. Retry with `create_application` set to `false` to get eligibility without applications, or send the partner to `upgrade_url` to change plans.
+A lookup, refresh, or override that sets `create_application` to `true` from an account without an active Business subscription returns `402` with the error code `PLAN_REQUIRED`. Leap writes nothing: no customer, device, or application changes. Retry with `create_application` set to `false` to get eligibility without applications, or send the partner to `upgrade_url` to change plans.
 
 ```json
 {
@@ -127,9 +127,7 @@ A lookup, refresh, or override that sets `create_application` to `true` from an 
 }
 ```
 
-Portfolio report rows that request applications get the same `402` at submission.
-
-Business includes 250 applications a month. Applications beyond that cost 5% of the incentive value. Before you add a card, [Accept billing terms](/api-reference/incentives-lookups/accept-billing-terms) records that your account accepted a version of the terms. Accepting terms does not unlock application creation.
+Business includes 250 approved applications per billing cycle, then 5% of the requested incentive value.
 
 ## When a call is refused
 

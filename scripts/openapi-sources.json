@@ -19,17 +19,17 @@
       "source": { "repo": "LeapAC/global-connect-service", "ref": "origin/main", "entry": "src/main/resources/openapi/incentives.yaml", "deps": ["src/main/resources/openapi/common-schemas.yaml", "src/main/resources/openapi/calc-engine.yaml"] },
       "removeProperties": ["CustomerDeviceRef.device_source_id"],
       "replacements": [
-        { "from": " A Pay as you go subscription does not qualify.", "to": "" },
+        { "from": " A Pay as you go subscription does not qualify.", "to": "", "required": true },
         { "from": " (REA-1643)", "to": "" },
         { "from": "`uc_customer_partner_address` makes one address reachable by\n    exactly one customer, so applying the override would have to merge\n    or clobber the other record.", "to": "Leap holds one customer per address per partner, so applying the override would have to merge or clobber the other record.", "required": true }
       ],
       "include": [
         { "method": "post", "path": "/beta/incentives/lookups", "title": "Look up incentives", "description": "Check which rebate programs a customer qualifies for. Send the customer's address, classification, and devices; Leap returns the total incentive amount, a per-program breakdown, and a Connect URL the customer can use to apply." },
         { "method": "post", "path": "/beta/incentives/refreshes", "title": "Refresh incentives", "description": "Re-run eligibility for a customer you've already looked up, using their stored address and devices — no need to resend them. Use this to pick up newly launched programs or updated incentive amounts." },
-        { "method": "post", "path": "/beta/incentives/overrides", "title": "Override incentives", "description": "Replace an existing customer's device list, then re-run eligibility. Use this when a customer's equipment has changed. The previous device set is discarded." },
-        { "method": "post", "path": "/beta/incentives/billing/accept-terms", "title": "Accept billing terms", "description": "Record that your account accepted a version of the billing terms of service, without adding a payment method. Accepting terms does not unlock application creation. That needs the Business plan." }
+        { "method": "post", "path": "/beta/incentives/overrides", "title": "Override incentives", "description": "Replace an existing customer's device list, then re-run eligibility. Use this when a customer's equipment has changed. The previous device set is discarded." }
       ],
       "schemaDescriptions": {
+        "LockedUtilityPrograms": "Utility programs withheld by a plan restriction. No current plan restricts utility programs, so this field is absent.",
         "EligibilityRequest.create_application": "Create the Connect application records for this lookup's eligible programs, so the returned `connect_url` is a link the customer can open. Provisioning runs in the background and is normally in place within seconds. Defaults to `false`: lookup-only integrations are unaffected and no applications are created for them. Setting it to `true` needs the Business plan. On any other plan the request returns 402 `PLAN_REQUIRED` and writes nothing.",
         "EligibilityRequest.include_preview": "Include your own unpublished partner offer in the results so you can test it before publishing. Only your own offer is ever included. Utility, state, and market programs are unaffected. Defaults to `false`.",
         "EligibilityResult.connect_url": "Deep link to hand the customer so they can apply: `https://connect.incentives.leap.energy/{company}/refId/{reference_id}`, where `{company}` is your registration nickname. **Omitted entirely when the lookup surfaces no eligible incentive** — there is nothing to apply for, so check that the field is present before showing a link. Also omitted on every plan except Business.",

@@ -200,74 +200,6 @@
           }
         }
       }
-    },
-    "/beta/incentives/billing/accept-terms": {
-      "post": {
-        "tags": [
-          "incentives-lookups"
-        ],
-        "summary": "Accept billing terms",
-        "description": "Record that your account accepted a version of the billing terms of service, without adding a payment method. Accepting terms does not unlock application creation. That needs the Business plan.",
-        "operationId": "acceptBillingTerms",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AcceptTermsRequest"
-              },
-              "example": {
-                "terms_version": "2026-11-30"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "The acceptance was recorded.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AcceptTermsResponse"
-                },
-                "example": {
-                  "terms_version": "2026-11-30",
-                  "terms_accepted_at": "2026-11-30T15:04:05.123Z"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "`terms_version` is blank, or a current terms version is configured and `terms_version` differs from it.\n",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "500": {
-            "$ref": "#/components/responses/InternalServerError"
-          },
-          "502": {
-            "description": "Stripe did not answer while the billing account was being created.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      }
     }
   },
   "components": {
@@ -431,35 +363,6 @@
                 }
               }
             }
-          }
-        }
-      },
-      "AcceptTermsRequest": {
-        "type": "object",
-        "required": [
-          "terms_version"
-        ],
-        "properties": {
-          "terms_version": {
-            "type": "string",
-            "minLength": 1,
-            "description": "The terms version the partner accepted. Must equal the current version when one is configured."
-          }
-        }
-      },
-      "AcceptTermsResponse": {
-        "type": "object",
-        "required": [
-          "terms_version",
-          "terms_accepted_at"
-        ],
-        "properties": {
-          "terms_version": {
-            "type": "string"
-          },
-          "terms_accepted_at": {
-            "type": "string",
-            "format": "date-time"
           }
         }
       },
@@ -745,7 +648,7 @@
       },
       "LockedUtilityPrograms": {
         "type": "object",
-        "description": "Utility programs this customer qualifies for that your plan does not include. Present only when your organization has no paid plan and at least one such program would pay this customer. Absent on every response for an organization on a paid plan.\n\nThe figures come from the same evaluation a paid plan would run, and they are aggregates only: program names and tiers are not returned. Report rows carry the same field, because a report row serializes the same result this endpoint returns.\n",
+        "description": "Utility programs withheld by a plan restriction. No current plan restricts utility programs, so this field is absent.",
         "required": [
           "program_count",
           "install_amount",

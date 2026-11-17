@@ -105,12 +105,12 @@ Lookups are free on every plan. Claiming incentives needs the Business plan. Eve
 |---|---|---|---|
 | Lookups, programs, and VPP offers | Unlimited | Unlimited | Custom terms; contact Leap |
 | Location precision | ZIP level | Street level | Custom terms; contact Leap |
-| Applications | Not available | Included | Custom terms; contact Leap |
-| `connect_url` in responses | Included when the request sets `create_application` | Included when the request sets `create_application` | Custom terms; contact Leap |
+| Applications | Claims not available | Included | Custom terms; contact Leap |
+| `connect_url` in responses | Included when the request sets `create_application` and an eligible incentive is found | Included when the request sets `create_application` and an eligible incentive is found | Custom terms; contact Leap |
 
 On the Free plan, and on any request that sends only a ZIP code, the `geocoding` coordinates are the ZIP code’s centroid, not the street. Eligibility resolves at ZIP level. Send a full street address on a Business account to get street-level results.
 
-Any plan can send `create_application: true` on a lookup, refresh, override, or report row. Without the Business plan, Leap answers with a normal success and creates no application. It leaves the programs that need a claim out of `program_details` and `incentive_summary`.
+Any plan can send `create_application: true` on a lookup, refresh, override, or report row. Without the Business plan, Leap answers with a normal success and creates no claim application. It leaves the programs that need a claim out of `program_details` and `incentive_summary`.
 
 Leap still evaluates and enrolls partner offers, virtual power plant (VPP) programs, and other programs that need no claim. They carry the same amounts as on the Business plan. The `connect_url` takes the customer to Connect for those programs.
 

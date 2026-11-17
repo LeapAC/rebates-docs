@@ -15,7 +15,7 @@ x-api-key: leap_live_your_api_key_here
 
 ## Where applications come from
 
-Send `create_application: true` on [Look up incentives](/api-reference/incentives-lookups/look-up-incentives) and Leap creates one application per eligible program in the background, usually within a few seconds and before the customer opens the Connect URL. Without the flag, Leap creates no applications. The flag needs an active Business subscription: without one, the call returns `402`. See [Plans and application creation](/api-reference/incentives-lookups/overview#plans-and-application-creation).
+Send `create_application: true` on [Look up incentives](/api-reference/incentives-lookups/look-up-incentives) and Leap creates one application per eligible program in the background, usually within a few seconds and before the customer opens the Connect URL. Without the flag, Leap creates no applications. Claiming incentives needs the Business plan. Without it, Leap creates no applications, leaves out the programs that need a claim, and adds `plan_restrictions` to the response. See [Plans and application creation](/api-reference/incentives-lookups/overview#plans-and-application-creation).
 
 ## Endpoints
 

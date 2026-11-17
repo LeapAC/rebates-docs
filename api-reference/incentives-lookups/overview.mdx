@@ -99,31 +99,43 @@ Leap checks each entry against a program’s requirements on its own. A program 
 
 ## Plans and application creation
 
-Lookups are free on every plan. Creating applications and handing out Connect links needs the Business plan.
+Lookups are free on every plan. Claiming incentives needs the Business plan. Every plan receives Connect links.
 
 | | Free | Business | Enterprise |
 |---|---|---|---|
 | Lookups, programs, and VPP offers | Unlimited | Unlimited | Custom terms; contact Leap |
 | Location precision | ZIP level | Street level | Custom terms; contact Leap |
 | Applications | Not available | Included | Custom terms; contact Leap |
-| `connect_url` in responses | Omitted | Included when an application is created | Custom terms; contact Leap |
+| `connect_url` in responses | Included when the request sets `create_application` | Included when the request sets `create_application` | Custom terms; contact Leap |
 
 On the Free plan, and on any request that sends only a ZIP code, the `geocoding` coordinates are the ZIP code’s centroid, not the street. Eligibility resolves at ZIP level. Send a full street address on a Business account to get street-level results.
 
-A lookup, refresh, or override that sets `create_application` to `true` from an account without an active Business subscription returns `402` with the error code `PLAN_REQUIRED`. Leap writes nothing: no customer, device, or application changes. Retry with `create_application` set to `false` to get eligibility without applications, or send the partner to `upgrade_url` to change plans.
+Any plan can send `create_application: true` on a lookup, refresh, override, or report row. Without the Business plan, Leap answers with a normal success and creates no application. It leaves the programs that need a claim out of `program_details` and `incentive_summary`.
+
+Leap still evaluates and enrolls partner offers, virtual power plant (VPP) programs, and other programs that need no claim. The `connect_url` takes the customer to Connect for those programs.
+
+Two fields tell you this happened. `plan_restrictions` names what your plan withheld, and its one value today is `applications`. `upgrade_url` links to the portal page where you upgrade to claim incentives. Both fields appear together, and neither appears when nothing was withheld.
+
+On a report row, read both fields from `calc_result`. This trimmed lookup response shows them:
 
 ```json
 {
-  "error": {
-    "message": "Creating applications requires a Business plan.",
-    "details": [
-      {
-        "error_code": "PLAN_REQUIRED",
-        "reason": "create_application is true and the partner is not on the Business plan with an active, trialing or past_due subscription",
-        "upgrade_url": "https://partner.incentives.leap.energy/settings/billing"
-      }
-    ]
-  }
+  "reference_id": "customer-123",
+  "connect_url": "https://connect.incentives.leap.energy/your-company/refId/customer-123",
+  "incentive_summary": {
+    "upfront_amount": 0,
+    "install_amount": 100,
+    "ongoing_amount": 0
+  },
+  "program_details": [
+    {
+      "name": "Your company charger offer",
+      "device_category": "EV_CHARGER",
+      "tiers": [{ "tier_name": "Standard", "incentive_amount": 100 }]
+    }
+  ],
+  "plan_restrictions": ["applications"],
+  "upgrade_url": "https://partner.incentives.leap.energy/settings/billing"
 }
 ```
 

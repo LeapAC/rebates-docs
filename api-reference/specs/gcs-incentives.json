@@ -59,9 +59,6 @@
           "401": {
             "$ref": "#/components/responses/Unauthorized"
           },
-          "402": {
-            "$ref": "#/components/responses/PaymentRequired"
-          },
           "403": {
             "$ref": "#/components/responses/Forbidden"
           },
@@ -118,9 +115,6 @@
           "401": {
             "$ref": "#/components/responses/Unauthorized"
           },
-          "402": {
-            "$ref": "#/components/responses/PaymentRequired"
-          },
           "403": {
             "$ref": "#/components/responses/Forbidden"
           },
@@ -174,9 +168,6 @@
           "401": {
             "$ref": "#/components/responses/Unauthorized"
           },
-          "402": {
-            "$ref": "#/components/responses/PaymentRequired"
-          },
           "403": {
             "$ref": "#/components/responses/Forbidden"
           },
@@ -220,28 +211,6 @@
           "application/json": {
             "schema": {
               "$ref": "#/components/schemas/ErrorResponse"
-            }
-          }
-        }
-      },
-      "PaymentRequired": {
-        "description": "`PLAN_REQUIRED`: the request set `create_application: true` and the partner is not on the Business plan. Lookups are free on every plan; creating applications needs the Business plan with a subscription that is `active`, `trialing` or `past_due`. Nothing was written: no customer, device or application row changed. `details[0].upgrade_url` links to the portal billing page. Retry with `create_application: false` to get eligibility without applications.\n",
-        "content": {
-          "application/json": {
-            "schema": {
-              "$ref": "#/components/schemas/ErrorResponse"
-            },
-            "example": {
-              "error": {
-                "message": "Creating applications requires a Business plan.",
-                "details": [
-                  {
-                    "error_code": "PLAN_REQUIRED",
-                    "reason": "create_application is true and the partner is not on the Business plan with an active, trialing or past_due subscription",
-                    "upgrade_url": "https://partner.incentives.leap.energy/settings/billing"
-                  }
-                ]
-              }
             }
           }
         }
@@ -348,16 +317,11 @@
                   "properties": {
                     "error_code": {
                       "type": "string",
-                      "description": "Stable wire code from `IncentivesErrorCode` (e.g., `INVALID_DEVICE_ID`, `GEOCODING_NO_RESULTS`, `NO_UTILITY_AT_ADDRESS`, `ADDRESS_OWNED_BY_ANOTHER_CUSTOMER`, `INCLUDE_PREVIEW_NOT_SUPPORTED`, `CONNECT_APPLICATIONS_IN_FLIGHT`, `CONNECT_CUSTOMER_SHARED`, `CONNECT_REFERENCE_ID_TAKEN`, `CONNECT_RESET_REFUSED`, `CONNECT_RESET_UNAVAILABLE`, `CONNECT_RESET_FAILED`, `CONNECT_MERGE_FAILED`, `CONNECT_MERGE_REJECTED`, `CONNECT_RESET_REJECTED`, `CONNECT_RESET_REFUSED_AFTER_REBUILD`, `CONNECT_REFERENCE_ID_TAKEN_AFTER_REBUILD`, `CONNECT_RESET_WOULD_STRAND_CUSTOMER`, `PLAN_REQUIRED`)."
+                      "description": "Stable wire code from `IncentivesErrorCode` (e.g., `INVALID_DEVICE_ID`, `GEOCODING_NO_RESULTS`, `NO_UTILITY_AT_ADDRESS`, `ADDRESS_OWNED_BY_ANOTHER_CUSTOMER`, `INCLUDE_PREVIEW_NOT_SUPPORTED`, `CONNECT_APPLICATIONS_IN_FLIGHT`, `CONNECT_CUSTOMER_SHARED`, `CONNECT_REFERENCE_ID_TAKEN`, `CONNECT_RESET_REFUSED`, `CONNECT_RESET_UNAVAILABLE`, `CONNECT_RESET_FAILED`, `CONNECT_MERGE_FAILED`, `CONNECT_MERGE_REJECTED`, `CONNECT_RESET_REJECTED`, `CONNECT_RESET_REFUSED_AFTER_REBUILD`, `CONNECT_REFERENCE_ID_TAKEN_AFTER_REBUILD`, `CONNECT_RESET_WOULD_STRAND_CUSTOMER`)."
                     },
                     "reason": {
                       "type": "string",
                       "description": "Human-readable explanation. Safe to surface to partners; no internal identifiers."
-                    },
-                    "upgrade_url": {
-                      "type": "string",
-                      "format": "uri",
-                      "description": "Present on `PLAN_REQUIRED` only. The portal page where the partner chooses a paid plan."
                     }
                   }
                 }
@@ -418,7 +382,7 @@
           "create_application": {
             "type": "boolean",
             "default": false,
-            "description": "Create the Connect application records for this lookup's eligible programs, so the returned `connect_url` is a link the customer can open. Provisioning runs in the background and is normally in place within seconds. Defaults to `false`: lookup-only integrations are unaffected and no applications are created for them. Setting it to `true` needs the Business plan. On any other plan the request returns 402 `PLAN_REQUIRED` and writes nothing."
+            "description": "Create the Connect application records for this lookup's eligible programs, so the returned `connect_url` is a link the customer can open. Provisioning runs in the background and is normally in place within seconds. Defaults to `false`: lookup-only integrations are unaffected and no applications are created for them. Claiming incentives needs the Business plan. A partner without it that sends `true` gets a normal response with the programs that need a claim left out, and `plan_restrictions` names what was withheld. Programs that need no claim, such as partner offers and virtual power plant programs, are evaluated and enrolled as usual. Lookups are free on every plan."
           },
           "include_preview": {
             "type": "boolean",
@@ -484,7 +448,7 @@
           "create_application": {
             "type": "boolean",
             "default": false,
-            "description": "Create the Connect application records for this refresh's eligible programs, so the returned `connect_url` is a link the customer can open. It matches the flag on **Look up incentives** and defaults to `false`. Only a refresh that changes something has anything to create: one that supplies `customer_devices`, `customer_details` or a removal. A bare re-evaluation creates nothing, flag or no flag. Like a lookup, `true` needs the Business plan and returns 402 `PLAN_REQUIRED` on any other plan."
+            "description": "Create the Connect application records for this refresh's eligible programs, so the returned `connect_url` is a link the customer can open. It matches the flag on **Look up incentives** and defaults to `false`. Only a refresh that changes something has anything to create: one that supplies `customer_devices`, `customer_details` or a removal. A bare re-evaluation creates nothing, flag or no flag. Like a lookup, a partner without the Business plan that sends `true` gets the programs that need a claim left out, with `plan_restrictions` on the response."
           }
         }
       },
@@ -609,7 +573,7 @@
           "connect_url": {
             "type": "string",
             "format": "uri",
-            "description": "Deep link to hand the customer so they can apply: `https://connect.incentives.leap.energy/{company}/refId/{reference_id}`, where `{company}` is your registration nickname. **Omitted entirely when the lookup surfaces no eligible incentive** — there is nothing to apply for, so check that the field is present before showing a link. Also omitted on every plan except Business."
+            "description": "Deep link to hand the customer so they can apply: `https://connect.incentives.leap.energy/{company}/refId/{reference_id}`, where `{company}` is your registration nickname. **Omitted entirely when the lookup surfaces no eligible incentive** — there is nothing to apply for, so check that the field is present before showing a link. The partner's plan does not remove the link: a partner without the Business plan receives `connect_url` on the same terms, so the customer can reach Connect to enroll in what remains after `plan_restrictions`."
           },
           "incentive_summary": {
             "$ref": "#/components/schemas/IncentiveSummary"
@@ -643,6 +607,18 @@
           },
           "locked_utility_programs": {
             "$ref": "#/components/schemas/LockedUtilityPrograms"
+          },
+          "plan_restrictions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "What the partner's plan withheld from this request. Absent when nothing was withheld. The one value today is `applications`.\n\n`applications`: this request asked for applications, and the partner's plan does not include claiming incentives. GCS left out the programs that need a claim, so they appear in neither `program_details` nor `incentive_summary`, and GCS created no application for them. Partner offers, virtual power plant programs and other programs that need no claim are evaluated and enrolled as usual, and `connect_url` takes the customer to Connect for them. Upgrade in the portal at `upgrade_url` to claim.\n"
+          },
+          "upgrade_url": {
+            "type": "string",
+            "format": "uri",
+            "description": "The portal page where the partner upgrades to a plan that includes claiming incentives, such as `https://partner.incentives.leap.energy/settings/billing` in production. Each environment links to its own portal. Present exactly when `plan_restrictions` is.\n"
           }
         }
       },

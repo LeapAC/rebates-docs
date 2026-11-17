@@ -448,7 +448,7 @@
           "create_application": {
             "type": "boolean",
             "default": false,
-            "description": "Create the Connect application records for this refresh's eligible programs, so the returned `connect_url` is a link the customer can open. It matches the flag on **Look up incentives** and defaults to `false`. Only a refresh that changes something has anything to create: one that supplies `customer_devices`, `customer_details` or a removal. A bare re-evaluation creates nothing, flag or no flag. Like a lookup, a partner without the Business plan that sends `true` gets the programs that need a claim left out, with `plan_restrictions` on the response."
+            "description": "Create the Connect application records for this refresh's eligible programs, so the returned `connect_url` is a link the customer can open. It matches the flag on **Look up incentives** and defaults to `false`. Only a refresh that changes something has anything to create: one that supplies `customer_devices`, `customer_details` or a removal. A bare re-evaluation creates nothing, flag or no flag. Like a lookup, a partner without the Business plan that sends `true` gets the programs that need a claim left out. `plan_restrictions` names what was withheld when one of them would have paid."
           }
         }
       },
@@ -613,7 +613,7 @@
             "items": {
               "type": "string"
             },
-            "description": "What the partner's plan withheld from this request. Absent when nothing was withheld. The one value today is `applications`.\n\n`applications`: this request asked for applications, and the partner's plan does not include claiming incentives. GCS left out the programs that need a claim, so they appear in neither `program_details` nor `incentive_summary`, and GCS created no application for them. Partner offers, virtual power plant programs and other programs that need no claim are evaluated and enrolled as usual, and `connect_url` takes the customer to Connect for them. Upgrade in the portal at `upgrade_url` to claim.\n"
+            "description": "What the partner's plan withheld from this request. The one value today is `applications`. Absent when nothing withheld would have paid this customer.\n\n`applications`: this request asked for applications, and the partner's plan does not include claiming incentives. Leap left out the programs that need a claim, so they appear in neither `program_details` nor `incentive_summary`, and Leap created no claim application for them. The field appears only when at least one of those programs would have paid this customer. Partner offers, virtual power plant programs and other programs that need no claim are evaluated and enrolled as usual, with the same amounts as on the Business plan, and `connect_url` takes the customer to Connect for them. Upgrade in the portal at `upgrade_url` to claim.\n"
           },
           "upgrade_url": {
             "type": "string",

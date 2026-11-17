@@ -112,11 +112,11 @@ On the Free plan, and on any request that sends only a ZIP code, the `geocoding`
 
 Any plan can send `create_application: true` on a lookup, refresh, override, or report row. Without the Business plan, Leap answers with a normal success and creates no application. It leaves the programs that need a claim out of `program_details` and `incentive_summary`.
 
-Leap still evaluates and enrolls partner offers, virtual power plant (VPP) programs, and other programs that need no claim. The `connect_url` takes the customer to Connect for those programs.
+Leap still evaluates and enrolls partner offers, virtual power plant (VPP) programs, and other programs that need no claim. They carry the same amounts as on the Business plan. The `connect_url` takes the customer to Connect for those programs.
 
-Two fields tell you this happened. `plan_restrictions` names what your plan withheld, and its one value today is `applications`. `upgrade_url` links to the portal page where you upgrade to claim incentives. Both fields appear together, and neither appears when nothing was withheld.
+Two fields appear when at least one left-out program would have paid this customer. `plan_restrictions` names what your plan withheld, and its one value today is `applications`. `upgrade_url` links to the portal page where you upgrade to claim incentives. Each environment links to its own portal.
 
-On a report row, read both fields from `calc_result`. This trimmed lookup response shows them:
+Both fields appear together. Neither appears when nothing withheld would have paid. On a report row, read them from `calc_result.plan_restrictions` and `calc_result.upgrade_url`. This trimmed lookup response shows both fields:
 
 ```json
 {

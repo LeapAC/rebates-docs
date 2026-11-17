@@ -59,6 +59,9 @@
           "401": {
             "$ref": "#/components/responses/Unauthorized"
           },
+          "402": {
+            "$ref": "#/components/responses/PaymentRequired"
+          },
           "403": {
             "$ref": "#/components/responses/Forbidden"
           },
@@ -115,6 +118,9 @@
           "401": {
             "$ref": "#/components/responses/Unauthorized"
           },
+          "402": {
+            "$ref": "#/components/responses/PaymentRequired"
+          },
           "403": {
             "$ref": "#/components/responses/Forbidden"
           },
@@ -168,6 +174,9 @@
           "401": {
             "$ref": "#/components/responses/Unauthorized"
           },
+          "402": {
+            "$ref": "#/components/responses/PaymentRequired"
+          },
           "403": {
             "$ref": "#/components/responses/Forbidden"
           },
@@ -188,6 +197,74 @@
           },
           "502": {
             "$ref": "#/components/responses/BadGateway"
+          }
+        }
+      }
+    },
+    "/beta/incentives/billing/accept-terms": {
+      "post": {
+        "tags": [
+          "incentives-lookups"
+        ],
+        "summary": "Accept billing terms",
+        "description": "Record that your account accepted a version of the billing terms of service, without adding a payment method. Accepting terms does not unlock application creation. That needs the Business plan.",
+        "operationId": "acceptBillingTerms",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptTermsRequest"
+              },
+              "example": {
+                "terms_version": "2026-11-30"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The acceptance was recorded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcceptTermsResponse"
+                },
+                "example": {
+                  "terms_version": "2026-11-30",
+                  "terms_accepted_at": "2026-11-30T15:04:05.123Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`terms_version` is blank, or a current terms version is configured and `terms_version` differs from it.\n",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          },
+          "502": {
+            "description": "Stripe did not answer while the billing account was being created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -215,6 +292,28 @@
           }
         }
       },
+      "PaymentRequired": {
+        "description": "`PLAN_REQUIRED`: the request set `create_application: true` and the partner is not on the Business plan. Lookups are free on every plan; creating applications needs the Business plan with a subscription that is `active`, `trialing` or `past_due`. Nothing was written: no customer, device or application row changed. `details[0].upgrade_url` links to the portal billing page. Retry with `create_application: false` to get eligibility without applications.\n",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            },
+            "example": {
+              "error": {
+                "message": "Creating applications requires a Business plan.",
+                "details": [
+                  {
+                    "error_code": "PLAN_REQUIRED",
+                    "reason": "create_application is true and the partner is not on the Business plan with an active, trialing or past_due subscription",
+                    "upgrade_url": "https://partner.incentives.leap.energy/settings/billing"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
       "Forbidden": {
         "description": "You do not have permission to perform this operation",
         "content": {
@@ -236,7 +335,7 @@
         }
       },
       "Conflict": {
-        "description": "The request cannot be applied without destroying a record the caller did not name, or one that no longer belongs to us alone. Both cases are raised by `/incentives/overrides`, and in both **nothing is modified on either side**.\n\n  * `ADDRESS_OWNED_BY_ANOTHER_CUSTOMER` — the submitted `address`\n    already belongs to a DIFFERENT customer of the same partner.\n    Leap holds one customer per address per partner, so applying the override would have to merge or clobber the other record. Resolve the duplicate partner-side (or\n    override the customer that already owns the address) and retry.\n  * `CONNECT_APPLICATIONS_IN_FLIGHT` — the customer has at least one\n    application that has already been filed with a program\n    administrator (`submitted` or `approved`). An override is a\n    pre-submission correction; a filed claim has an external record and\n    customer-uploaded documents behind it, so it is refused rather than\n    discarded. The `reason` names the blocking application ids and their\n    statuses. Resolve them first, or use a fresh `reference_id` for the\n    corrected customer. (`rejected` applications do NOT block.)\n  * `CONNECT_CUSTOMER_SHARED` — the customer is linked to more than one\n    organization on the Connect side, where device records carry no\n    organization attribution. The rebuild could therefore delete another\n    organization's devices, so it is refused. Use a fresh\n    `reference_id`, or contact Leap support to separate the record.\n  * `CONNECT_REFERENCE_ID_TAKEN` — the `reference_id` is already in use\n    by a DIFFERENT partner on the Connect side, where reference_ids are\n    unique across all partners rather than scoped to one. This customer\n    cannot be provisioned or rebuilt under it. Permanent — choose a\n    different `reference_id`.\n  * `CONNECT_RESET_REFUSED` — the Connect side refused the rebuild for a\n    reason this API does not yet have a specific code for; the upstream\n    code is named in the `reason`.\n",
+        "description": "The request cannot be applied without destroying a record the caller did not name, or one that no longer belongs to us alone. Both cases are raised by `/incentives/overrides`, and in both **nothing is modified on either side**.\n\n  * `ADDRESS_OWNED_BY_ANOTHER_CUSTOMER` — the submitted `address`\n    already belongs to a DIFFERENT customer of the same partner.\n    Leap holds one customer per address per partner, so applying the override would have to merge or clobber the other record. Resolve the duplicate partner-side (or\n    override the customer that already owns the address) and retry.\n  * `CONNECT_APPLICATIONS_IN_FLIGHT` — the customer has at least one\n    application that has already been started: any status other than\n    `not_started`, including `rejected`, `declined` and `dismissed`. An override is\n    a pre-submission correction; a filed claim has an external record\n    and customer-uploaded documents behind it, so it is refused rather\n    than discarded. The `reason` names the blocking application ids and\n    their statuses. Resolve them first, or use a fresh `reference_id`\n    for the corrected customer.\n  * `CONNECT_CUSTOMER_SHARED`, `CONNECT_REFERENCE_ID_TAKEN` and\n    `CONNECT_RESET_REFUSED` are reserved. They came from the Supabase\n    permission check, which this API no longer calls, so none is\n    returned today.\n",
         "content": {
           "application/json": {
             "schema": {
@@ -284,7 +383,7 @@
         }
       },
       "BadGateway": {
-        "description": "An upstream dependency did not answer.\n\n  * `GEOCODING_RATE_LIMITED` / `GEOCODING_SERVICE_UNAVAILABLE` — the\n    geocoder is unavailable or rate-limited.\n  * `CONNECT_RESET_UNAVAILABLE` (`/overrides` only) — the Connect side\n    could not confirm whether this customer may be rebuilt. Because an\n    override deletes Connect records, it fails **closed** rather than\n    proceeding blind. **Nothing was changed**; retry shortly.\n  * `CONNECT_RESET_FAILED` (`/overrides` only) — the customer WAS\n    rebuilt here, but we did not get confirmation that the follow-up\n    Connect reset completed, so Connect may still show their previous\n    devices and details. **Do not re-issue the override**: the reset may\n    still be running, and a second one can overlap with it and destroy\n    the customer's Connect records. Contact Leap support.\n  * `CONNECT_RESET_REJECTED` (`/overrides` only) — the customer WAS\n    rebuilt here and the Connect side rejected the reset outright. It\n    will reject it identically on every retry, and each attempt would\n    rebuild the customer again. Contact Leap support.\n  * `CONNECT_RESET_REFUSED_AFTER_REBUILD` (`/overrides` only) — the\n    permission check allowed the rebuild, it committed, and the Connect\n    side then refused the reset (state changed in between). The two\n    systems are out of step for this customer; retrying cannot fix it.\n    Contact Leap support.\n  * `CONNECT_REFERENCE_ID_TAKEN_AFTER_REBUILD` (`/overrides` only) —\n    the same, where the reason Connect refused is that another partner\n    claimed the globally-unique `reference_id` in between. Its own code\n    because it has a partner-side remedy the others do not: move this\n    customer to a different `reference_id`. Contact Leap support to\n    reconcile the record that was already rebuilt here.\n",
+        "description": "An upstream dependency did not answer.\n\n  * `GEOCODING_RATE_LIMITED` / `GEOCODING_SERVICE_UNAVAILABLE` — the\n    geocoder is unavailable or rate-limited.\n  * `CONNECT_RESET_UNAVAILABLE`, `CONNECT_RESET_FAILED`,\n    `CONNECT_MERGE_FAILED`, `CONNECT_MERGE_REJECTED`,\n    `CONNECT_RESET_REJECTED`, `CONNECT_RESET_REFUSED_AFTER_REBUILD` and\n    `CONNECT_REFERENCE_ID_TAKEN_AFTER_REBUILD` (`/overrides` only) are\n    reserved. They reported the Supabase Connect reset, which this API no\n    longer calls, so none is returned today.\n",
         "content": {
           "application/json": {
             "schema": {
@@ -317,16 +416,50 @@
                   "properties": {
                     "error_code": {
                       "type": "string",
-                      "description": "Stable wire code from `IncentivesErrorCode` (e.g., `INVALID_DEVICE_ID`, `GEOCODING_NO_RESULTS`, `NO_UTILITY_AT_ADDRESS`, `ADDRESS_OWNED_BY_ANOTHER_CUSTOMER`, `INCLUDE_PREVIEW_NOT_SUPPORTED`, `CONNECT_APPLICATIONS_IN_FLIGHT`, `CONNECT_CUSTOMER_SHARED`, `CONNECT_REFERENCE_ID_TAKEN`, `CONNECT_RESET_REFUSED`, `CONNECT_RESET_UNAVAILABLE`, `CONNECT_RESET_FAILED`, `CONNECT_RESET_REJECTED`, `CONNECT_RESET_REFUSED_AFTER_REBUILD`, `CONNECT_REFERENCE_ID_TAKEN_AFTER_REBUILD`, `CONNECT_RESET_WOULD_STRAND_CUSTOMER`)."
+                      "description": "Stable wire code from `IncentivesErrorCode` (e.g., `INVALID_DEVICE_ID`, `GEOCODING_NO_RESULTS`, `NO_UTILITY_AT_ADDRESS`, `ADDRESS_OWNED_BY_ANOTHER_CUSTOMER`, `INCLUDE_PREVIEW_NOT_SUPPORTED`, `CONNECT_APPLICATIONS_IN_FLIGHT`, `CONNECT_CUSTOMER_SHARED`, `CONNECT_REFERENCE_ID_TAKEN`, `CONNECT_RESET_REFUSED`, `CONNECT_RESET_UNAVAILABLE`, `CONNECT_RESET_FAILED`, `CONNECT_MERGE_FAILED`, `CONNECT_MERGE_REJECTED`, `CONNECT_RESET_REJECTED`, `CONNECT_RESET_REFUSED_AFTER_REBUILD`, `CONNECT_REFERENCE_ID_TAKEN_AFTER_REBUILD`, `CONNECT_RESET_WOULD_STRAND_CUSTOMER`, `PLAN_REQUIRED`)."
                     },
                     "reason": {
                       "type": "string",
                       "description": "Human-readable explanation. Safe to surface to partners; no internal identifiers."
+                    },
+                    "upgrade_url": {
+                      "type": "string",
+                      "format": "uri",
+                      "description": "Present on `PLAN_REQUIRED` only. The portal page where the partner chooses a paid plan."
                     }
                   }
                 }
               }
             }
+          }
+        }
+      },
+      "AcceptTermsRequest": {
+        "type": "object",
+        "required": [
+          "terms_version"
+        ],
+        "properties": {
+          "terms_version": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The terms version the partner accepted. Must equal the current version when one is configured."
+          }
+        }
+      },
+      "AcceptTermsResponse": {
+        "type": "object",
+        "required": [
+          "terms_version",
+          "terms_accepted_at"
+        ],
+        "properties": {
+          "terms_version": {
+            "type": "string"
+          },
+          "terms_accepted_at": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },
@@ -365,6 +498,12 @@
             "minLength": 1,
             "description": "Optional utility override. Supply it when you already know the customer's serving utility and the address-based match is unavailable or ambiguous: Leap uses this EIA utility id to select candidate programs instead of resolving the utility from the address. On this path the address isn't geocoded, so the response omits the `geocoding` block and any stored coordinates are left as they are. A value matching no utility fails the same way an unserved address does (404 `NO_UTILITY_AT_ADDRESS`)."
           },
+          "supplier_eiaid": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "description": "Optional. The retail supplier the customer chose, such as a Texas retail electric provider or a CCA, by its EIA id. It must name a supplier record, or the request fails with 400 `INVALID_REQUEST`. The supplier's programs join the candidates, and it is returned in `utilities.suppliers` with `source: declared`. It never replaces the delivery utility in `eiaid`.\n\nA declared supplier is stored on the customer. On `/lookups` a request without `supplier_eiaid` keeps the stored one, and `POST /incentives/refreshes` replays it. `/overrides` is a clean slate: it stores this request's value, and no value clears it.\n\nA declared supplier replaces every supplier found by territory, so a customer on the edge of a CCA polygon who declares a different supplier gets only the declared supplier's programs. A CCA needs no declaration: without one it is resolved from its territory.\n"
+          },
           "customer_details": {
             "type": "object",
             "description": "Customer attributes you're supplying, keyed by field name, for example `{\"customer.utility_account_number\": \"0123456789\"}`. Values are always strings. Facts about one installation go in that entry's `details` object instead.\n\nSend project costs here, once per customer. `customer.installation_cost` is the services total for the whole job, before tax: labor, materials, and permits. `customer.total_project_cost` is the deal total including tax. Each device's equipment price goes in that device's `details` as `customer_device.purchase_price`.\n\nIn cost-based amounts, `customer.installation_cost` replaces each device's installation cost and the regional estimate. In installation cost checks, it stands in for the device's `customer_device.installation_cost`. Each cost calculation counts it once, and each program and each tier is its own calculation. Leap doesn't split it between devices or programs. It stays on file until you clear it. Send it as an empty string on a refresh, or leave it out of an override body.\n\nLeap ignores a value that is negative, above 1,000,000,000, or written with more than six decimal places. Device-level costs apply instead. Text that isn't a number returns 400. A zero is a real zero. No calculation reads `customer.total_project_cost` yet.\n\nAn unrecognised key returns 400 and no incentives. The [Requirements reference](/setup-data-preferences) lists every key and its value form.\n\nOmit or leave empty if you have none. Maximum 100 entries.",
@@ -376,7 +515,7 @@
           "create_application": {
             "type": "boolean",
             "default": false,
-            "description": "Create the Connect application records for this lookup's eligible programs, so the returned `connect_url` is a link the customer can open. Provisioning runs in the background and is normally in place within seconds. Defaults to `false`: lookup-only integrations are unaffected and no applications are created for them. No effect on billing or rate limits."
+            "description": "Create the Connect application records for this lookup's eligible programs, so the returned `connect_url` is a link the customer can open. Provisioning runs in the background and is normally in place within seconds. Defaults to `false`: lookup-only integrations are unaffected and no applications are created for them. Setting it to `true` needs the Business plan. On any other plan the request returns 402 `PLAN_REQUIRED` and writes nothing."
           },
           "include_preview": {
             "type": "boolean",
@@ -433,10 +572,16 @@
             "minLength": 1,
             "description": "Optional utility override, matching the one on **Look up incentives**. Supply an EIA utility id to re-resolve the customer's serving utility instead of reusing the one on file. Leap re-selects candidate programs against it, re-runs eligibility, and keeps the override for later calls on this customer."
           },
+          "supplier_eiaid": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "description": "Optional. The retail supplier the customer chose, by its EIA id, with the same rules as `supplier_eiaid` on `/lookups`: it must name a supplier record (400 `INVALID_REQUEST` otherwise), it replaces any supplier found by territory, and it is stored on the customer. When omitted, the refresh uses the supplier stored by an earlier `/lookups`, `/overrides` or `/refreshes`, if any.\n"
+          },
           "create_application": {
             "type": "boolean",
             "default": false,
-            "description": "Create the Connect application records for this refresh's eligible programs, so the returned `connect_url` is a link the customer can open. It matches the flag on **Look up incentives** and defaults to `false`. Only a refresh that changes something has anything to create: one that supplies `customer_devices`, `customer_details` or a removal. A bare re-evaluation creates nothing, flag or no flag. No effect on billing or rate limits."
+            "description": "Create the Connect application records for this refresh's eligible programs, so the returned `connect_url` is a link the customer can open. It matches the flag on **Look up incentives** and defaults to `false`. Only a refresh that changes something has anything to create: one that supplies `customer_devices`, `customer_details` or a removal. A bare re-evaluation creates nothing, flag or no flag. Like a lookup, `true` needs the Business plan and returns 402 `PLAN_REQUIRED` on any other plan."
           }
         }
       },
@@ -498,15 +643,13 @@
       "Address": {
         "type": "object",
         "required": [
-          "address_line_1",
-          "city",
-          "state",
           "zip_code"
         ],
         "properties": {
           "address_line_1": {
             "type": "string",
-            "description": "Street address — house number and street name."
+            "nullable": true,
+            "description": "Street address — house number and street name. Optional: omit it (or send null or an empty string, which are treated the same) to geocode on the ZIP alone. Whatever you send is echoed back verbatim in `geocoding.formatted_address`.\n"
           },
           "address_line_2": {
             "type": "string",
@@ -515,15 +658,18 @@
           },
           "city": {
             "type": "string",
-            "description": "City name."
+            "nullable": true,
+            "description": "City name. Optional: omit it (or send null or an empty string, which are treated the same) to geocode on the ZIP alone.\n"
           },
           "state": {
             "type": "string",
-            "description": "Two-letter US state abbreviation."
+            "nullable": true,
+            "description": "Two-letter US state abbreviation. Optional: omit it (or send null or an empty string, which are treated the same) to geocode on the ZIP alone. When you omit it, the server fills it from the geocoder's structured result and uses that value everywhere it would have used yours, including Partner Offer state gating, so an offer restricted to a list of states still matches a ZIP-only request. A value you send always wins over the derived one, and the response echoes your address as you sent it.\n"
           },
           "zip_code": {
             "type": "string",
-            "description": "US ZIP code (5-digit or ZIP+4)."
+            "pattern": "^\\d{5}(-\\d{4})?$",
+            "description": "US ZIP code, 5-digit or ZIP+4. Required on every request, and the only address field that is. A blank or malformed value is rejected with 400 `INVALID_REQUEST`.\n"
           },
           "country_code": {
             "type": "string",
@@ -560,7 +706,7 @@
           "connect_url": {
             "type": "string",
             "format": "uri",
-            "description": "Deep link to hand the customer so they can apply: `https://connect.incentives.leap.energy/{company}/refId/{reference_id}`, where `{company}` is your registration nickname. **Omitted entirely when the lookup surfaces no eligible incentive** — there is nothing to apply for, so check that the field is present before showing a link."
+            "description": "Deep link to hand the customer so they can apply: `https://connect.incentives.leap.energy/{company}/refId/{reference_id}`, where `{company}` is your registration nickname. **Omitted entirely when the lookup surfaces no eligible incentive** — there is nothing to apply for, so check that the field is present before showing a link. Also omitted on every plan except Business."
           },
           "incentive_summary": {
             "$ref": "#/components/schemas/IncentiveSummary"
@@ -587,6 +733,36 @@
             "items": {
               "$ref": "#/components/schemas/IgnoredCustomerDevice"
             }
+          },
+          "preview_applied": {
+            "type": "boolean",
+            "description": "True when at least one program in this response was evaluated against an APPROVED calculation spec instead of the live ACTIVE one, which only happens on a request that set `include_preview`. Absent or false means every program was evaluated exactly as an ordinary lookup would evaluate it, so the amounts match what a customer sees today.\nRead it as a warning, not as a per-program marker: it says the response as a whole contains at least one unpublished evaluation, not which program that was. A preview response carries no accuracy guarantee and must not be stored as a quote.\nReport rows carry the same field, because a report row serializes the same result this endpoint returns.\n"
+          },
+          "locked_utility_programs": {
+            "$ref": "#/components/schemas/LockedUtilityPrograms"
+          }
+        }
+      },
+      "LockedUtilityPrograms": {
+        "type": "object",
+        "description": "Utility programs this customer qualifies for that your plan does not include. Present only when your organization has no paid plan and at least one such program would pay this customer. Absent on every response for an organization on a paid plan.\n\nThe figures come from the same evaluation a paid plan would run, and they are aggregates only: program names and tiers are not returned. Report rows carry the same field, because a report row serializes the same result this endpoint returns.\n",
+        "required": [
+          "program_count",
+          "install_amount",
+          "ongoing_amount"
+        ],
+        "properties": {
+          "program_count": {
+            "type": "integer",
+            "description": "How many locked utility programs would pay this customer."
+          },
+          "install_amount": {
+            "type": "number",
+            "description": "Sum of the locked programs' incentives paid at install time."
+          },
+          "ongoing_amount": {
+            "type": "number",
+            "description": "Sum of the locked programs' recurring incentives, PER YEAR."
           }
         }
       },
@@ -737,6 +913,16 @@
             },
             "description": "Partner offers only: identifiers of the underlying programs this offer covers for this customer. Empty for every other kind of entry."
           },
+          "stacking": {
+            "$ref": "#/components/schemas/ProgramStackingOutcome"
+          },
+          "excluded_programs": {
+            "type": "array",
+            "description": "PARTNER_OFFER rows only: the underlying Leap programs that passed both sides of the offer but that stacking left out of it, by name and excluder. They carry no amount, like `covered_programs`: a Leap program's offer-side value is not split out. None of it is in this row's amounts or in `incentive_summary`. Empty for non-offer rows. Absent on results computed before this field shipped, which means unknown, not none.\n",
+            "items": {
+              "$ref": "#/components/schemas/ExcludedLeapProgram"
+            }
+          },
           "tiers": {
             "type": "array",
             "description": "The program's incentive tiers evaluated for this customer. Each tier carries its payment type, total amount, and per-device results.\n",
@@ -766,9 +952,28 @@
           "payment_type": {
             "$ref": "#/components/schemas/PaymentType"
           },
+          "selected": {
+            "type": "boolean",
+            "description": "Whether this tier is part of what the program actually pays. A program's tiers are not always additive: a spec can declare two tiers as mutually exclusive alternatives, or make a bonus depend on a base tier that failed, and a program-scope cap can clamp the total. The engine resolves that and pays a SUBSET; every evaluated tier is still reported here so you can see what was considered.\nRead this before showing a tier's `incentive_amount` as money the customer will receive. Sum the amounts of the selected tiers and you get the program's `install_amount` / `ongoing_amount`; sum all of them and you can overstate the award. Austin Energy's home EV charger rebate is the canonical case: two mutually exclusive tiers price at $949 and $900, and the program pays $949.\nAbsent on results computed before this field shipped. Treat absent as \"unknown\", not as false, and fall back to the per-program amounts.\n"
+          },
           "incentive_amount": {
             "type": "number",
             "description": "Tier total across the devices that passed this tier's requirements; per-device outcomes are in `device_results[]`. Units follow `payment_type`: `UPFRONT` and `INSTALL` amounts are one-time, `ONGOING` amounts are per year."
+          },
+          "interval": {
+            "$ref": "#/components/schemas/IncentivePaymentInterval"
+          },
+          "term_months": {
+            "type": "integer",
+            "description": "How long an ONGOING tier keeps paying, in months. Omitted when the spec sets no term (the tier pays for as long as the customer stays enrolled) and on INSTALL / UPFRONT tiers.\n"
+          },
+          "starts_after_months": {
+            "type": "integer",
+            "description": "Months after enrolment before an ONGOING tier's first payment (\"$15/kW annual bill credit in years 2-4\" is 12, with `term_months` 36). Omitted when the tier pays from the start, and on INSTALL / UPFRONT tiers. `annual_amount` is the first year of payments, so it begins after this offset.\n"
+          },
+          "annual_amount": {
+            "type": "number",
+            "description": "What an ONGOING tier pays in its first year of payments, which begins after `starts_after_months` when that is set: the per-interval amount times the payments that fall in the first year (12 monthly, 4 quarterly, 1 annual, fewer when `term_months` is shorter than a year), or the calc method's seasonal annual value. On a Partner Offer's recurring leg it equals `incentive_amount`. Sum it over the selected ONGOING tiers and you get the program's `ongoing_amount`. Omitted on INSTALL / UPFRONT tiers.\n"
           },
           "device_results": {
             "type": "array",
@@ -776,6 +981,350 @@
             "items": {
               "$ref": "#/components/schemas/DeviceTierResult"
             }
+          },
+          "estimate": {
+            "$ref": "#/components/schemas/TierEstimate"
+          }
+        }
+      },
+      "TierEstimate": {
+        "type": "object",
+        "description": "How a `storage_performance` tier reached its amount: every assumption with its source, the battery system, the intermediate steps, a yearly schedule and the notes to show at submission. Present only on `storage_performance` tiers; absent on every other calc method. The tier's amount fields keep their meaning.\n",
+        "required": [
+          "method",
+          "assumption_set",
+          "assumptions",
+          "program",
+          "system",
+          "availability",
+          "steps",
+          "schedule",
+          "term_total",
+          "term_total_unfaded",
+          "notes"
+        ],
+        "properties": {
+          "method": {
+            "type": "string",
+            "description": "Always `storage_performance`."
+          },
+          "assumption_set": {
+            "type": "string",
+            "description": "The stored assumption set the values came from, for example `storage_perf_v1`."
+          },
+          "assumptions": {
+            "type": "object",
+            "description": "Each assumption key (`soc_at_event_start`, `reserve_fraction`, `participation_factor`, `discharge_efficiency`, `annual_capacity_fade`, `estimate_horizon_years`, `default_system_kw`) with its value and source.\n",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/EstimateAssumption"
+            }
+          },
+          "program": {
+            "$ref": "#/components/schemas/EstimateProgram"
+          },
+          "system": {
+            "$ref": "#/components/schemas/EstimateSystem"
+          },
+          "availability": {
+            "$ref": "#/components/schemas/EstimateAvailability"
+          },
+          "steps": {
+            "$ref": "#/components/schemas/EstimateSteps"
+          },
+          "schedule": {
+            "type": "array",
+            "description": "One entry a year over the estimate horizon. Year one is never faded.",
+            "items": {
+              "$ref": "#/components/schemas/EstimateScheduleYear"
+            }
+          },
+          "term_total": {
+            "type": "number",
+            "description": "The sum of `schedule`, in USD."
+          },
+          "term_total_unfaded": {
+            "type": "number",
+            "description": "The same total with no capacity fade, in USD."
+          },
+          "notes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EstimateNote"
+            }
+          }
+        }
+      },
+      "EstimateAssumption": {
+        "type": "object",
+        "required": [
+          "value",
+          "source"
+        ],
+        "properties": {
+          "value": {
+            "type": "number"
+          },
+          "source": {
+            "type": "string",
+            "description": "Where the value came from: `spec`, `partner`, `request`, `modelling` or `default`."
+          }
+        }
+      },
+      "EstimateProgram": {
+        "type": "object",
+        "description": "The program's own numbers, as the spec states them.",
+        "required": [
+          "rate_per_unit",
+          "unit",
+          "rate_period",
+          "occurrences_per_year",
+          "measured_at"
+        ],
+        "properties": {
+          "rate_per_unit": {
+            "type": "number"
+          },
+          "unit": {
+            "type": "string",
+            "description": "`kW`, `kWh` or `system`."
+          },
+          "rate_period": {
+            "type": "string",
+            "description": "`once`, `event`, `month`, `season` or `year`."
+          },
+          "occurrences_per_year": {
+            "type": "integer"
+          },
+          "window_hours": {
+            "type": "number"
+          },
+          "window_start_hour": {
+            "type": "integer",
+            "description": "Local start hour, 0 to 23. Omitted when the profile minimum is read."
+          },
+          "reserve_floor": {
+            "type": "number",
+            "description": "A program-stated reserve floor, as a fraction."
+          },
+          "cap_kw": {
+            "type": "number"
+          },
+          "cap_kwh": {
+            "type": "number"
+          },
+          "commitment_months": {
+            "type": "integer",
+            "description": "A one-time tier's enrolment commitment, echoed only."
+          },
+          "measured_at": {
+            "type": "string",
+            "description": "`battery_output` or `grid_injection`."
+          }
+        }
+      },
+      "EstimateSystem": {
+        "type": "object",
+        "description": "The batteries the tier pays on.",
+        "required": [
+          "batteries",
+          "nameplate_kwh",
+          "system_kw",
+          "power_sources"
+        ],
+        "properties": {
+          "batteries": {
+            "type": "integer"
+          },
+          "nameplate_kwh": {
+            "type": "number",
+            "description": "Summed battery kWh, held to `cap_kwh`."
+          },
+          "system_kw": {
+            "type": "number"
+          },
+          "power_sources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EstimatePowerSource"
+            }
+          }
+        }
+      },
+      "EstimatePowerSource": {
+        "type": "object",
+        "required": [
+          "customer_device_id",
+          "kw",
+          "layer"
+        ],
+        "properties": {
+          "customer_device_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kw": {
+            "type": "number"
+          },
+          "layer": {
+            "type": "string",
+            "description": "`battery_row`, `inverter`, `host_battery`, `expansion_without_host` or `default_backstop`.\n"
+          }
+        }
+      },
+      "EstimateAvailability": {
+        "type": "object",
+        "required": [
+          "profile_id",
+          "profile_source",
+          "operating_mode",
+          "paired_pv",
+          "fraction_at_window"
+        ],
+        "properties": {
+          "profile_id": {
+            "type": "string"
+          },
+          "profile_source": {
+            "type": "string"
+          },
+          "operating_mode": {
+            "type": "string"
+          },
+          "paired_pv": {
+            "type": "boolean"
+          },
+          "fraction_at_window": {
+            "type": "number",
+            "description": "The dispatchable share of nameplate kWh at the window start, net of reserve."
+          }
+        }
+      },
+      "EstimateSteps": {
+        "type": "object",
+        "description": "Year one's intermediate values.",
+        "required": [
+          "reserve_applied",
+          "usable_kwh",
+          "per_occurrence",
+          "per_year"
+        ],
+        "properties": {
+          "reserve_applied": {
+            "type": "number"
+          },
+          "usable_kwh": {
+            "type": "number"
+          },
+          "energy_limited_kw": {
+            "type": "number"
+          },
+          "window_kw": {
+            "type": "number"
+          },
+          "binding_limit": {
+            "type": "string",
+            "description": "`energy` or `power`."
+          },
+          "paid_kw": {
+            "type": "number"
+          },
+          "per_occurrence": {
+            "type": "number"
+          },
+          "per_year": {
+            "type": "number"
+          }
+        }
+      },
+      "EstimateScheduleYear": {
+        "type": "object",
+        "required": [
+          "year",
+          "capacity_factor",
+          "amount"
+        ],
+        "properties": {
+          "year": {
+            "type": "integer"
+          },
+          "capacity_factor": {
+            "type": "number"
+          },
+          "amount": {
+            "type": "number"
+          }
+        }
+      },
+      "EstimateNote": {
+        "type": "object",
+        "required": [
+          "code",
+          "text"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          }
+        }
+      },
+      "ProgramStackingOutcome": {
+        "type": "object",
+        "description": "This program's inter-program stacking outcome. A program out of the stack, with `excluded_by` set or `reason: lower_value`, keeps its own amounts on this row for display, but is not summed into `incentive_summary`, report contributions, the locked-programs teaser or a filed application. Eligible and conditionally eligible programs both enter stacking resolution, so a stacking exclusion binds a program that is still pending, and a pending program in the stack reads `included: true`. An ineligible program reads `included: false` with `reason: not_eligible`. A program that requires enrollment in another program is ineligible when none of the programs it requires is in the stack, and its device results carry a check with code `PREREQ-001` that says why. The check names a required program only when that program is in the same response, and otherwise says \"another program\". Absent on results computed before this field shipped.\n",
+        "required": [
+          "included"
+        ],
+        "properties": {
+          "included": {
+            "type": "boolean",
+            "description": "True when the program is in the stack the resolver selected."
+          },
+          "excluded_by": {
+            "type": "string",
+            "nullable": true,
+            "description": "The selected program whose stacking rule rules this one out. Null otherwise."
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "excluded_by_rule",
+              "lower_value",
+              "not_eligible"
+            ],
+            "description": "Null when `included`. `excluded_by_rule`: a stacking rule rules it out (see `excluded_by`). `lower_value`: it could join, but a better-scoring combination left it out. `not_eligible`: the program is ineligible, either for this customer or because none of the programs it requires is in the stack.\n"
+          }
+        }
+      },
+      "ExcludedLeapProgram": {
+        "type": "object",
+        "required": [
+          "identifier",
+          "name",
+          "reason"
+        ],
+        "properties": {
+          "identifier": {
+            "type": "string",
+            "description": "The Leap program's identifier, for example `ENERGY-ONLY`."
+          },
+          "name": {
+            "type": "string",
+            "description": "The Leap program's label."
+          },
+          "excluded_by": {
+            "type": "string",
+            "nullable": true,
+            "description": "The covered program whose stacking rule rules it out, or null when it lost on value alone."
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "excluded_by_rule",
+              "lower_value"
+            ]
           }
         }
       },
@@ -854,7 +1403,7 @@
           },
           "code": {
             "type": "string",
-            "description": "Categorical requirement-type code. Says what KIND of requirement this is, not which individual check produced it.\n\nThe vocabulary is `UTIL-*` (utility relationship), `EQUIP-*` (equipment identity, rating and condition), `CONT-*` (contractor, permit and inspection), `VEH-*` (vehicle), `CUST-*` (who the customer is and what they live in), `APP-*` (application timing and signatures) and `MISC`. Prefixes are stable and matchable, so `code.startsWith(\"EQUIP-\")` is a supported way to group.\n\n`APP-002` is defined by the axis \"this requires a signature or declaration from the customer\", regardless of subject matter — a terms-and-conditions acceptance, a one-rebate-per-address attestation and a trade-ally confirmation are all `APP-002`.\n\nTHE SAME CODE CAN APPEAR ON SEVERAL CHECKS IN ONE RESPONSE. Twenty distinct agreement checks all carry `APP-002`, and a program can require more than one of them, so a single card can show several `APP-002` rows that the customer must each act on. Do not treat `code` as a key: group or de-duplicate by it deliberately, and use `requirement` to tell two rows of the same code apart.\n\nCodes are additive and stable: an existing code is never renumbered or repurposed, and new kinds arrive as new codes. A check whose kind has not been categorised yet reports `MISC`.\n"
+            "description": "Categorical requirement-type code. Says what KIND of requirement this is, not which individual check produced it.\n\nThe vocabulary is `UTIL-*` (utility relationship), `EQUIP-*` (equipment identity, rating and condition), `CONT-*` (contractor, permit and inspection), `VEH-*` (vehicle), `CUST-*` (who the customer is and what they live in), `APP-*` (application timing and signatures), `PREREQ-*` (enrollment in another program this one requires) and `MISC`. Prefixes are stable and matchable, so `code.startsWith(\"EQUIP-\")` is a supported way to group.\n\n`APP-002` is defined by the axis \"this requires a signature or declaration from the customer\", regardless of subject matter — a terms-and-conditions acceptance, a one-rebate-per-address attestation and a trade-ally confirmation are all `APP-002`.\n\nTHE SAME CODE CAN APPEAR ON SEVERAL CHECKS IN ONE RESPONSE. Twenty distinct agreement checks all carry `APP-002`, and a program can require more than one of them, so a single card can show several `APP-002` rows that the customer must each act on. Do not treat `code` as a key: group or de-duplicate by it deliberately, and use `requirement` to tell two rows of the same code apart.\n\n`PREREQ-001` marks a program that requires enrollment in another program in the same lookup. `severity` is `met` when the customer qualifies for a required program, `pending` while that program is still pending, and `blocking` when none is available, none qualifies, or none stays in the stack. `expected_values` lists the required programs this response shows, and `actual_value` names the one that satisfies the requirement.\n\nCodes are additive and stable: an existing code is never renumbered or repurposed, and new kinds arrive as new codes. A check whose kind has not been categorised yet reports `MISC`.\n"
           },
           "reason": {
             "type": "string",
@@ -894,9 +1443,17 @@
         "type": "object",
         "required": [
           "primary",
-          "possible_utilities"
+          "possible_utilities",
+          "suppliers"
         ],
         "properties": {
+          "suppliers": {
+            "type": "array",
+            "description": "The retail suppliers the customer buys energy from: a CCA or a Texas retail electric provider. Empty when there is none. When the customer declared a supplier (`supplier_eiaid` on this request, or one stored by an earlier call), it is the only entry, with `source: declared`. Otherwise every CCA whose territory covers the address appears with `source: territory`; an address on the edge of two CCA territories lists both. A supplier never appears in `primary` or `possible_utilities`.\n",
+            "items": {
+              "$ref": "#/components/schemas/SupplierUtility"
+            }
+          },
           "primary": {
             "description": "The utility resolved as serving this address — the one whose programs drive the eligibility result.\n",
             "allOf": [
@@ -907,10 +1464,42 @@
           },
           "possible_utilities": {
             "type": "array",
-            "description": "Every utility whose service territory covers this address (including `primary`); more than one can appear where territories overlap.\n",
+            "description": "Every utility whose service territory covers this address (including `primary`); more than one can appear where territories overlap. Only delivery utilities appear here and in `primary`, never a CCA or an agency.\n",
             "items": {
               "$ref": "#/components/schemas/IncentiveUtility"
             }
+          }
+        }
+      },
+      "SupplierUtility": {
+        "description": "A retail supplier related to the customer, by EIA id, and how it was found.\n",
+        "type": "object",
+        "required": [
+          "eiaid",
+          "name",
+          "source"
+        ],
+        "properties": {
+          "eiaid": {
+            "type": "string",
+            "description": "EIA utility identifier of the supplier."
+          },
+          "name": {
+            "type": "string",
+            "description": "Human-readable supplier name."
+          },
+          "state": {
+            "type": "string",
+            "nullable": true,
+            "description": "Two-letter US state abbreviation."
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "declared",
+              "territory"
+            ],
+            "description": "`declared` when the caller sent it as `supplier_eiaid`, on this request or an earlier one. `territory` when the supplier's territory covers the customer's address.\n"
           }
         }
       },
@@ -939,6 +1528,7 @@
       },
       "Geocoding": {
         "type": "object",
+        "description": "The point the lookup evaluated. On Free plans (anything but Business) and ZIP-only requests the coordinates are the ZIP code's centroid, not the street, and `formatted_address` echoes the address as sent.\n",
         "required": [
           "latitude",
           "longitude",
@@ -969,6 +1559,15 @@
           "MULTIFAMILY",
           "MANUFACTURED_HOME",
           "COMMERCIAL"
+        ]
+      },
+      "IncentivePaymentInterval": {
+        "type": "string",
+        "description": "How often an ONGOING tier pays. Present on ONGOING tiers only; omitted on INSTALL tiers, which pay once.\n",
+        "enum": [
+          "MONTHLY",
+          "QUARTERLY",
+          "ANNUALLY"
         ]
       }
     },

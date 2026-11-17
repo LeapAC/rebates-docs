@@ -97,6 +97,38 @@ Always send the references. Two entries for one model with no reference work onl
 
 Leap checks each entry against a program’s requirements on its own. A program that pays per kWh adds up the capacity of the units that qualify. A capacity minimum applies to each unit, not to the system total. A small expansion unit can fail a minimum that the main unit meets.
 
+## Plans and application creation
+
+Lookups are free on every plan. Creating applications and handing out Connect links needs the Business plan.
+
+| | Free | Business |
+|---|---|---|
+| Lookups, programs, and VPP offers | Unlimited | Unlimited |
+| Location precision | ZIP level | Street level |
+| Applications | Not available | Included |
+| `connect_url` in responses | Omitted | Included |
+
+On the Free plan, and on any request that sends only a ZIP code, the `geocoding` coordinates are the ZIP code's centroid, not the street. Eligibility resolves at ZIP level. Send a full street address on a Business account to get street-level results.
+
+A lookup, refresh, or override that sets `create_application` to `true` from an account that is not on the Business plan returns `402` with the error code `PLAN_REQUIRED`. Leap writes nothing: no customer, device, or application changes. Retry with `create_application` set to `false` to get eligibility without applications, or send the partner to `upgrade_url` to change plans.
+
+```json
+{
+  "error": {
+    "message": "Creating applications requires a Business plan.",
+    "details": [
+      {
+        "error_code": "PLAN_REQUIRED",
+        "reason": "create_application is true and the partner is not on the Business plan with an active, trialing or past_due subscription",
+        "upgrade_url": "https://partner.incentives.leap.energy/settings/billing"
+      }
+    ]
+  }
+}
+```
+
+Business includes 250 applications a month. Applications beyond that cost 5% of the incentive value. Before you add a card, [Accept billing terms](/api-reference/incentives-lookups/accept-billing-terms) records that your account accepted a version of the terms. Accepting terms does not unlock application creation.
+
 ## When a call is refused
 
 Override is a pre-submission correction, so Leap refuses it rather than destroy something you didn't name. A `409` means nothing changed on either side: the address already belongs to another of your customers, an application has already been filed with a program administrator, the customer is shared across organizations, or the `reference_id` belongs to another partner. Read `error_code`, fix the cause, and retry.
